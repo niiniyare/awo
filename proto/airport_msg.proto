@@ -1,0 +1,13 @@
+syntax = "proto3";
+
+package flight;
+
+option go_package = "./proto;flight";
+
+message Airport {
+   string  airport_code = 1;
+   string  airport_name = 2;
+   string  city = 3;
+   string  coordinates = 4;
+   string  timezone = 5;
+}

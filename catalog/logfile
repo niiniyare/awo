@@ -1,0 +1,11 @@
+2021-10-27 21:52:33.993 EAT [1564] LOG:  starting PostgreSQL 13.3 on aarch64-unknown-linux-android, compiled by Android (6454773 based on r365631c2) clang version 9.0.8 (https://android.googlesource.com/toolchain/llvm-project 98c855489587874b2a325e7a516b99d838599c6f) (based on LLVM 9.0.8svn), 64-bit
+2021-10-27 21:52:33.997 EAT [1564] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2021-10-27 21:52:34.009 EAT [1564] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2021-10-27 21:52:34.092 EAT [1572] LOG:  database system was interrupted; last known up at 2021-10-25 21:24:02 EAT
+2021-10-27 21:52:35.570 EAT [1572] LOG:  database system was not properly shut down; automatic recovery in progress
+2021-10-27 21:52:35.602 EAT [1572] LOG:  redo starts at 0/3A8A4EB8
+2021-10-27 21:52:35.603 EAT [1572] LOG:  invalid record length at 0/3A8A4FA0: wanted 24, got 0
+2021-10-27 21:52:35.603 EAT [1572] LOG:  redo done at 0/3A8A4F68
+2021-10-27 21:52:35.670 EAT [1564] LOG:  database system is ready to accept connections
+2021-10-27 21:58:44.018 EAT [4893] ERROR:  database "cosc3380" does not exist
+2021-10-27 21:58:44.018 EAT [4893] STATEMENT:  drop database COSC3380;

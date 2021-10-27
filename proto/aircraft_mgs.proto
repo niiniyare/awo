@@ -1,0 +1,12 @@
+syntax = "proto3";
+
+package flight;
+
+option go_package = "./proto;flight";
+
+message AircraftsData {
+   string  aircraft_code = 1;
+   string  model = 2;
+   int32  range = 3;
+
+}

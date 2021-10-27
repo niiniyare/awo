@@ -1,0 +1,157 @@
+syntax = "proto3";
+package proto;
+option go_package = "./proto;catalog";
+import  "google/protobuf/timestamp.proto";
+
+
+message ActualArrival {
+  google.protobuf.Timestamp time = 1;
+  bool valid = 2;
+}
+
+
+message KeyValue {
+  string key = 1;
+  string value = 2;
+}
+
+
+message ActualDeparture {
+  google.protobuf.Timestamp time = 1;
+  bool valid = 2;
+}
+
+message Aircraft {
+  string aircraftCode = 1;
+  repeated KeyValue model = 2;
+  int32 range = 3;
+  AirlineCompany companyID = 4;
+}
+
+message AirlineCompany {
+  int64 companyID = 1;
+  string companyName = 2;
+  string iataCode = 3;
+  Airport mainAirport = 4;
+}
+
+message Airport {
+  string airportCode = 1;
+  string airportName = 2;
+  string city = 3;
+  message Coordinates { 
+    double longitude = 1;  
+    double latitude = 2; 
+    }
+   Coordinates coordinates = 4;
+  google.protobuf.Timestamp timezone = 5;
+}
+/*
+message AirportsData {
+  string airportCode = 1;
+  string airportName = 2;
+  string city = 3;
+  message Coordinates { 
+    double longitude = 1;  
+    double latitude = 2; 
+    }
+   Coordinates coordinates = 4;
+  google.protobuf.Timestamp timezone = 5;
+}
+*/
+message BoardingPass {
+  string ticketNo = 1;
+  int32 flightID = 2;
+  int32 boardingNo = 3;
+  string seatNo = 4;
+}
+
+message BookDate {
+}
+
+message Booking {
+  string bookRef = 1;
+  google.protobuf.Timestamp bookDate = 2;
+  double totalAmount = 3;
+}
+
+message Flight {
+  int32 flightID = 1;
+  string flightNo = 2;
+  int64 companyID = 3;
+  ScheduledDeparture scheduledDeparture = 4;
+  ScheduledArrival scheduledArrival = 5;
+  string departureAirport = 6;
+  string arrivalAirport = 7;
+  string status = 8;
+  Aircraft aircraftCode = 9;
+  google.protobuf.Timestamp actualDeparture = 10;
+  ActualArrival actualArrival = 11;
+}
+
+message FlightsV {
+  int32 flightID = 1;
+  string flightNo = 2;
+  int64 companyID = 3;
+  ScheduledDeparture scheduledDeparture = 4;
+  ScheduledDeparture scheduledDepartureLocal = 5;
+  ScheduledArrival scheduledArrival = 6;
+  ScheduledArrival scheduledArrivalLocal = 7;
+  int32 scheduledDuration = 8;
+  Airport departureAirport = 9;
+  string departureAirportName = 10;
+  string departureCity = 11;
+  Airport arrivalAirport = 12;
+  string arrivalAirportName = 13;
+  string arrivalCity = 14;
+  string status = 15;
+  Aircraft aircraftCode = 16;
+  google.protobuf.Timestamp actualDeparture = 17;
+  google.protobuf.Timestamp actualDepartureLocal = 18;
+  ActualArrival actualArrival = 19;
+  ActualArrival actualArrivalLocal = 20;
+  int32 actualDuration = 21;
+}
+
+message Route {
+  string flightNo = 1;
+  int64 companyID = 2;
+  string departureAirport = 3;
+  string departureAirportName = 4;
+  string departureCity = 5;
+  Airport arrivalAirport = 6;
+  Airport arrivalAirportName = 7;
+  string arrivalCity = 8;
+  string aircraftCode = 9;
+  int32 duration = 10;
+  // this could be enum or oneof 
+  string daysOfWeek = 11;
+}
+
+message ScheduledArrival {
+}
+
+message ScheduledDeparture {
+}
+
+message Seat {
+  Aircraft aircraftCode = 1;
+  string seatNo = 2;
+  string fareConditions = 3;
+}
+
+message Ticket {
+  int64 ticketNo = 1;
+  string bookRef = 2;
+  string passengerID = 3;
+  string passengerName = 4;
+  repeated KeyValue contactData = 5;
+}
+
+message TicketFlight {
+  int64 ticketNo = 1;
+  int32 flightID = 2;
+  string fareConditions = 3;
+  double amount = 4;
+}
+
