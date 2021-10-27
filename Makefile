@@ -3,7 +3,7 @@ clean:
 
 
 gen:
-	protoc --proto_path=proto proto/*.proto  --go_out=:pb --go-grpc_out=:pb
+	protoc --proto_path=.  output.proto  --go_out=: --go-grpc_out=:.
 	
 server:
 	go run cmd/server/main.go -port 8080
