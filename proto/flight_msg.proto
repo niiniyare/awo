@@ -1,8 +1,8 @@
 syntax = "proto3";
 
-package flight;
+package flightinfo;
 
-option go_package = "./proto;flight";
+option go_package = "./;flightinfo";
 
 import  "google/protobuf/timestamp.proto";
 import  "airport_msg.proto";

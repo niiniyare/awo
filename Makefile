@@ -14,6 +14,30 @@ client:
 
 test:
 	go test -cover -race ./...
+createdb:
+	createdb --username=admin --owner=admin bookings
 
+dropdb:
+	dropdb bookings
 
-.PHONY: clean gen gen-all server client test
+migrateup:
+	migrate -path migration -database "postgresql://niini:admin@localhost:5432/bookings?sslmode=disable" -verbose up
+	
+migratedown:
+	migrate -path migration -database "postgresql://niini:admin@localhost:5432/bookings?sslmode=disable" -verbose down
+	
+sqlc:
+	sqlc generate
+
+test:
+	go test -v -cover ./...
+
+mock:
+	mockgen -package mockdb -destination db/mock/store.go github.com/techschool/simplebank/db/sqlc Store
+	
+web:
+	npm run /data/data/com.termux/files/home/pro/pss/vue-element-admin dev
+
+.PHONY: 
+
+.PHONY: clean gen server client test createdb dropdb migrateup migratedown sqlc test mock web
