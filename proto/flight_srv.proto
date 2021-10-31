@@ -1,9 +1,0 @@
-
-syntax = "proto3";
-
-package flight;
-
-option go_package = "./pb;flight";
-
-import  "google/protobuf/timestamp.proto";
-import  "airport_msg.proto";

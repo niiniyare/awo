@@ -1,7 +1,7 @@
 version: "1"
 packages:
   - name: "postgres" # airport
-    path: "postgres"
+    path: "flightinfo/postgres"
     queries: "/query"
     schema: "./migration/000001_schema.up.sql"
     engine: "postgresql"

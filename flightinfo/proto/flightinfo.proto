@@ -4,36 +4,68 @@ package flightinfo;
 
 option go_package = "./;flightinfo";
 
-service Flightinfo {
-	rpc Call(Request) returns (Response) {}
-	rpc Stream(StreamingRequest) returns (stream StreamingResponse) {}
-	rpc PingPong(stream Ping) returns (stream Pong) {}
+import  "google/protobuf/timestamp.proto";
+
+
+
+
+message Airport {
+   string  airport_code = 1;
+   string  airport_name = 2;
+   string  city = 3;
+   string  coordinates = 4;
+   string  timezone = 5;
 }
 
-message Message {
-	string say = 1;
+service FlightService {
+  rpc CreateFlight (Flight) returns (Flight) {}
+  rpc SearchFlight (FlightRequest) returns (FlightResponse) {}
+  
+}
+message Flight {
+   int32  flight_id = 1;
+   int64  flight_no = 2;
+    google.protobuf.Timestamp  scheduled_departure = 3;
+    google.protobuf.Timestamp  scheduled_arrival = 4;
+   Airport  departure_airport = 5;
+   Airport  arrival_airport = 6;
+   string  status = 7;
+   string  aircraft_code = 8;
+    google.protobuf.Timestamp  actual_departure_time = 9;
+    google.protobuf.Timestamp  actual_arrival_time = 10;
+/*
+   string  CONSTRAINT = 11;
+   string  CONSTRAINT = 12;
+   string  CONSTRAINT = 13;
+   string  (Delayed::character = 14;
+   string  (Departed::character = 15;
+   string  (Arrived::character = 16;
+   string  (Scheduled::character = 17;
+   string  (Cancelled::character = 18;
+
+*/
 }
 
-message Request {
-	string name = 1;
+message FlightRequest {
+  Airport  departure_airport = 1;
+  Airport  arrival_airport = 2;
+  google.protobuf.Timestamp  scheduled_departure = 3;
+    google.protobuf.Timestamp  scheduled_arrival = 4;
 }
 
-message Response {
-	string msg = 1;
+message FlightResponse {
+  repeated Flight flight = 1;
 }
-
-message StreamingRequest {
-	int64 count = 1;
-}
-
-message StreamingResponse {
-	int64 count = 1;
-}
-
-message Ping {
-	int64 stroke = 1;
-}
-
-message Pong {
-	int64 stroke = 1;
-}
+/*
+{ "departureDate": "2021-04-10T08:00+0000", "departureAirportCode": "LGW", "departureAirportName": "London Gatwick", "departureCity": "London", 
+  "departureLocale": "Europe/London", 
+  "arrivalDate": "2021-04-10T10:15+0000",
+  "arrivalAirportCode": "MAD",
+  "arrivalAirportName":"Madrid Barajas", 
+  "arrivalCity": "Madrid", 
+  "arrivalLocale": "Europe/Madrid", 
+  "ticketPrice": 100, 
+  "ticketCurrency": "EUR", 
+  "flightNumber": 1830,
+  "seatCapacity": 10 }
+*/
