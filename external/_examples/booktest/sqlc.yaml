@@ -1,0 +1,6 @@
+version: "1"
+packages:
+  - path: "internal/books"
+    queries: "./query/"
+    schema: "./migration/000001_schema.up.sql"
+    engine: "postgresql"
