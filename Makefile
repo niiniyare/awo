@@ -5,13 +5,13 @@ gen:
 test:
 	go test -cover -race ./...
 createdb:
-	createdb --username=admin --owner=admin bookings
+	createdb --username=admin --owner=admin flight
 dropdb:
-	dropdb bookings
+	dropdb flight
 migrateup:
-	migrate -path migration -database "postgresql://niini:admin@localhost:5432/bookings?sslmode=disable" -verbose up
+	migrate -path migration -database "postgresql://niini:admin@localhost:5432/flight?sslmode=disable" -verbose up
 migratedown:
-	migrate -path migration -database "postgresql://niini:admin@localhost:5432/bookings?sslmode=disable" -verbose down
+	migrate -path migration -database "postgresql://niini:admin@localhost:5432/flight?sslmode=disable" -verbose down
 sqlc:
 	sqlc generate
 
