@@ -1,12 +1,13 @@
 version: "1"
 packages:
-  - name: "postgres" # airport
-    path: "flightinfo/postgres"
+  - name: "db" # airport
+    path: "db"
     queries: "/query"
-    schema: "./migration/000001_schema.up.sql"
+    schema: "./migration"
     engine: "postgresql"
     emit_json_tags: true
     emit_prepared_queries: false
     emit_interface: false
     emit_exact_table_names: false
     emit_empty_slices: true
+    sql_package: "pgx/v4"
