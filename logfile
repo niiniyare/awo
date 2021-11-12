@@ -9,3 +9,29 @@
 2021-10-27 21:52:35.670 EAT [1564] LOG:  database system is ready to accept connections
 2021-10-27 21:58:44.018 EAT [4893] ERROR:  database "cosc3380" does not exist
 2021-10-27 21:58:44.018 EAT [4893] STATEMENT:  drop database COSC3380;
+2021-11-05 22:00:20.051 EAT [3068] LOG:  starting PostgreSQL 13.3 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2021-11-05 22:00:20.056 EAT [3068] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2021-11-05 22:00:20.070 EAT [3068] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2021-11-05 22:00:20.127 EAT [3074] LOG:  database system was interrupted; last known up at 2021-11-04 02:43:37 EAT
+2021-11-05 22:00:20.966 EAT [3074] LOG:  database system was not properly shut down; automatic recovery in progress
+2021-11-05 22:00:21.010 EAT [3074] LOG:  redo starts at 0/4805C9E0
+2021-11-05 22:00:21.010 EAT [3074] LOG:  invalid record length at 0/4805CAC8: wanted 24, got 0
+2021-11-05 22:00:21.010 EAT [3074] LOG:  redo done at 0/4805CA90
+2021-11-05 22:00:21.089 EAT [3068] LOG:  database system is ready to accept connections
+2021-11-12 23:30:11.947 EAT [7408] LOG:  starting PostgreSQL 13.3 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2021-11-12 23:30:11.953 EAT [7408] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2021-11-12 23:30:11.966 EAT [7408] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2021-11-12 23:30:12.020 EAT [7414] LOG:  database system was interrupted; last known up at 2021-11-09 21:11:45 EAT
+2021-11-12 23:30:12.801 EAT [7414] LOG:  database system was not properly shut down; automatic recovery in progress
+2021-11-12 23:30:12.840 EAT [7414] LOG:  redo starts at 0/480A67D8
+2021-11-12 23:30:12.840 EAT [7414] LOG:  invalid record length at 0/480A68C0: wanted 24, got 0
+2021-11-12 23:30:12.840 EAT [7414] LOG:  redo done at 0/480A6888
+2021-11-12 23:30:12.974 EAT [7408] LOG:  database system is ready to accept connections
+2021-11-12 23:31:26.103 EAT [8563] FATAL:  role "postgres" does not exist
+2021-11-12 23:35:20.368 EAT [8974] FATAL:  database "postgres" does not exist
+2021-11-12 23:36:09.709 EAT [9047] FATAL:  database "postgres" does not exist
+2021-11-12 23:38:04.458 EAT [9806] FATAL:  database "postgres" does not exist
+2021-11-12 23:38:04.472 EAT [9807] ERROR:  database "crs_development" already exists
+2021-11-12 23:38:04.472 EAT [9807] STATEMENT:  CREATE DATABASE crs_development OWNER admin;
+2021-11-12 23:38:28.890 EAT [9869] FATAL:  database "postgres" does not exist
+2021-11-12 23:38:32.124 EAT [9888] FATAL:  database "postgres" does not exist

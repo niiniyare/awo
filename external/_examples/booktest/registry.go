@@ -6,14 +6,14 @@ import (
 	"go.uber.org/zap"
 	"google.golang.org/grpc"
 
-	app_books "flight/internal/books"
+	app_db "flight/db"
 	"flight/internal/server"
-	pb_books "flight/proto/books"
+	pb_db "flight/proto/db"
 )
 
 func registerServer(logger *zap.Logger, db *sql.DB) server.RegisterServer {
 	return func(grpcServer *grpc.Server) {
-		pb_books.RegisterBooksServiceServer(grpcServer, app_books.NewService(logger, app_books.New(db)))
+		pb_db.RegisterDbServiceServer(grpcServer, app_db.NewService(logger, app_db.New(db)))
 
 	}
 }
@@ -21,7 +21,7 @@ func registerServer(logger *zap.Logger, db *sql.DB) server.RegisterServer {
 func registerHandlers() []server.RegisterHandler {
 	var handlers []server.RegisterHandler
 
-	handlers = append(handlers, pb_books.RegisterBooksServiceHandler)
+	handlers = append(handlers, pb_db.RegisterDbServiceHandler)
 
 	return handlers
 }

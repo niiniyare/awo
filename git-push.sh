@@ -5,7 +5,7 @@
 
 git_user_id=$1
 git_repo_id=$2
-release_note=$3
+release_note=read
 
 if [ "$git_user_id" = "" ]; then
     git_user_id=""
