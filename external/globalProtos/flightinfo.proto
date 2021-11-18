@@ -12,9 +12,10 @@ import  "google/protobuf/timestamp.proto";
 message Airport {
    string  airport_code = 1;
    string  airport_name = 2;
-   string  city = 3;
-   string  coordinates = 4;
-   string  timezone = 5;
+   string country_code = 3;
+   string  city = 4;
+   string  coordinates = 5;
+   string  timezone = 6;
 }
 
 service FlightService {

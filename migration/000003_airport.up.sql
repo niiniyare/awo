@@ -77,9 +77,9 @@ CREATE VIEW airports AS
     ml.airport_name AS airport_name,
     ml.country_code AS country ,
     ml.city AS city,
-    ml.coordinates,
-    ml.timezone,
-    ml.Created_at
+    ml.coordinates AS coordinates,
+    ml.timezone AS timezone,
+    ml.Created_at AS Created_at
    FROM airports_data ml;
 
 
