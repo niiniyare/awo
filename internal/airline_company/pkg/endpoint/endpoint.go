@@ -94,7 +94,7 @@ type ListAirlineCompanyRequest struct{}
 
 // ListAirlineCompanyResponse collects the response parameters for the ListAirlineCompany method.
 type ListAirlineCompanyResponse struct {
-	A0 []AirlineCompany `json:"a0"`
+	A0 []service.AirlineCompany `json:"a0"`
 	E1 error            `json:"e1"`
 }
 
@@ -156,7 +156,7 @@ func (e Endpoints) GetAirlineCompany(ctx context.Context, companyID int64) (a0 s
 }
 
 // ListAirlineCompany implements Service. Primarily useful in a client.
-func (e Endpoints) ListAirlineCompany(ctx context.Context) (a0 []AirlineCompany, e1 error) {
+func (e Endpoints) ListAirlineCompany(ctx context.Context) (A0 []service.AirlineCompany, E1 error) {
 	request := ListAirlineCompanyRequest{}
 	response, err := e.ListAirlineCompanyEndpoint(ctx, request)
 	if err != nil {
