@@ -5,7 +5,7 @@ WHERE aircraft_code = $1 LIMIT 1;
 -- name: ListAircraft :many
 SELECT * FROM aircrafts_data
 ORDER BY name;
-
+/*
 -- name: CreateAircraft :one
 INSERT INTO aircrafts_data (
   aircraft_code, model, range ,company_id
@@ -25,7 +25,7 @@ RETURNING *;
 -- name: DeleteAircraft :exec
 DELETE FROM aircrafts_data
 WHERE aircraft_code = $1;
-/*
+
 -- Example
 INSERT INTO aircrafts_data (
   aircraft_code, model, range, company_id

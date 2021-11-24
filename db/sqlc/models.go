@@ -4,68 +4,66 @@ package db
 
 import (
 	"time"
-
-	"github.com/jackc/pgtype"
 )
 
 type Aircraft struct {
 	// Aircraft code, IATA
-	AircraftCode string `json:"aircraft_code"`
+	AircraftCode string
 	// Aircraft model
-	Model pgtype.JSONB `json:"model"`
+	Model string
 	// Maximal flying distance, km
-	Range int32 `json:"range"`
+	Range int32
 }
 
 // Aircrafts (internal data)
 type AircraftsDatum struct {
 	// Aircraft code, IATA
-	AircraftCode string `json:"aircraft_code"`
+	AircraftCode string
 	// Aircraft model
-	Model pgtype.JSONB `json:"model"`
+	Model string
 	// Maximal flying distance, km
-	Range     int32     `json:"range"`
-	CompanyID int64     `json:"company_id"`
-	CreatedAt time.Time `json:"created_at"`
+	Range     int32
+	CompanyID int64
+	CreatedAt time.Time
 }
 
 type AirlineCompany struct {
-	CompanyID   int64     `json:"company_id"`
-	CompanyName string    `json:"company_name"`
-	IataCode    string    `json:"iata_code"`
-	MainAirport string    `json:"main_airport"`
-	CreatedAt   time.Time `json:"created_at"`
+	CompanyID   int64
+	CompanyName string
+	IataCode    string
+	MainAirport string
+	CreatedAt   time.Time
 }
 
 type Airport struct {
 	// Airport code
-	AirportCode string `json:"airport_code"`
+	AirportCode string
 	// Airport name
-	AirportName string `json:"airport_name"`
+	AirportName string
 	// Country
-	Country string `json:"country"`
+	Country string
 	// City
-	City string `json:"city"`
+	City string
 	// Airport coordinates (longitude and latitude)
-	Coordinates interface{} `json:"coordinates"`
-	Timezone    string      `json:"timezone"`
-	CreatedAt   time.Time   `json:"created_at"`
+	Coordinates interface{}
+	Timezone    string
+	CreatedAt   time.Time
 }
 
 // Airports (internal data)
 type AirportsDatum struct {
 	// Airport code
-	AirportCode string `json:"airport_code"`
+	AirportCode string
 	// Airport name
-	AirportName string `json:"airport_name"`
+	AirportName string
 	// Country
-	CountryCode string `json:"country_code"`
+	CountryCode string
 	// City
-	City string `json:"city"`
+	City string
 	// Airport coordinates (longitude and latitude)
-	Coordinates interface{} `json:"coordinates"`
+	Coordinates interface{}
 	// Airport time zone
-	Timezone string `json:"timezone"`
+	Timezone string
 	// time airport record Created
-	CreatedAt time.Time `json:"created_at"`
+	CreatedAt time.Time
 }

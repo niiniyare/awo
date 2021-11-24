@@ -1,21 +1,21 @@
 version: "1"
 packages:
-  - name: "s" # airport
-    path: "internal/airport/pkg/service/sqlc"
-    queries: "/query/airport.sql"
-    schema: "./migration/000003_airport.up.sql"
+  - name: "db" # airport
+    path: "db/sqlc"
+    queries: "/query"
+    schema: "./migration"
     engine: "postgresql"
     emit_prepared_queries: false 
     emit_interface: true
     emit_exact_table_names: false
     emit_empty_slices: true
     
-  - name: "sqlc" # company
-    path: "internal/airline_company/pkg/service/sqlc"
-    queries: "/query/company.sql"
-    schema: "./migration/000001_company.up.sql"
-    engine: "postgresql"
-    emit_prepared_queries: false 
-    emit_interface: false
-    emit_exact_table_names: false
-    emit_empty_slices: true
+#  - name: "sqlc" # company
+#    path: "internal/airline_company/pkg/service/sqlc"
+#    queries: "/query/company.sql"
+#    schema: "./migration/000001_company.up.sql"
+#    engine: "postgresql"
+#    emit_prepared_queries: false 
+#    emit_interface: false
+#    emit_exact_table_names: false
+#    emit_empty_slices: true

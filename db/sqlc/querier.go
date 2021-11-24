@@ -7,19 +7,17 @@ import (
 )
 
 type Querier interface {
-	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (AircraftsDatum, error)
 	CreateAirlineCompany(ctx context.Context, arg CreateAirlineCompanyParams) (AirlineCompany, error)
-	CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]AirportsDatum, error)
-	CreateAirports(ctx context.Context, arg CreateAirportsParams) (AirportsDatum, error)
-	DeleteAircraft(ctx context.Context, aircraftCode string) error
+	CreateAirport(ctx context.Context, arg CreateAirportParams) (AirportsDatum, error)
 	DeleteAirlineCompany(ctx context.Context, companyID int64) error
-	DeleteAirports(ctx context.Context, airportCode string) error
+	DeletedAirport(ctx context.Context, airportCode string) error
 	GetAircraft(ctx context.Context, aircraftCode string) (AircraftsDatum, error)
 	GetAirlineCompany(ctx context.Context, companyID int64) (AirlineCompany, error)
-	GetAirports(ctx context.Context, airportCode string) (AirportsDatum, error)
+	GetAirport(ctx context.Context, airportCode string) (AirportsDatum, error)
 	ListAircraft(ctx context.Context) ([]AircraftsDatum, error)
 	ListAirlineCompany(ctx context.Context) ([]AirlineCompany, error)
-	ListAirports(ctx context.Context) ([]ListAirportsRow, error)
+	ListAirport(ctx context.Context) ([]ListAirportRow, error)
+	UpdateAirport(ctx context.Context, airportCode string) (AirportsDatum, error)
 }
 
 var _ Querier = (*Queries)(nil)
