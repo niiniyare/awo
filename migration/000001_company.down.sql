@@ -1,2 +1,0 @@
-DROP SEQUENCE IF EXISTS airline_company_id_seq CASCADE;
-DROP TABLE IF EXISTS airline_company CASCADE;

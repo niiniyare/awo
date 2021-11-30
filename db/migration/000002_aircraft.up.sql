@@ -1,7 +1,7 @@
 
 CREATE TABLE IF NOT EXISTS aircrafts_data (
     aircraft_code VARCHAR(3) NOT NULL,
-    model jsonb NOT NULL,
+    model VARCHAR(50) NOT NULL,
     range integer NOT NULL,
     company_id BIGSERIAL NOT NULL,
     created_at timestamptz NOT NULL DEFAULT (now()),

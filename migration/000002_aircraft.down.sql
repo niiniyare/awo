@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS aircrafts_data CASCADE;
-DROP VIEW IF EXISTS aircrafts CASCADE;

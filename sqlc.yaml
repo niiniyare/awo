@@ -1,9 +1,9 @@
 version: "1"
 packages:
-  - name: "db" # airport
+  - name: "sqlc" # airport
     path: "db/sqlc"
-    queries: "/query"
-    schema: "./migration"
+    queries: "/db/query"
+    schema: "./db/migration"
     engine: "postgresql"
     emit_prepared_queries: false 
     emit_interface: true
@@ -12,8 +12,8 @@ packages:
     
 #  - name: "sqlc" # company
 #    path: "internal/airline_company/pkg/service/sqlc"
-#    queries: "/query/company.sql"
-#    schema: "./migration/000001_company.up.sql"
+#    queries: "/db/query/company.sql"
+#    schema: "./db/migration/000001_company.up.sql"
 #    engine: "postgresql"
 #    emit_prepared_queries: false 
 #    emit_interface: false

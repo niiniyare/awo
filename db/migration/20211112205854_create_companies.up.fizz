@@ -1,5 +1,0 @@
-create_table("companies") {
-	t.Column("id", "uuid", {primary: true})
-	t.Column("sql", "string", {})
-	t.Timestamps()
-}

@@ -4,8 +4,6 @@ INSERT INTO airports_data (
   airport_code , 
   airport_name ,
   city , 
-  
-  
   coordinates
 ) VALUES (
   $1 , $2 , $3 , $4

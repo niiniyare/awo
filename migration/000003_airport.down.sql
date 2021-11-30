@@ -1,2 +1,0 @@
-DROP TABLE IF EXISTS "airports_data" CASCADE;
-DROP VIEW IF EXISTS "airports" CASCADE;

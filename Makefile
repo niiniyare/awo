@@ -9,9 +9,9 @@ createdb:
 dropdb:
 	dropdb flight
 migrateup:
-	migrate -path migration -database "postgresql://admin:admin@localhost:5432/flight?sslmode=disable" -verbose up
+	migrate -path db/migration -database "postgresql://admin:admin@localhost:5432/flight?sslmode=disable" -verbose up
 migratedown:
-	migrate -path migration -database "postgresql://admin:admin@localhost:5432/flight?sslmode=disable" -verbose down
+	migrate -path db/migration -database "postgresql://admin:admin@localhost:5432/flight?sslmode=disable" -verbose down
 sqlc:
 	sqlc generate
 
