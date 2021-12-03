@@ -39,12 +39,12 @@ if [ "$git_remote" = "" ]; then # git remote not defined
         echo "[INFO] \$GIT_TOKEN (environment variable) is not set. Using the git credential in your environment."
         git remote add origin https://github.com/${git_user_id}/${git_repo_id}.git
     else
-        git push origin https://${git_user_id}:${GIT_TOKEN}@github.com/${git_user_id}/${git_repo_id}.git
+        git push origin ssh://git@github.com/${git_user_id}/${git_repo_id}.git
     fi
 
 fi
 
-git push origin master
+git pull origin master
 
 # Pushes (Forces) the changes in the local repository up to the remote repository
 echo "Git pushing to https://github.com/${git_user_id}/${git_repo_id}.git"
