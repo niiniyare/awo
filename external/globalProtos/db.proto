@@ -163,13 +163,13 @@ message ListAirportsResponse {
 
 message Aircraft {
     string aircraftCode = 1;
-    JSONB model = 2;
+    string model = 2;
     int32 range = 3;
 }
 
 message AircraftsDatum {
     string aircraftCode = 1;
-    JSONB model = 2;
+    string model = 2;
     int32 range = 3;
     int64 companyID = 4;
 }
@@ -178,14 +178,14 @@ message AirlineCompany {
     int64 companyID = 1;
     string companyName = 2;
     string iataCode = 3;
-    string mainAirport = 4;
+    Airport mainAirport = 4;
 }
 
 message Airport {
     string airportCode = 1;
     string airportName = 2;
     string city = 3;
-    Numeric coordinates = 4;
+    string coordinates = 4;
     string timezone = 5;
 }
 
@@ -193,7 +193,7 @@ message AirportsDatum {
     string airportCode = 1;
     string airportName = 2;
     string city = 3;
-    Numeric coordinates = 4;
+    string coordinates = 4;
     string timezone = 5;
 }
 
@@ -206,13 +206,13 @@ message BoardingPass {
 
 message Booking {
     string bookRef = 1;
-    google.protobuf.Timestamp bookDate = 2;
-    Numeric totalAmount = 3;
+    string bookDate = 2;
+    float totalAmount = 3;
 }
 
 message CreateAircraftParams {
     string aircraftCode = 1;
-    JSONB model = 2;
+    string model = 2;
     int32 range = 3;
     int64 companyID = 4;
 }
@@ -227,14 +227,14 @@ message CreateAirportListParams {
     string airportCode = 1;
     string airportName = 2;
     string city = 3;
-    Numeric coordinates = 4;
+    string coordinates = 4;
 }
 
 message CreateAirportsParams {
     string airportCode = 1;
     string airportName = 2;
     string city = 3;
-    Numeric coordinates = 4;
+    string coordinates = 4;
 }
 
 message Flight {
@@ -268,13 +268,13 @@ message Ticket {
     string bookRef = 2;
     string passengerID = 3;
     string passengerName = 4;
-    JSONB contactData = 5;
+    string contactData = 5;
 }
 
 message TicketFlight {
     string ticketNo = 1;
     int32 flightID = 2;
     string fareConditions = 3;
-    Numeric amount = 4;
+    double amount = 4;
 }
 
