@@ -3,7 +3,7 @@ clean:
 	rm swagger/*
 	
 gen:
-	protoc --proto_path=api/proto/v1 api/proto/v1/*.proto  --go_out=:pkg/api/v1 --go-grpc_out=:pkg/api/v1 --grpc-gateway_out=:pkg/api/v1 --openapiv2_out=:swagger
+	protoc --proto_path=api/proto/v1 api/proto/v1/*.proto --proto_path=third_party  --go_out=:pkg/api/v1 --go-grpc_out=:pkg/api/v1 --grpc-gateway_out=:pkg/api/v1 --openapiv2_out=:swagger
 server:
 	go run cmd/server/main.go -port 8080
 
