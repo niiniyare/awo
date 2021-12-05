@@ -1,6 +1,6 @@
 syntax = "proto3";
 
-package cawo;
+package cawo.v1alpha1;
 import "google/protobuf/timestamp.proto";
 option go_package = "/;pb";
 
@@ -11,3 +11,5 @@ message AirlineCompany {
     google.protobuf.Timestamp created_at = 4;
 //    string mainAirport = 4;
 }
+// API versioning: it is my best practice to specify version explicitly.
+//string api = 1;
