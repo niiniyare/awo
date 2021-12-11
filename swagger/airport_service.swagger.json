@@ -1,7 +1,7 @@
 {
   "swagger": "2.0",
   "info": {
-    "title": "company_msg.proto",
+    "title": "airport_service.proto",
     "version": "version not set"
   },
   "consumes": [

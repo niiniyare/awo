@@ -1,0 +1,209 @@
+syntax = "proto3";
+
+package flight;
+
+option go_package = "./proto;flight";
+
+import "google/protobuf/empty.proto";
+import "google/protobuf/timestamp.proto";
+
+
+
+service Flight {
+    
+    rpc CreateAircraft(CreateAircraftParams) returns (AircraftsDatum) {}
+    
+    rpc CreateAirlineCompany(CreateAirlineCompanyParams) returns (AirlineCompany) {}
+    
+    rpc CreateAirportList(CreateAirportListParams) returns (CreateAirportListResponse) {}
+    
+    
+    rpc CreateAirports(CreateAirportsParams) returns (AirportsDatum) {}
+    
+    rpc DeleteAircraft(DeleteAircraftParams) returns (google.protobuf.Empty) {}
+    
+    rpc DeleteAirlineCompany(DeleteAirlineCompanyParams) returns (google.protobuf.Empty) { }
+    
+    rpc DeleteAirports(DeleteAirportsParams) returns (google.protobuf.Empty) {}
+    
+    rpc GetAircraft(GetAircraftParams) returns (AircraftsDatum) {}
+    
+    rpc GetAirlineCompany(GetAirlineCompanyParams) returns (AirlineCompany) {}
+    
+    rpc GetAirports(GetAirportsParams) returns (AirportsDatum) {}
+    
+    rpc ListAircraft(google.protobuf.Empty) returns (ListAircraftResponse) {}
+    
+    rpc ListAirlineCompany(google.protobuf.Empty) returns (ListAirlineCompanyResponse) {}
+    
+    rpc ListAirports(google.protobuf.Empty) returns (ListAirportsResponse) {}
+    
+}
+
+message CreateAirportListResponse {
+    repeated AirportsDatum value = 1;
+}
+message DeleteAircraftParams { 
+    string aircraftCode = 1;
+}
+
+message DeleteAirlineCompanyParams { 
+    int64 companyID = 1;
+}
+
+message DeleteAirportsParams { 
+    string airportCode = 1;
+}
+
+message GetAircraftParams { 
+    string aircraftCode = 1;
+}
+
+message GetAirlineCompanyParams { 
+    int64 companyID = 1;
+}
+
+message GetAirportsParams { 
+    string airportCode = 1;
+}
+
+message ListAircraftResponse {
+    repeated AircraftsDatum value = 1;
+}
+message ListAirlineCompanyResponse {
+    repeated AirlineCompany value = 1;
+}
+message ListAirportsResponse {
+    repeated ListAirportsRow value = 1;
+}
+
+message Aircraft {
+    string aircraftCode = 1;
+    /*JSONB in postgres type */ 
+    string model = 2;
+    int32 range = 3;
+}
+
+message AircraftsDatum {
+    string aircraftCode = 1;
+    /*JSONB in postgres type */ 
+    string model = 2;
+    int32 range = 3;
+    int64 companyID = 4;
+}
+
+message AirlineCompany {
+    int64 companyID = 1;
+    string companyName = 2;
+    string iataCode = 3;
+    string mainAirport = 4;
+}
+
+message Airport {
+    string airportCode = 1;
+    string airportName = 2;
+    string city = 3;
+    Point coordinates = 4;
+    string timezone = 5;
+}
+
+message AirportsDatum {
+    string airportCode = 1;
+    string airportName = 2;
+    string city = 3;
+    Point coordinates = 4;
+    string timezone = 5;
+}
+
+message BoardingPass {
+    int64 ticketNo = 1;
+    int32 flightID = 2;
+    int32 boardingNo = 3;
+    string seatNo = 4;
+}
+
+message Booking {
+    string bookRef = 1;
+    google.protobuf.Timestamp bookDate = 2;
+    float totalAmount = 3;
+}
+
+message CreateAircraftParams {
+    string aircraftCode = 1;
+    /*JSONB in postgres type */ 
+    string model = 2;
+    int32 range = 3;
+    int64 companyID = 4;
+}
+
+message CreateAirlineCompanyParams {
+    string companyName = 1;
+    string iataCode = 2;
+    Airport mainAirport = 3;
+}
+
+message CreateAirportListParams {
+    string airportCode = 1;
+    string airportName = 2;
+    string city = 3;
+    Point coordinates = 4;
+}
+
+// Points are represented as latitude-longitude pairs in the E7 representation
+// (degrees multiplied by 10**7 and rounded to the nearest integer).
+// Latitudes should be in the range +/- 90 degrees and longitude should be in
+// the range +/- 180 degrees (inclusive).
+message Point {
+  int32 longitude = 1;
+  int32 latitude = 2;
+}
+
+message CreateAirportsParams {
+    string airportCode = 1;
+    string airportName = 2;
+    string city = 3;
+    Point coordinates = 4;
+}
+
+message FlightMSG {
+    int32 flightID = 1;
+    string flightNo = 2;
+    int64 companyID = 3;
+    google.protobuf.Timestamp scheduledDeparture = 4;
+    google.protobuf.Timestamp scheduledArrival = 5;
+    string departureAirport = 6;
+    string arrivalAirport = 7;
+    string status = 8;
+    string aircraftCode = 9;
+    google.protobuf.Timestamp actualDeparture = 10;
+    google.protobuf.Timestamp actualArrival = 11;
+}
+
+message ListAirportsRow {
+    string airportCode = 1;
+    string airportName = 2;
+    string city = 3;
+}
+
+message Seat {
+    string aircraftCode = 1;
+    string seatNo = 2;
+    string fareConditions = 3;
+}
+
+message Ticket {
+    string ticketNo = 1;
+    string bookRef = 2;
+    string passengerID = 3;
+    string passengerName = 4;
+    /*JSONB in postgres type */ 
+    string contactData = 5;
+}
+
+message TicketFlight {
+    string ticketNo = 1;
+    int32 flightID = 2;
+    string fareConditions = 3;
+    float amount = 4;
+}
+

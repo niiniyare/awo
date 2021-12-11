@@ -1,0 +1,36 @@
+syntax = "proto3";
+
+package cawo.v1alpha1;
+
+option go_package = "/;pb";
+
+import "google/protobuf/timestamp.proto";
+service AirlineCompanyServices {
+    rpc CreateAirlineCompany(CreateAirlineCompanyParams) returns (AirlineCompany) {}
+}
+message AirlineCompany {
+    int64 company_ID = 1;
+    string company_name = 2;
+    string iata_code = 3;
+    google.protobuf.Timestamp created_at = 4;
+//    string mainAirport = 4;
+}
+// API versioning: it is my best practice to specify version explicitly.
+//string api = 1;
+message CreateAirlineCompanyParams{
+  int64 company_ID = 1;
+  string company_name = 2;
+  string iata_code = 3;
+  google.protobuf.Timestamp created_at = 4;
+//    string mainAirport = 4;
+}
+message GetAirlineCompanyParams { 
+    int64 companyID = 1;
+
+}
+
+message ListAirlineCompanyResponse {
+
+    repeated AirlineCompany value = 1;
+
+}

@@ -1,3 +1,4 @@
+//@microgen
 package db
 
 import (

@@ -1,7 +1,7 @@
 version: "1"
 packages:
   - name: "sqlc" # airport
-    path: "db/sqlc"
+    path: "pkg/postgresql"
     queries: "/db/query"
     schema: "./db/migration"
     engine: "postgresql"
