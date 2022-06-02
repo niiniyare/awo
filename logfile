@@ -35,3 +35,5 @@
 2021-11-12 23:38:04.472 EAT [9807] STATEMENT:  CREATE DATABASE crs_development OWNER admin;
 2021-11-12 23:38:28.890 EAT [9869] FATAL:  database "postgres" does not exist
 2021-11-12 23:38:32.124 EAT [9888] FATAL:  database "postgres" does not exist
+2022-06-02 03:38:39.357 EAT [14167] FATAL:  lock file "postmaster.pid" already exists
+2022-06-02 03:38:39.357 EAT [14167] HINT:  Is another postmaster (PID 6583) running in data directory "/data/data/com.termux/files/usr/var/lib/postgresql"?
