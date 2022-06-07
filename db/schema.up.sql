@@ -1,9 +1,3 @@
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 9.6.3
--- Dumped by pg_dump version 9.6.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -13,35 +7,6 @@ SET standard_conforming_strings = on;
 SET check_function_bodies = false;
 SET client_min_messages = warning;
 SET row_security = off;
-
-
---
--- Name: flightBookings; Type: DATABASE; Schema: -; Owner: -
---
-
---CREATE DATABASE flightBookings;
-
-
---\connect flightBookings
-
-
---
--- Name: bookings; Type: SCHEMA; Schema: -; Owner: -
---
-
---CREATE SCHEMA bookings;
-
-
---
--- Name: SCHEMA bookings; Type: COMMENT; Schema: -; Owner: -
---
-
--- COMMENT  ON SCHEMA bookings IS 'Airlines flightBookings database schema';
-
-
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
---
 
 --CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
@@ -71,20 +36,9 @@ END;
 $$;
 
 
---
--- Name: now(); Type: FUNCTION; Schema: bookings; Owner: -
---
-
 CREATE FUNCTION now() RETURNS timestamp with time zone
     LANGUAGE sql IMMUTABLE
     AS $$SELECT '2021-10-05 18:00:00'::TIMESTAMP AT TIME ZONE 'Africa/Mogadishu';$$;
-
-
---
--- Name: FUNCTION now(); Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON FUNCTION now() IS 'Point in time according to which the data are generated';
 
 
 CREATE TABLE IF NOT EXISTS airline_company (
@@ -104,16 +58,12 @@ CREATE SEQUENCE IF NOT EXISTS airline_company_id_seq
     CACHE 1;
 
 
---
--- Name: airline_company_id_seq; Type: SEQUENCE OWNED BY; Schema: bookings; Owner: -
---
+
 
 ALTER SEQUENCE airline_company_id_seq OWNED BY airline_company.company_id;
-
-
--- Name: aircrafts_data; Type: TABLE; Schema: bookings; Owner: -
---
-
+  
+  
+  
 CREATE TABLE IF NOT EXISTS aircrafts_data (
     aircraft_code VARCHAR(3) NOT NULL,
     model jsonb NOT NULL,
@@ -125,37 +75,8 @@ CREATE TABLE IF NOT EXISTS aircrafts_data (
 );
 
 
---
--- Name: TABLE aircrafts_data; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON TABLE aircrafts_data IS 'Aircrafts (internal data)';
 
 
---
--- Name: COLUMN aircrafts_data.aircraft_code; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts_data.aircraft_code IS 'Aircraft code, IATA';
-
-
---
--- Name: COLUMN aircrafts_data.model; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts_data.model IS 'Aircraft model';
-
-
---
--- Name: COLUMN aircrafts_data.range; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts_data.range IS 'Maximal flying distance, km';
-
-
---
--- Name: aircrafts; Type: VIEW; Schema: bookings; Owner: -
---
 
 CREATE VIEW aircrafts AS
  SELECT ml.aircraft_code,
@@ -164,37 +85,6 @@ CREATE VIEW aircrafts AS
    FROM aircrafts_data ml;
 
 
---
--- Name: VIEW aircrafts; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON VIEW aircrafts IS 'Aircrafts';
-
-
---
--- Name: COLUMN aircrafts.aircraft_code; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts.aircraft_code IS 'Aircraft code, IATA';
-
-
---
--- Name: COLUMN aircrafts.model; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts.model IS 'Aircraft model';
-
-
---
--- Name: COLUMN aircrafts.range; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN aircrafts.range IS 'Maximal flying distance, km';
-
-
---
--- Name: airports_data; Type: TABLE; Schema: bookings; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS airports_data (
     airport_code VARCHAR(3) NOT NULL,
@@ -205,51 +95,7 @@ CREATE TABLE IF NOT EXISTS airports_data (
 );
 
 
---
--- Name: TABLE airports_data; Type: COMMENT; Schema: bookings; Owner: -
---
 
-  COMMENT  ON TABLE airports_data IS 'Airports (internal data)';
-
-
---
--- Name: COLUMN airports_data.airport_code; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports_data.airport_code IS 'Airport code';
-
-
---
--- Name: COLUMN airports_data.airport_name; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports_data.airport_name IS 'Airport name';
-
-
---
--- Name: COLUMN airports_data.city; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports_data.city IS 'City';
-
-
---
--- Name: COLUMN airports_data.coordinates; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports_data.coordinates IS 'Airport coordinates (longitude and latitude)';
-
-
---
--- Name: COLUMN airports_data.timezone; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports_data.timezone IS 'Airport time zone';
-
-
---
--- Name: airports; Type: VIEW; Schema: bookings; Owner: -
---
 
 CREATE VIEW airports AS
  SELECT ml.airport_code,
@@ -260,51 +106,7 @@ CREATE VIEW airports AS
    FROM airports_data ml;
 
 
---
--- Name: VIEW airports; Type: COMMENT; Schema: bookings; Owner: -
---
 
-  COMMENT  ON VIEW airports IS 'Airports';
-
-
---
--- Name: COLUMN airports.airport_code; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports.airport_code IS 'Airport code';
-
-
---
--- Name: COLUMN airports.airport_name; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports.airport_name IS 'Airport name';
-
-
---
--- Name: COLUMN airports.city; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports.city IS 'City';
-
-
---
--- Name: COLUMN airports.coordinates; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports.coordinates IS 'Airport coordinates (longitude and latitude)';
-
-
---
--- Name: COLUMN airports.timezone; Type: COMMENT; Schema: bookings; Owner: -
---
-
-  COMMENT  ON COLUMN airports.timezone IS 'Airport time zone';
-
-
---
--- Name: boarding_passes; Type: TABLE; Schema: bookings; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS boarding_passes (
     ticket_no VARCHAR(13) NOT NULL,
