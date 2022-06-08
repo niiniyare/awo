@@ -1,0 +1,103 @@
+Project booking { 
+    database_type: 'PostgreSQL' 
+    Note: ''' 
+    # awo airline reservation system Database 
+    **markdown content here**
+    ''' 
+}
+Table "airline" {
+  "company_id" BIGSERIAL [pk, not null]
+  "company_name" VARCHAR(50) [not null]
+  "iata_code" VARCHAR(5) [not null]
+  "main_airport" VARCHAR(3) [not null]
+}
+
+Table "aircrafts_data" {
+  "aircraft_code" VARCHAR(3) [pk, not null]
+  "model" jsonb [not null]
+  "range" integer [not null]
+  "company_id" BIGSERIAL [not null]
+}
+
+Table "airports_data" {
+  "airport_code" VARCHAR(3) [not null]
+  "airport_name" text [not null]
+  "city" text [not null]
+  "coordinates" point [not null]
+  "timezone" text [not null]
+}
+
+Table "boarding_passes" {
+  "ticket_no" VARCHAR(13) [not null, note: 'Ticket number']
+  "flight_id" integer [not null, note: 'Flight ID']
+  "boarding_no" integer [not null, note: 'Boarding pass number']
+  "seat_no" VARCHAR(4) [not null, note: 'Seat number']
+  Note: 'Boarding passes'
+}
+
+Table "bookings" {
+  "book_ref" VARCHAR(6) [not null, note: 'Booking number']
+  "book_date" timestamp [not null, note: 'Booking date']
+  "total_amount" "numeric(10, 2)" [not null, note: 'Total booking cost']
+  Note: 'Bookings'
+}
+
+Table "flights" {
+  "flight_id" integer [unique, not null]
+  "flight_no" VARCHAR(6) [unique, not null]
+  "company_id" BIGSERIAL [unique, not null]
+  "scheduled_departure" timestamp [unique, not null]
+  "scheduled_arrival" timestamp [not null]
+  "departure_airport" VARCHAR(3) [not null]
+  "arrival_airport" VARCHAR(3) [not null]
+  "status" VARCHAR(20) [not null]
+  "aircraft_code" VARCHAR(3) [not null]
+  "actual_departure" timestamp
+  "actual_arrival" timestamp
+}
+
+Table "seats" {
+  "aircraft_code" VARCHAR(3) [not null, note: 'Aircraft code, IATA']
+  "seat_no" VARCHAR(4) [not null, note: 'Seat number']
+  "fare_conditions" VARCHAR(10) [not null, note: 'Travel class']
+  Note: 'Seats'
+}
+
+Table "ticket_flights" {
+  "ticket_no" VARCHAR(13) [not null, note: 'Ticket number']
+  "flight_id" integer [not null, note: 'Flight ID']
+  "fare_conditions" VARCHAR(10) [not null, note: 'Travel class']
+  "amount" "numeric(10, 2)" [not null, note: 'Travel cost']
+  Note: 'Flight segment'
+}
+
+Table "tickets" {
+  "ticket_no" VARCHAR(13) [not null, note: 'Ticket number']
+  "book_ref" VARCHAR(6) [not null, note: 'Booking number']
+  "passenger_id" VARCHAR(20) [not null, note: 'Passenger ID']
+  "passenger_name" text [not null, note: 'Passenger name']
+  "contact_data" jsonb [not null, note: 'Passenger contact information']
+  Note: 'Tickets'
+}
+
+Ref:"airline"."company_id" < "aircrafts_data"."company_id"
+
+Ref:"ticket_flights".("ticket_no", "flight_id") < "boarding_passes".("ticket_no", "flight_id")
+
+Ref:"aircrafts_data"."aircraft_code" < "flights"."aircraft_code"
+
+Ref:"airports_data"."airport_code" < "flights"."arrival_airport"
+
+Ref:"airports_data"."airport_code" < "flights"."departure_airport"
+
+Ref:"aircrafts_data"."aircraft_code" < "seats"."aircraft_code" [delete: cascade]
+
+Ref:"flights"."flight_id" < "ticket_flights"."flight_id"
+
+Ref:"tickets"."ticket_no" < "ticket_flights"."ticket_no"
+
+Ref:"bookings"."book_ref" < "tickets"."book_ref"
+
+Ref:"airports_data"."airport_code" < "airline"."main_airport"
+
+Ref:"airline"."company_id" < "flights"."company_id"

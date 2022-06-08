@@ -1,5 +1,0 @@
-syntax = "proto3";
-
-package cawo.v1alpha1;
-
-option go_package = "/;pb";

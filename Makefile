@@ -34,4 +34,9 @@ test:
 	go test -v -cover ./...
 mock:
 	mockgen -package mockdb -destination db/mock/store.go github.com/techschool/simplebank/db/sqlc Store
-.PHONY: clean gen server client testinstall  createdb  migrateup migratedown dropdb sqlc test mock
+dbdocs: 
+	dbdocs build docs/schema.dbml
+
+sql2dbml:
+	sql2dbml schema.up.sql  --postgres -o schema.dbml
+.PHONY: clean gen server client testinstall  createdb  migrateup migratedown dropdb sqlc test mock dbdocs sql2dbml
