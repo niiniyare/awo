@@ -9,11 +9,14 @@ server:
 
 BUF_VERSION:=0.55.0
 
-buf-install:
+install:
 	curl -sSL \
     	"https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(shell uname -s)-$(shell uname -m)" \
     	-o "$(shell go env GOPATH)/bin/buf" && \
-  	chmod +x "$(shell go env GOPATH)/bin/buf"
+  	chmod +x "$(shell go env GOPATH)/bin/buf" && \
+  	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest && \
+  	go install github.com/micro/micro/v3@latest  && \
+  	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
   	
 
 createdb:
@@ -31,4 +34,4 @@ test:
 	go test -v -cover ./...
 mock:
 	mockgen -package mockdb -destination db/mock/store.go github.com/techschool/simplebank/db/sqlc Store
-.PHONY: clean gen server client test cert buf-install lint postgres createdb generatenetwork migrateup migratedown dropdb sqlc test mock
+.PHONY: clean gen server client testinstall  createdb  migrateup migratedown dropdb sqlc test mock
