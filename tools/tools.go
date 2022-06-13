@@ -9,4 +9,8 @@ import (
 	_ "github.com/rakyll/statik"
 	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
 	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
+	_ "github.com/kyleconroy/sqlc/cmd/sqlc"
+  	_ "github.com/micro/micro/v3"
+ // Use flowing command to install golang-migrate
+ //go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
 )
