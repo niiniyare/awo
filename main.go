@@ -2,19 +2,19 @@ package main
 
 import (
 	"fmt"
-	"log"
 	"time"
+	"github.com/niiniyare/awo/util"
 )
 
 func main() {
-	s := "2022-03-23T07:00:00+01:00"
-	loc, errs := time.LoadLocation("Africa/Mogadishu")
-	if errs != nil {
-		log.Fatal(errs)
+  now:=time.Now()
+	for a := 1; a < 10000; a++ {
+		//	RandomOwner()
+
+		fmt.Printf("%d:  %v \n", a, util.RandomString(6))
+
 	}
-	t, err := time.ParseInLocation(time.RFC3339, s, loc)
-	if err != nil {
-		log.Fatal(err)
-	}
-	fmt.Println(t)
+diff:=now.Sub(time.Now())
+
+fmt.Println("Elapsed MiliSeconds: ",diff.Milliseconds())
 }
