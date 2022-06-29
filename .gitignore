@@ -1,5 +1,6 @@
 .DS_Store
-
+#log
+*.log
 
 # dir
 ./external/_examples/booktest

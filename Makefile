@@ -26,9 +26,13 @@ dropdb:
 	dropdb flight
 migrateup:
 	migrate -path db/migration -database "$(DB_URL)" -verbose up
-migrateup1:
+migratedown:
+	migrate -path db/migration -database "$(DB_URL)" -verbose down 
+migratedrop:
+	migrate -path db/migration -database "$(DB_URL)" -verbose drop
+migrateup-doc:
 	migrate -path docs -database "$(DB_URL)" -verbose up
-migratedown1:
+migratedown-doc:
 	migrate -path docs -database "$(DB_URL)" -verbose down
 sqlc:
 	sqlc generate
@@ -41,5 +45,5 @@ dbdocs:
 	dbdocs build docs/schema.dbml
 
 sql2dbml:
-	sql2dbml schema.up.sql  --postgres -o schema.dbml
-.PHONY: clean gen server client testinstall  createdb  migrateup migratedown dropdb sqlc test mock dbdocs sql2dbml migrateup1 migratedown1
+	sql2dbml docs/schema.up.sql  --postgres -o docs/schema.dbml
+.PHONY: clean gen server client testinstall  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc

@@ -1,12 +1,12 @@
 
 
 CREATE TABLE IF NOT EXISTS airline (
-    company_id BIGSERIAL NOT NULL,
+    airline_id BIGSERIAL NOT NULL,
     company_name VARCHAR(50) NOT NULL,
     iata_code VARCHAR(5) NOT NULL,
     main_airport VARCHAR(3) NOT NULL,
  -- account numeric NOT NULL,
-    CONSTRAINT airline_pk PRIMARY KEY (company_id)
+    CONSTRAINT airline_pk PRIMARY KEY (airline_id)
   );
 
 
@@ -15,10 +15,10 @@ CREATE TABLE IF NOT EXISTS aircrafts_data (
     aircraft_code VARCHAR(3) NOT NULL,
     model jsonb NOT NULL,
     range integer NOT NULL,
-    company_id BIGSERIAL NOT NULL,
+    airline_id BIGSERIAL NOT NULL,
     CONSTRAINT aircrafts_range_check CHECK ((range > 0)),
     CONSTRAINT aircrafts_pkey PRIMARY KEY (aircraft_code),
-    CONSTRAINT airline_fk FOREIGN KEY (company_id) REFERENCES airline (company_id)
+    CONSTRAINT airline_fk FOREIGN KEY (airline_id) REFERENCES airline (airline_id)
 );
 
 
@@ -144,7 +144,7 @@ CREATE TABLE IF NOT EXISTS bookings (
 CREATE TABLE IF NOT EXISTS flights (
     flight_id integer NOT NULL,
     flight_no VARCHAR(6) NOT NULL,
-    company_id BIGSERIAL NOT NULL,
+    airline_id BIGSERIAL NOT NULL,
     scheduled_departure timestamp with time zone NOT NULL,
     scheduled_arrival timestamp with time zone NOT NULL,
     departure_airport VARCHAR(3) NOT NULL,
@@ -158,7 +158,7 @@ CREATE TABLE IF NOT EXISTS flights (
     
     CONSTRAINT flights_flight_no_scheduled_departure_key UNIQUE (flight_no, scheduled_departure),
     
-    CONSTRAINT flights_check_airline_key UNIQUE (flight_id, company_id),
+    CONSTRAINT flights_check_airline_key UNIQUE (flight_id, airline_id),
     
     CONSTRAINT flights_check1 CHECK (((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure))))
     
@@ -169,7 +169,7 @@ CREATE TABLE IF NOT EXISTS flights (
 CREATE VIEW flights_v AS
  SELECT f.flight_id,
     f.flight_no,
-    f.company_id,
+    f.airline_id,
     f.scheduled_departure,
     timezone(dep.timezone, f.scheduled_departure) AS scheduled_departure_local,
     f.scheduled_arrival,
@@ -348,34 +348,34 @@ CREATE VIEW flights_v AS
 CREATE VIEW routes AS
  WITH f3 AS (
          SELECT f2.flight_no,
-            f2.company_id,
+            f2.airline_id,
             f2.departure_airport,
             f2.arrival_airport,
             f2.aircraft_code,
             f2.duration,
             array_agg(f2.days_of_week) AS days_of_week
            FROM ( SELECT f1.flight_no,
-                    f1.company_id,
+                    f1.airline_id,
                     f1.departure_airport,
                     f1.arrival_airport,
                     f1.aircraft_code,
                     f1.duration,
                     f1.days_of_week
                    FROM ( SELECT flights.flight_no,
-                   flights.company_id,
+                   flights.airline_id,
                             flights.departure_airport,
                             flights.arrival_airport,
                             flights.aircraft_code,
                             (flights.scheduled_arrival - flights.scheduled_departure) AS duration,
                             (to_char(flights.scheduled_departure, 'ID'::text))::integer AS days_of_week
                            FROM flights) f1
-                  GROUP BY f1.flight_no, f1.company_id, f1.departure_airport, f1.arrival_airport, f1.aircraft_code, f1.duration, f1.days_of_week
-                  ORDER BY f1.flight_no, f1.company_id, f1.departure_airport, f1.arrival_airport, f1.aircraft_code, f1.duration, f1.days_of_week) f2
+                  GROUP BY f1.flight_no, f1.airline_id, f1.departure_airport, f1.arrival_airport, f1.aircraft_code, f1.duration, f1.days_of_week
+                  ORDER BY f1.flight_no, f1.airline_id, f1.departure_airport, f1.arrival_airport, f1.aircraft_code, f1.duration, f1.days_of_week) f2
           GROUP BY f2.flight_no,
-          f2.company_id, f2.departure_airport, f2.arrival_airport, f2.aircraft_code, f2.duration
+          f2.airline_id, f2.departure_airport, f2.arrival_airport, f2.aircraft_code, f2.duration
         )
  SELECT f3.flight_no,
-    f3.company_id,
+    f3.airline_id,
     f3.departure_airport,
     dep.airport_name AS departure_airport_name,
     dep.city AS departure_city,
@@ -785,7 +785,7 @@ ALTER TABLE ONLY airline
 
 
 ALTER TABLE ONLY flights
-   ADD CONSTRAINT airline_co_fk FOREIGN KEY (company_id) REFERENCES airline (company_id);
+   ADD CONSTRAINT airline_co_fk FOREIGN KEY (airline_id) REFERENCES airline (airline_id);
   
   
 

@@ -16299,3 +16299,16 @@
 2022-06-11 20:52:55.629 EAT [15727] LOG:  using stale statistics instead of current ones because stats collector is not responding
 2022-06-11 20:52:55.650 EAT [10383] LOG:  using stale statistics instead of current ones because stats collector is not responding
 2022-06-11 21:00:28.835 EAT [15727] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-06-29 19:00:51.897 EAT [16301] LOG:  starting PostgreSQL 14.2 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2022-06-29 19:00:51.899 EAT [16301] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2022-06-29 19:00:51.902 EAT [16301] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2022-06-29 19:00:51.969 EAT [16307] LOG:  database system was interrupted; last known up at 2022-06-13 07:00:13 EAT
+2022-06-29 19:00:52.224 EAT [16307] LOG:  database system was not properly shut down; automatic recovery in progress
+2022-06-29 19:00:52.230 EAT [16307] LOG:  redo starts at 0/1A3EFC0
+2022-06-29 19:00:52.231 EAT [16307] LOG:  invalid record length at 0/1A3F0A8: wanted 24, got 0
+2022-06-29 19:00:52.231 EAT [16307] LOG:  redo done at 0/1A3F070 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2022-06-29 19:00:52.318 EAT [16301] LOG:  database system is ready to accept connections
+2022-06-29 19:04:23.034 EAT [16990] ERROR:  "airports" is not a view
+2022-06-29 19:04:23.034 EAT [16990] HINT:  Use DROP TABLE to remove a table.
+2022-06-29 19:04:23.034 EAT [16990] STATEMENT:  DROP TABLE IF EXISTS "airports_data" CASCADE;
+	DROP VIEW IF EXISTS "airports" CASCADE;

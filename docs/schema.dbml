@@ -1,5 +1,5 @@
 Table "airline" {
-  "company_id" BIGSERIAL [pk, not null]
+  "airline_id" BIGSERIAL [pk, not null]
   "company_name" VARCHAR(50) [not null]
   "iata_code" VARCHAR(5) [not null]
   "main_airport" VARCHAR(3) [not null]
@@ -9,7 +9,7 @@ Table "aircrafts_data" {
   "aircraft_code" VARCHAR(3) [pk, not null]
   "model" jsonb [not null]
   "range" integer [not null]
-  "company_id" BIGSERIAL [not null]
+  "airline_id" BIGSERIAL [not null]
 }
 
 Table "airports_data" {
@@ -38,7 +38,7 @@ Table "bookings" {
 Table "flights" {
   "flight_id" integer [unique, not null]
   "flight_no" VARCHAR(6) [unique, not null]
-  "company_id" BIGSERIAL [unique, not null]
+  "airline_id" BIGSERIAL [unique, not null]
   "scheduled_departure" timestamp [unique, not null]
   "scheduled_arrival" timestamp [not null]
   "departure_airport" VARCHAR(3) [not null]
@@ -73,7 +73,7 @@ Table "tickets" {
   Note: 'Tickets'
 }
 
-Ref:"airline"."company_id" < "aircrafts_data"."company_id"
+Ref:"airline"."airline_id" < "aircrafts_data"."airline_id"
 
 Ref:"ticket_flights".("ticket_no", "flight_id") < "boarding_passes".("ticket_no", "flight_id")
 
@@ -93,4 +93,4 @@ Ref:"bookings"."book_ref" < "tickets"."book_ref"
 
 Ref:"airports_data"."airport_code" < "airline"."main_airport"
 
-Ref:"airline"."company_id" < "flights"."company_id"
+Ref:"airline"."airline_id" < "flights"."airline_id"
