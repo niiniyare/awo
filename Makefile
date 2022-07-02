@@ -17,7 +17,8 @@ install:
   	chmod +x "$(shell go env GOPATH)/bin/buf" && \
   	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest && \
   	go install github.com/micro/micro/v3@latest  && \
-  	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest
+  	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest && \
+  	go install github.com/golang/mock/mockgen@latest
   	
 
 createdb:
@@ -40,7 +41,7 @@ sqlc:
 test:
 	go test -v -cover ./...
 mock:
-	mockgen -package mockdb -destination db/mock/store.go github.com/techschool/simplebank/db/sqlc Store
+	mockgen -package mockdb -destination db/mock/store.go github.com/niiniyare/awo/db/sqlc Store
 dbdocs: 
 	dbdocs build docs/schema.dbml
 
