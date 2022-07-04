@@ -1,13 +1,13 @@
--- name: GetAirlineCompany :one
+-- name: GetAirline :one
 SELECT * FROM airline_company
 WHERE company_id = $1 
 LIMIT 1;
 
--- name: ListAirlineCompany :many
+-- name: ListAirline :many
 SELECT * FROM airline_company
 ORDER BY name;
 
--- name: CreateAirlineCompany :one
+-- name: CreateAirline :one
 INSERT INTO airline_company (
   company_name,
   iata_code,
@@ -17,7 +17,7 @@ INSERT INTO airline_company (
 )
 RETURNING *;
 
--- name: DeleteAirlineCompany :exec
+-- name: DeleteAirline :exec
 DELETE FROM airline_company
 WHERE company_id = $1;
 /*

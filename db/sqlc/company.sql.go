@@ -9,7 +9,7 @@ import (
 	"context"
 )
 
-const createAirlineCompany = `-- name: CreateAirlineCompany :one
+const createAirline = `-- name: CreateAirline :one
 INSERT INTO airline_company (
   company_name,
   iata_code,
@@ -20,14 +20,14 @@ INSERT INTO airline_company (
 RETURNING company_id, company_name, iata_code, main_airport, created_at
 `
 
-type CreateAirlineCompanyParams struct {
+type CreateAirlineParams struct {
 	CompanyName string `json:"company_name"`
 	IataCode    string `json:"iata_code"`
 	MainAirport string `json:"main_airport"`
 }
 
-func (q *Queries) CreateAirlineCompany(ctx context.Context, arg CreateAirlineCompanyParams) (AirlineCompany, error) {
-	row := q.db.QueryRowContext(ctx, createAirlineCompany, arg.CompanyName, arg.IataCode, arg.MainAirport)
+func (q *Queries) CreateAirline(ctx context.Context, arg CreateAirlineParams) (AirlineCompany, error) {
+	row := q.db.QueryRowContext(ctx, createAirline, arg.CompanyName, arg.IataCode, arg.MainAirport)
 	var i AirlineCompany
 	err := row.Scan(
 		&i.CompanyID,
@@ -39,24 +39,24 @@ func (q *Queries) CreateAirlineCompany(ctx context.Context, arg CreateAirlineCom
 	return i, err
 }
 
-const deleteAirlineCompany = `-- name: DeleteAirlineCompany :exec
+const deleteAirline = `-- name: DeleteAirline :exec
 DELETE FROM airline_company
 WHERE company_id = $1
 `
 
-func (q *Queries) DeleteAirlineCompany(ctx context.Context, companyID int64) error {
-	_, err := q.db.ExecContext(ctx, deleteAirlineCompany, companyID)
+func (q *Queries) DeleteAirline(ctx context.Context, companyID int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAirline, companyID)
 	return err
 }
 
-const getAirlineCompany = `-- name: GetAirlineCompany :one
+const getAirline = `-- name: GetAirline :one
 SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
 WHERE company_id = $1 
 LIMIT 1
 `
 
-func (q *Queries) GetAirlineCompany(ctx context.Context, companyID int64) (AirlineCompany, error) {
-	row := q.db.QueryRowContext(ctx, getAirlineCompany, companyID)
+func (q *Queries) GetAirline(ctx context.Context, companyID int64) (AirlineCompany, error) {
+	row := q.db.QueryRowContext(ctx, getAirline, companyID)
 	var i AirlineCompany
 	err := row.Scan(
 		&i.CompanyID,
@@ -68,13 +68,13 @@ func (q *Queries) GetAirlineCompany(ctx context.Context, companyID int64) (Airli
 	return i, err
 }
 
-const listAirlineCompany = `-- name: ListAirlineCompany :many
+const listAirline = `-- name: ListAirline :many
 SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
 ORDER BY name
 `
 
-func (q *Queries) ListAirlineCompany(ctx context.Context) ([]AirlineCompany, error) {
-	rows, err := q.db.QueryContext(ctx, listAirlineCompany)
+func (q *Queries) ListAirline(ctx context.Context) ([]AirlineCompany, error) {
+	rows, err := q.db.QueryContext(ctx, listAirline)
 	if err != nil {
 		return nil, err
 	}
