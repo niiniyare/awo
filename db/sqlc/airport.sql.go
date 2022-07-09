@@ -10,7 +10,7 @@ import (
 )
 
 const createAirportList = `-- name: CreateAirportList :many
-INSERT INTO airports_data (
+INSERT INTO airports (
   airport_code , 
   airport_name ,
   city , 
@@ -28,7 +28,7 @@ type CreateAirportListParams struct {
 	Point       interface{} `json:"point"`
 }
 
-func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]AirportsDatum, error) {
+func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]Airport, error) {
 	rows, err := q.db.QueryContext(ctx, createAirportList,
 		arg.AirportCode,
 		arg.AirportName,
@@ -39,9 +39,9 @@ func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListPa
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AirportsDatum{}
+	items := []Airport{}
 	for rows.Next() {
-		var i AirportsDatum
+		var i Airport
 		if err := rows.Scan(
 			&i.AirportCode,
 			&i.AirportName,
@@ -65,7 +65,7 @@ func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListPa
 }
 
 const createAirports = `-- name: CreateAirports :one
-INSERT INTO airports_data (
+INSERT INTO airports (
   airport_code , 
   airport_name ,
   city , 
@@ -83,14 +83,14 @@ type CreateAirportsParams struct {
 	Coordinates interface{} `json:"coordinates"`
 }
 
-func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) (AirportsDatum, error) {
+func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) (Airport, error) {
 	row := q.db.QueryRowContext(ctx, createAirports,
 		arg.AirportCode,
 		arg.AirportName,
 		arg.City,
 		arg.Coordinates,
 	)
-	var i AirportsDatum
+	var i Airport
 	err := row.Scan(
 		&i.AirportCode,
 		&i.AirportName,
@@ -104,7 +104,7 @@ func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) 
 }
 
 const deleteAirports = `-- name: DeleteAirports :exec
-DELETE FROM airports_data
+DELETE FROM airports
 WHERE airport_code  = $1
 RETURNING airport_code, airport_name, country_code, city, coordinates, timezone, created_at
 `
@@ -115,13 +115,13 @@ func (q *Queries) DeleteAirports(ctx context.Context, airportCode string) error 
 }
 
 const getAirports = `-- name: GetAirports :one
-SELECT airport_code, airport_name, country_code, city, coordinates, timezone, created_at FROM airports_data
+SELECT airport_code, airport_name, country_code, city, coordinates, timezone, created_at FROM airports
 WHERE airport_code  = $1 LIMIT 1
 `
 
-func (q *Queries) GetAirports(ctx context.Context, airportCode string) (AirportsDatum, error) {
+func (q *Queries) GetAirports(ctx context.Context, airportCode string) (Airport, error) {
 	row := q.db.QueryRowContext(ctx, getAirports, airportCode)
-	var i AirportsDatum
+	var i Airport
 	err := row.Scan(
 		&i.AirportCode,
 		&i.AirportName,
@@ -138,7 +138,7 @@ const listAirports = `-- name: ListAirports :many
 SELECT airport_code,
   airport_name ,
   city
-FROM airports_data
+FROM airports
 ORDER BY airport_code
 `
 

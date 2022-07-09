@@ -9,9 +9,9 @@ import (
 )
 
 // Aircrafts (internal data)
-type AircraftsDatum struct {
+type Aircraft struct {
 	// Aircraft code, IATA
-	AircraftCode string `json:"aircraft_code"`
+	Code string `json:"code"`
 	// Aircraft model
 	Model string `json:"model"`
 	// Maximal flying distance, km
@@ -20,8 +20,8 @@ type AircraftsDatum struct {
 	CreatedAt time.Time `json:"created_at"`
 }
 
-type AirlineCompany struct {
-	CompanyID   int64     `json:"company_id"`
+type Airline struct {
+	ID          int64     `json:"id"`
 	CompanyName string    `json:"company_name"`
 	IataCode    string    `json:"iata_code"`
 	MainAirport string    `json:"main_airport"`
@@ -29,7 +29,7 @@ type AirlineCompany struct {
 }
 
 // Airports (internal data)
-type AirportsDatum struct {
+type Airport struct {
 	// Airport code
 	AirportCode string `json:"airport_code"`
 	// Airport name

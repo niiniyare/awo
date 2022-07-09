@@ -1,16 +1,16 @@
 -- name: GetAirline :one
-SELECT * FROM airline_company
-WHERE company_id = $1 
+SELECT * FROM airlines
+WHERE id = $1 
 LIMIT 1;
 
 -- name: ListAirline :many
-SELECT * FROM airline_company
+SELECT * FROM airlines
 ORDER BY company_name
 LIMIT $1
 OFFSET $2;
 
 -- name: CreateAirline :one
-INSERT INTO airline_company (
+INSERT INTO airlines (
   company_name,
   iata_code,
   main_airport
@@ -20,11 +20,11 @@ INSERT INTO airline_company (
 RETURNING *;
 
 -- name: DeleteAirline :exec
-DELETE FROM airline_company
-WHERE company_id = $1;
+DELETE FROM airlines
+WHERE id = $1;
 /*
 
-INSERT INTO airline_company (
+INSERT INTO airlines (
   company_name,
   iata_code,
   main_airport

@@ -10,31 +10,31 @@ import (
 )
 
 const createAircraft = `-- name: CreateAircraft :one
-INSERT INTO aircrafts_data (
-  aircraft_code, model, range, company_id
+INSERT INTO aircrafts (
+  code, model, range, company_id
 ) VALUES (
   $1, $2, $3 ,$4
 )
-RETURNING aircraft_code, model, range, company_id, created_at
+RETURNING code, model, range, company_id, created_at
 `
 
 type CreateAircraftParams struct {
-	AircraftCode string `json:"aircraft_code"`
-	Model        string `json:"model"`
-	Range        int32  `json:"range"`
-	CompanyID    int64  `json:"company_id"`
+	Code      string `json:"code"`
+	Model     string `json:"model"`
+	Range     int32  `json:"range"`
+	CompanyID int64  `json:"company_id"`
 }
 
-func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) (AircraftsDatum, error) {
+func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error) {
 	row := q.db.QueryRowContext(ctx, createAircraft,
-		arg.AircraftCode,
+		arg.Code,
 		arg.Model,
 		arg.Range,
 		arg.CompanyID,
 	)
-	var i AircraftsDatum
+	var i Aircraft
 	err := row.Scan(
-		&i.AircraftCode,
+		&i.Code,
 		&i.Model,
 		&i.Range,
 		&i.CompanyID,
@@ -44,25 +44,25 @@ func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) 
 }
 
 const deleteAircraft = `-- name: DeleteAircraft :exec
-DELETE FROM aircrafts_data
-WHERE aircraft_code = $1
+DELETE FROM aircrafts
+WHERE code = $1
 `
 
-func (q *Queries) DeleteAircraft(ctx context.Context, aircraftCode string) error {
-	_, err := q.db.ExecContext(ctx, deleteAircraft, aircraftCode)
+func (q *Queries) DeleteAircraft(ctx context.Context, code string) error {
+	_, err := q.db.ExecContext(ctx, deleteAircraft, code)
 	return err
 }
 
 const getAircraft = `-- name: GetAircraft :one
-SELECT aircraft_code, model, range, company_id, created_at FROM aircrafts_data
-WHERE aircraft_code = $1 LIMIT 1
+SELECT code, model, range, company_id, created_at FROM aircrafts
+WHERE code = $1 LIMIT 1
 `
 
-func (q *Queries) GetAircraft(ctx context.Context, aircraftCode string) (AircraftsDatum, error) {
-	row := q.db.QueryRowContext(ctx, getAircraft, aircraftCode)
-	var i AircraftsDatum
+func (q *Queries) GetAircraft(ctx context.Context, code string) (Aircraft, error) {
+	row := q.db.QueryRowContext(ctx, getAircraft, code)
+	var i Aircraft
 	err := row.Scan(
-		&i.AircraftCode,
+		&i.Code,
 		&i.Model,
 		&i.Range,
 		&i.CompanyID,
@@ -72,21 +72,21 @@ func (q *Queries) GetAircraft(ctx context.Context, aircraftCode string) (Aircraf
 }
 
 const listAircraft = `-- name: ListAircraft :many
-SELECT aircraft_code, model, range, company_id, created_at FROM aircrafts_data
+SELECT code, model, range, company_id, created_at FROM aircrafts
 ORDER BY name
 `
 
-func (q *Queries) ListAircraft(ctx context.Context) ([]AircraftsDatum, error) {
+func (q *Queries) ListAircraft(ctx context.Context) ([]Aircraft, error) {
 	rows, err := q.db.QueryContext(ctx, listAircraft)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	items := []AircraftsDatum{}
+	items := []Aircraft{}
 	for rows.Next() {
-		var i AircraftsDatum
+		var i Aircraft
 		if err := rows.Scan(
-			&i.AircraftCode,
+			&i.Code,
 			&i.Model,
 			&i.Range,
 			&i.CompanyID,

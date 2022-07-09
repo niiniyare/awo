@@ -9,18 +9,18 @@ import (
 )
 
 type Querier interface {
-	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (AircraftsDatum, error)
-	CreateAirline(ctx context.Context, arg CreateAirlineParams) (AirlineCompany, error)
-	CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]AirportsDatum, error)
-	CreateAirports(ctx context.Context, arg CreateAirportsParams) (AirportsDatum, error)
-	DeleteAircraft(ctx context.Context, aircraftCode string) error
-	DeleteAirline(ctx context.Context, companyID int64) error
+	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error)
+	CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error)
+	CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]Airport, error)
+	CreateAirports(ctx context.Context, arg CreateAirportsParams) (Airport, error)
+	DeleteAircraft(ctx context.Context, code string) error
+	DeleteAirline(ctx context.Context, id int64) error
 	DeleteAirports(ctx context.Context, airportCode string) error
-	GetAircraft(ctx context.Context, aircraftCode string) (AircraftsDatum, error)
-	GetAirline(ctx context.Context, companyID int64) (AirlineCompany, error)
-	GetAirports(ctx context.Context, airportCode string) (AirportsDatum, error)
-	ListAircraft(ctx context.Context) ([]AircraftsDatum, error)
-	ListAirline(ctx context.Context, arg ListAirlineParams) ([]AirlineCompany, error)
+	GetAircraft(ctx context.Context, code string) (Aircraft, error)
+	GetAirline(ctx context.Context, id int64) (Airline, error)
+	GetAirports(ctx context.Context, airportCode string) (Airport, error)
+	ListAircraft(ctx context.Context) ([]Aircraft, error)
+	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirports(ctx context.Context) ([]ListAirportsRow, error)
 }
 
