@@ -50,19 +50,19 @@ func (mr *MockStoreMockRecorder) CreateAircraft(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAircraft", reflect.TypeOf((*MockStore)(nil).CreateAircraft), arg0, arg1)
 }
 
-// CreateAirlineCompany mocks base method.
-func (m *MockStore) CreateAirlineCompany(arg0 context.Context, arg1 db.CreateAirlineCompanyParams) (db.AirlineCompany, error) {
+// CreateAirline mocks base method.
+func (m *MockStore) CreateAirline(arg0 context.Context, arg1 db.CreateAirlineParams) (db.AirlineCompany, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "CreateAirlineCompany", arg0, arg1)
+	ret := m.ctrl.Call(m, "CreateAirline", arg0, arg1)
 	ret0, _ := ret[0].(db.AirlineCompany)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// CreateAirlineCompany indicates an expected call of CreateAirlineCompany.
-func (mr *MockStoreMockRecorder) CreateAirlineCompany(arg0, arg1 interface{}) *gomock.Call {
+// CreateAirline indicates an expected call of CreateAirline.
+func (mr *MockStoreMockRecorder) CreateAirline(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAirlineCompany", reflect.TypeOf((*MockStore)(nil).CreateAirlineCompany), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "CreateAirline", reflect.TypeOf((*MockStore)(nil).CreateAirline), arg0, arg1)
 }
 
 // CreateAirportList mocks base method.
@@ -109,18 +109,18 @@ func (mr *MockStoreMockRecorder) DeleteAircraft(arg0, arg1 interface{}) *gomock.
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAircraft", reflect.TypeOf((*MockStore)(nil).DeleteAircraft), arg0, arg1)
 }
 
-// DeleteAirlineCompany mocks base method.
-func (m *MockStore) DeleteAirlineCompany(arg0 context.Context, arg1 int64) error {
+// DeleteAirline mocks base method.
+func (m *MockStore) DeleteAirline(arg0 context.Context, arg1 int64) error {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "DeleteAirlineCompany", arg0, arg1)
+	ret := m.ctrl.Call(m, "DeleteAirline", arg0, arg1)
 	ret0, _ := ret[0].(error)
 	return ret0
 }
 
-// DeleteAirlineCompany indicates an expected call of DeleteAirlineCompany.
-func (mr *MockStoreMockRecorder) DeleteAirlineCompany(arg0, arg1 interface{}) *gomock.Call {
+// DeleteAirline indicates an expected call of DeleteAirline.
+func (mr *MockStoreMockRecorder) DeleteAirline(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAirlineCompany", reflect.TypeOf((*MockStore)(nil).DeleteAirlineCompany), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "DeleteAirline", reflect.TypeOf((*MockStore)(nil).DeleteAirline), arg0, arg1)
 }
 
 // DeleteAirports mocks base method.
@@ -152,19 +152,19 @@ func (mr *MockStoreMockRecorder) GetAircraft(arg0, arg1 interface{}) *gomock.Cal
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAircraft", reflect.TypeOf((*MockStore)(nil).GetAircraft), arg0, arg1)
 }
 
-// GetAirlineCompany mocks base method.
-func (m *MockStore) GetAirlineCompany(arg0 context.Context, arg1 int64) (db.AirlineCompany, error) {
+// GetAirline mocks base method.
+func (m *MockStore) GetAirline(arg0 context.Context, arg1 int64) (db.AirlineCompany, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAirlineCompany", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetAirline", arg0, arg1)
 	ret0, _ := ret[0].(db.AirlineCompany)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAirlineCompany indicates an expected call of GetAirlineCompany.
-func (mr *MockStoreMockRecorder) GetAirlineCompany(arg0, arg1 interface{}) *gomock.Call {
+// GetAirline indicates an expected call of GetAirline.
+func (mr *MockStoreMockRecorder) GetAirline(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAirlineCompany", reflect.TypeOf((*MockStore)(nil).GetAirlineCompany), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAirline", reflect.TypeOf((*MockStore)(nil).GetAirline), arg0, arg1)
 }
 
 // GetAirports mocks base method.
@@ -197,19 +197,19 @@ func (mr *MockStoreMockRecorder) ListAircraft(arg0 interface{}) *gomock.Call {
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAircraft", reflect.TypeOf((*MockStore)(nil).ListAircraft), arg0)
 }
 
-// ListAirlineCompany mocks base method.
-func (m *MockStore) ListAirlineCompany(arg0 context.Context) ([]db.AirlineCompany, error) {
+// ListAirline mocks base method.
+func (m *MockStore) ListAirline(arg0 context.Context) ([]db.AirlineCompany, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAirlineCompany", arg0)
+	ret := m.ctrl.Call(m, "ListAirline", arg0)
 	ret0, _ := ret[0].([]db.AirlineCompany)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListAirlineCompany indicates an expected call of ListAirlineCompany.
-func (mr *MockStoreMockRecorder) ListAirlineCompany(arg0 interface{}) *gomock.Call {
+// ListAirline indicates an expected call of ListAirline.
+func (mr *MockStoreMockRecorder) ListAirline(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirlineCompany", reflect.TypeOf((*MockStore)(nil).ListAirlineCompany), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirline", reflect.TypeOf((*MockStore)(nil).ListAirline), arg0)
 }
 
 // ListAirports mocks base method.

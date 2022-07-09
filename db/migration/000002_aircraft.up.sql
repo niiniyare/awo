@@ -1,20 +1,20 @@
 
-CREATE TABLE IF NOT EXISTS aircrafts_data (
-    aircraft_code VARCHAR(3) PRIMARY KEY NOT NULL,
+CREATE TABLE IF NOT EXISTS aircrafts (
+    code VARCHAR(3) PRIMARY KEY NOT NULL,
     model VARCHAR(50) NOT NULL,
     range integer NOT NULL,
     company_id BIGSERIAL NOT NULL,
     created_at timestamptz NOT NULL DEFAULT (now()),
     CONSTRAINT aircrafts_range_check CHECK ((range > 0)),
-   --CONSTRAINT aircrafts_pkey PRIMARY KEY (aircraft_code),
-    CONSTRAINT airline_company_pk FOREIGN KEY (company_id) REFERENCES airline_company (company_id)
+   --CONSTRAINT aircrafts_pkey PRIMARY KEY (code),
+    CONSTRAINT airlines_pk FOREIGN KEY (company_id) REFERENCES airlines (id)
 );
 
 
-COMMENT  ON TABLE aircrafts_data IS 'Aircrafts (internal data)';
+COMMENT  ON TABLE aircrafts IS 'Aircrafts (internal data)';
 
 
-COMMENT ON COLUMN aircrafts_data.aircraft_code IS 'Aircraft code, IATA';
-COMMENT  ON COLUMN aircrafts_data.model IS 'Aircraft model';
+COMMENT ON COLUMN aircrafts.code IS 'Aircraft code, IATA';
+COMMENT  ON COLUMN aircrafts.model IS 'Aircraft model';
 
-COMMENT  ON COLUMN aircrafts_data.range IS 'Maximal flying distance, km';
+COMMENT  ON COLUMN aircrafts.range IS 'Maximal flying distance, km';

@@ -20,7 +20,7 @@ type Querier interface {
 	GetAirline(ctx context.Context, companyID int64) (AirlineCompany, error)
 	GetAirports(ctx context.Context, airportCode string) (AirportsDatum, error)
 	ListAircraft(ctx context.Context) ([]AircraftsDatum, error)
-	ListAirline(ctx context.Context) ([]AirlineCompany, error)
+	ListAirline(ctx context.Context, arg ListAirlineParams) ([]AirlineCompany, error)
 	ListAirports(ctx context.Context) ([]ListAirportsRow, error)
 }
 

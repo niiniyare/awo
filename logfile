@@ -16600,3 +16600,135 @@
 2022-07-04 03:09:49.059 EAT [22782] LOG:  invalid record length at 0/1AF9CE0: wanted 24, got 0
 2022-07-04 03:09:49.059 EAT [22782] LOG:  redo done at 0/1AF9CA8 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
 2022-07-04 03:09:49.123 EAT [22776] LOG:  database system is ready to accept connections
+2022-07-07 23:47:53.407 EAT [21977] LOG:  starting PostgreSQL 14.2 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2022-07-07 23:47:53.409 EAT [21977] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2022-07-07 23:47:53.412 EAT [21977] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2022-07-07 23:47:53.487 EAT [21983] LOG:  database system was interrupted; last known up at 2022-07-05 05:22:33 EAT
+2022-07-07 23:47:53.813 EAT [21983] LOG:  database system was not properly shut down; automatic recovery in progress
+2022-07-07 23:47:53.821 EAT [21983] LOG:  redo starts at 0/1B47130
+2022-07-07 23:47:53.821 EAT [21983] LOG:  invalid record length at 0/1B47218: wanted 24, got 0
+2022-07-07 23:47:53.821 EAT [21983] LOG:  redo done at 0/1B471E0 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2022-07-07 23:47:53.887 EAT [21977] LOG:  database system is ready to accept connections
+2022-07-07 23:48:12.368 EAT [22794] ERROR:  column "name" does not exist at character 127
+2022-07-07 23:48:12.368 EAT [22794] STATEMENT:  -- name: ListAirline :many
+	SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
+	ORDER BY name
+	
+2022-07-08 00:13:51.353 EAT [29867] ERROR:  column "name" does not exist at character 127
+2022-07-08 00:13:51.353 EAT [29867] STATEMENT:  -- name: ListAirline :many
+	SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
+	ORDER BY name
+	LIMIT $1
+	OFFSET $2
+	
+2022-07-08 00:15:17.777 EAT [30944] ERROR:  column "name" does not exist at character 127
+2022-07-08 00:15:17.777 EAT [30944] STATEMENT:  -- name: ListAirline :many
+	SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
+	ORDER BY name
+	LIMIT $1
+	OFFSET $2
+	
+2022-07-08 23:21:08.374 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:21:18.750 EAT [21065] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:22:08.405 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:22:18.740 EAT [21227] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:23:08.485 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:23:18.944 EAT [21572] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:24:08.437 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:24:18.892 EAT [21851] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:25:08.591 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:25:19.047 EAT [22103] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:26:08.658 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:26:19.159 EAT [22305] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:27:08.686 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:27:19.164 EAT [22493] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:28:08.745 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:28:19.217 EAT [22649] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:29:08.729 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:29:19.190 EAT [22832] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:30:08.630 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:30:31.644 EAT [23188] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:38:55.356 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:41:49.496 EAT [23506] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:43:31.646 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:45:25.680 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:45:25.712 EAT [23694] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:45:36.525 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:46:47.023 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:46:57.469 EAT [25542] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:47:46.956 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:47:57.379 EAT [25735] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:48:47.090 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:48:57.486 EAT [25860] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:49:47.115 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:49:57.541 EAT [26001] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:50:47.079 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:50:57.489 EAT [26129] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:51:47.180 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:51:57.547 EAT [26304] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:52:47.128 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:52:57.464 EAT [26369] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:53:47.247 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:53:57.649 EAT [26576] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:54:47.300 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:54:57.701 EAT [26672] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:55:47.312 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:55:57.696 EAT [26900] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:56:47.345 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:56:57.738 EAT [27436] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:57:47.437 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:57:57.813 EAT [27897] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:58:47.450 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:58:57.831 EAT [28016] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:59:47.453 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-08 23:59:57.907 EAT [28193] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:00:47.477 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:00:57.873 EAT [28942] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:01:47.443 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:01:57.861 EAT [29315] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:02:47.484 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:02:57.841 EAT [29487] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:03:47.556 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:03:57.958 EAT [29795] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:04:47.508 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:04:57.849 EAT [30279] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:05:47.679 EAT [21990] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 00:05:58.224 EAT [31555] LOG:  using stale statistics instead of current ones because stats collector is not responding
+2022-07-09 21:08:13.392 EAT [5522] LOG:  starting PostgreSQL 14.2 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2022-07-09 21:08:13.395 EAT [5522] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2022-07-09 21:08:13.399 EAT [5522] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2022-07-09 21:08:13.472 EAT [5528] LOG:  database system was interrupted; last known up at 2022-07-08 00:17:54 EAT
+2022-07-09 21:08:13.845 EAT [5528] LOG:  database system was not properly shut down; automatic recovery in progress
+2022-07-09 21:08:13.862 EAT [5528] LOG:  redo starts at 0/1B49F88
+2022-07-09 21:08:13.863 EAT [5528] LOG:  invalid record length at 0/1B4A088: wanted 24, got 0
+2022-07-09 21:08:13.863 EAT [5528] LOG:  redo done at 0/1B4A050 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2022-07-09 21:08:14.033 EAT [5522] LOG:  database system is ready to accept connections
+2022-07-09 21:44:23.779 EAT [17302] ERROR:  column "company_id" referenced in foreign key constraint does not exist
+2022-07-09 21:44:23.779 EAT [17302] STATEMENT:  
+	CREATE TABLE IF NOT EXISTS aircrafts (
+	    code VARCHAR(3) PRIMARY KEY NOT NULL,
+	    model VARCHAR(50) NOT NULL,
+	    range integer NOT NULL,
+	    company_id BIGSERIAL NOT NULL,
+	    created_at timestamptz NOT NULL DEFAULT (now()),
+	    CONSTRAINT aircrafts_range_check CHECK ((range > 0)),
+	   --CONSTRAINT aircrafts_pkey PRIMARY KEY (code),
+	    CONSTRAINT airlines_pk FOREIGN KEY (company_id) REFERENCES airlines (company_id)
+	);
+	
+	
+	COMMENT  ON TABLE aircrafts IS 'Aircrafts (internal data)';
+	
+	
+	COMMENT ON COLUMN aircrafts.code IS 'Aircraft code, IATA';
+	COMMENT  ON COLUMN aircrafts.model IS 'Aircraft model';
+	
+	COMMENT  ON COLUMN aircrafts.range IS 'Maximal flying distance, km';
+2022-07-09 21:47:21.819 EAT [17820] ERROR:  "aircrafts" is not a view
+2022-07-09 21:47:21.819 EAT [17820] HINT:  Use DROP TABLE to remove a table.
+2022-07-09 21:47:21.819 EAT [17820] STATEMENT:  DROP TABLE IF EXISTS aircrafts_data CASCADE;
+	DROP VIEW IF EXISTS aircrafts CASCADE;
+2022-07-09 21:47:34.767 EAT [17920] ERROR:  "aircrafts" is not a view
+2022-07-09 21:47:34.767 EAT [17920] HINT:  Use DROP TABLE to remove a table.
+2022-07-09 21:47:34.767 EAT [17920] STATEMENT:  DROP TABLE IF EXISTS aircrafts_data CASCADE;
+	DROP VIEW IF EXISTS aircrafts CASCADE;

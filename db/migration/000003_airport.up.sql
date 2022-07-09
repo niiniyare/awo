@@ -1,6 +1,6 @@
 
 
-CREATE TABLE airports_data (
+CREATE TABLE airports (
   airport_code VARCHAR(3) NOT NULL,
   airport_name TEXT NOT NULL,
   country_code VARCHAR(3) NOT NULL,
@@ -8,21 +8,21 @@ CREATE TABLE airports_data (
   coordinates POINT NOT NULL,
   timezone TEXT NOT NULL,
   created_at timestamptz NOT NULL DEFAULT (now()),
-  CONSTRAINT airports_data_pkey PRIMARY KEY (airport_code)
+  CONSTRAINT airports_pkey PRIMARY KEY (airport_code)
   );
 
 
- COMMENT  ON TABLE airports_data IS 'Airports (internal data)';
- COMMENT  ON COLUMN airports_data.airport_code IS 'Airport code';
+ COMMENT  ON TABLE airports IS 'Airports (internal data)';
+ COMMENT  ON COLUMN airports.airport_code IS 'Airport code';
 
 
- COMMENT  ON COLUMN airports_data.airport_name IS 'Airport name';
+ COMMENT  ON COLUMN airports.airport_name IS 'Airport name';
 
- COMMENT  ON COLUMN airports_data.city IS 'City';
+ COMMENT  ON COLUMN airports.city IS 'City';
 
- COMMENT  ON COLUMN airports_data.country_code IS 'Country';
+ COMMENT  ON COLUMN airports.country_code IS 'Country';
   
-COMMENT  ON COLUMN airports_data.coordinates IS 'Airport coordinates (longitude and latitude)';
+COMMENT  ON COLUMN airports.coordinates IS 'Airport coordinates (longitude and latitude)';
 
-COMMENT  ON COLUMN airports_data.timezone IS 'Airport time zone';
-COMMENT  ON COLUMN airports_data.Created_at IS 'time airport record Created';
+COMMENT  ON COLUMN airports.timezone IS 'Airport time zone';
+COMMENT  ON COLUMN airports.Created_at IS 'time airport record Created';

@@ -70,11 +70,18 @@ func (q *Queries) GetAirline(ctx context.Context, companyID int64) (AirlineCompa
 
 const listAirline = `-- name: ListAirline :many
 SELECT company_id, company_name, iata_code, main_airport, created_at FROM airline_company
-ORDER BY name
+ORDER BY company_name
+LIMIT $1
+OFFSET $2
 `
 
-func (q *Queries) ListAirline(ctx context.Context) ([]AirlineCompany, error) {
-	rows, err := q.db.QueryContext(ctx, listAirline)
+type ListAirlineParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAirline(ctx context.Context, arg ListAirlineParams) ([]AirlineCompany, error) {
+	rows, err := q.db.QueryContext(ctx, listAirline, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}

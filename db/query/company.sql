@@ -5,7 +5,9 @@ LIMIT 1;
 
 -- name: ListAirline :many
 SELECT * FROM airline_company
-ORDER BY name;
+ORDER BY company_name
+LIMIT $1
+OFFSET $2;
 
 -- name: CreateAirline :one
 INSERT INTO airline_company (

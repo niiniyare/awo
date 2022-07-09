@@ -59,17 +59,17 @@ SET row_security = off;
 -- Name: lang(); Type: FUNCTION; Schema: bookings; Owner: -
 --
 
-CREATE TABLE IF NOT EXISTS airline_company (
-    company_id BIGSERIAL NOT NULL,
+CREATE TABLE IF NOT EXISTS airlines (
+    id BIGSERIAL NOT NULL,
     company_name VARCHAR(50) NOT NULL,
     iata_code VARCHAR(5) NOT NULL,
     main_airport VARCHAR(3) NOT NULL,
     created_at timestamptz NOT NULL DEFAULT (now()),
  -- account numeric NOT NULL,
-    CONSTRAINT airline_company_pk PRIMARY KEY (company_id)
+    CONSTRAINT airlines_pk PRIMARY KEY (id)
   );
 
-CREATE SEQUENCE IF NOT EXISTS airline_company_id_seq
+CREATE SEQUENCE IF NOT EXISTS airlines_id_seq
     START WITH 4001
     INCREMENT BY 1
     NO MINVALUE
@@ -78,8 +78,8 @@ CREATE SEQUENCE IF NOT EXISTS airline_company_id_seq
 
 
 --
--- Name: airline_company_id_seq; Type: SEQUENCE OWNED BY; Schema: bookings; Owner: -
+-- Name: airlines_id_seq; Type: SEQUENCE OWNED BY; Schema: bookings; Owner: -
 --
 
-ALTER SEQUENCE airline_company_id_seq OWNED BY airline_company.company_id;
+ALTER SEQUENCE airlines_id_seq OWNED BY airlines.id;
 
