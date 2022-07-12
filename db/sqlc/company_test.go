@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 
@@ -9,7 +10,7 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
-func CreateTestAirline(t *testing.T) *AirlineCompany {
+func CreateTestAirline(t *testing.T) *Airline {
 	arg := CreateAirlineParams{
 		CompanyName: util.RandomString(7),
 		IataCode:    strings.ToUpper(util.RandomString(2)),
@@ -22,7 +23,7 @@ func CreateTestAirline(t *testing.T) *AirlineCompany {
 	r.Equal(arg.CompanyName, airline.CompanyName)
 	r.Equal(arg.IataCode, airline.IataCode)
 	r.Equal(arg.MainAirport, airline.MainAirport)
-	r.NotZero(airline.CompanyID)
+	r.NotZero(airline.ID)
 
 	r.NotZero(airline.CreatedAt)
 
@@ -37,11 +38,11 @@ func TestGetAirline(t *testing.T) {
 	r := require.New(t)
 
 	r.NotEmpty(airline)
-	res, err := testQueries.GetAirline(context.Background(), airline.CompanyID)
+	res, err := testQueries.GetAirline(context.Background(), airline.ID)
 
 	r.NoError(err)
 	r.NotEmpty(res)
-	r.Equal(airline.CompanyID, res.CompanyID)
+	r.Equal(airline.ID, res.ID)
 
 	r.Equal(airline.CompanyName, res.CompanyName)
 
@@ -67,7 +68,7 @@ func TestListAirline(t *testing.T) {
 	r.Len(res, 10)
 	for _, airline := range res {
 		r.NotEmpty(airline)
-		r.NotZero(airline.CompanyID)
+		r.NotZero(airline.ID)
 		r.NotZero(airline.CreatedAt)
 		r.NotEmpty(airline.CompanyName)
 		r.NotEmpty(airline.IataCode)
@@ -80,16 +81,16 @@ func TestListAirline(t *testing.T) {
 func TestDeleteAirline(t *testing.T) {
 	airline := CreateTestAirline(t)
 	r := require.New(t)
-	err := testQueries.DeleteAirline(context.Background(), airline.CompanyID)
+	err := testQueries.DeleteAirline(context.Background(), airline.ID)
 	r.NoError(err)
-	res, err := testQueries.GetAirline(context.Background(), airline.CompanyID)
+	res, err := testQueries.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(res)
 
-	arline1, err := testQueries.GetAirline(context.Background(), airline.CompanyID)
+	arline1, err := testQueries.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(arline1)
-	r.EqualError(err, "sql: no rows in result set")
+	r.EqualError(err, sql.ErrNoRows.Error())
 
 }
 

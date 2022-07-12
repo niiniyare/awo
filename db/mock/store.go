@@ -36,10 +36,10 @@ func (m *MockStore) EXPECT() *MockStoreMockRecorder {
 }
 
 // CreateAircraft mocks base method.
-func (m *MockStore) CreateAircraft(arg0 context.Context, arg1 db.CreateAircraftParams) (db.AircraftsDatum, error) {
+func (m *MockStore) CreateAircraft(arg0 context.Context, arg1 db.CreateAircraftParams) (db.Aircraft, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateAircraft", arg0, arg1)
-	ret0, _ := ret[0].(db.AircraftsDatum)
+	ret0, _ := ret[0].(db.Aircraft)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -51,10 +51,10 @@ func (mr *MockStoreMockRecorder) CreateAircraft(arg0, arg1 interface{}) *gomock.
 }
 
 // CreateAirline mocks base method.
-func (m *MockStore) CreateAirline(arg0 context.Context, arg1 db.CreateAirlineParams) (db.AirlineCompany, error) {
+func (m *MockStore) CreateAirline(arg0 context.Context, arg1 db.CreateAirlineParams) (db.Airline, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateAirline", arg0, arg1)
-	ret0, _ := ret[0].(db.AirlineCompany)
+	ret0, _ := ret[0].(db.Airline)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -66,10 +66,10 @@ func (mr *MockStoreMockRecorder) CreateAirline(arg0, arg1 interface{}) *gomock.C
 }
 
 // CreateAirportList mocks base method.
-func (m *MockStore) CreateAirportList(arg0 context.Context, arg1 db.CreateAirportListParams) ([]db.AirportsDatum, error) {
+func (m *MockStore) CreateAirportList(arg0 context.Context, arg1 db.CreateAirportListParams) ([]db.Airport, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateAirportList", arg0, arg1)
-	ret0, _ := ret[0].([]db.AirportsDatum)
+	ret0, _ := ret[0].([]db.Airport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -81,10 +81,10 @@ func (mr *MockStoreMockRecorder) CreateAirportList(arg0, arg1 interface{}) *gomo
 }
 
 // CreateAirports mocks base method.
-func (m *MockStore) CreateAirports(arg0 context.Context, arg1 db.CreateAirportsParams) (db.AirportsDatum, error) {
+func (m *MockStore) CreateAirports(arg0 context.Context, arg1 db.CreateAirportsParams) (db.Airport, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "CreateAirports", arg0, arg1)
-	ret0, _ := ret[0].(db.AirportsDatum)
+	ret0, _ := ret[0].(db.Airport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -138,10 +138,10 @@ func (mr *MockStoreMockRecorder) DeleteAirports(arg0, arg1 interface{}) *gomock.
 }
 
 // GetAircraft mocks base method.
-func (m *MockStore) GetAircraft(arg0 context.Context, arg1 string) (db.AircraftsDatum, error) {
+func (m *MockStore) GetAircraft(arg0 context.Context, arg1 string) (db.Aircraft, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAircraft", arg0, arg1)
-	ret0, _ := ret[0].(db.AircraftsDatum)
+	ret0, _ := ret[0].(db.Aircraft)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -153,10 +153,10 @@ func (mr *MockStoreMockRecorder) GetAircraft(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // GetAirline mocks base method.
-func (m *MockStore) GetAirline(arg0 context.Context, arg1 int64) (db.AirlineCompany, error) {
+func (m *MockStore) GetAirline(arg0 context.Context, arg1 int64) (db.Airline, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAirline", arg0, arg1)
-	ret0, _ := ret[0].(db.AirlineCompany)
+	ret0, _ := ret[0].(db.Airline)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -168,10 +168,10 @@ func (mr *MockStoreMockRecorder) GetAirline(arg0, arg1 interface{}) *gomock.Call
 }
 
 // GetAirports mocks base method.
-func (m *MockStore) GetAirports(arg0 context.Context, arg1 string) (db.AirportsDatum, error) {
+func (m *MockStore) GetAirports(arg0 context.Context, arg1 string) (db.Airport, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "GetAirports", arg0, arg1)
-	ret0, _ := ret[0].(db.AirportsDatum)
+	ret0, _ := ret[0].(db.Airport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -183,10 +183,10 @@ func (mr *MockStoreMockRecorder) GetAirports(arg0, arg1 interface{}) *gomock.Cal
 }
 
 // ListAircraft mocks base method.
-func (m *MockStore) ListAircraft(arg0 context.Context) ([]db.AircraftsDatum, error) {
+func (m *MockStore) ListAircraft(arg0 context.Context) ([]db.Aircraft, error) {
 	m.ctrl.T.Helper()
 	ret := m.ctrl.Call(m, "ListAircraft", arg0)
-	ret0, _ := ret[0].([]db.AircraftsDatum)
+	ret0, _ := ret[0].([]db.Aircraft)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
@@ -198,18 +198,18 @@ func (mr *MockStoreMockRecorder) ListAircraft(arg0 interface{}) *gomock.Call {
 }
 
 // ListAirline mocks base method.
-func (m *MockStore) ListAirline(arg0 context.Context) ([]db.AirlineCompany, error) {
+func (m *MockStore) ListAirline(arg0 context.Context, arg1 db.ListAirlineParams) ([]db.Airline, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAirline", arg0)
-	ret0, _ := ret[0].([]db.AirlineCompany)
+	ret := m.ctrl.Call(m, "ListAirline", arg0, arg1)
+	ret0, _ := ret[0].([]db.Airline)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
 // ListAirline indicates an expected call of ListAirline.
-func (mr *MockStoreMockRecorder) ListAirline(arg0 interface{}) *gomock.Call {
+func (mr *MockStoreMockRecorder) ListAirline(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirline", reflect.TypeOf((*MockStore)(nil).ListAirline), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirline", reflect.TypeOf((*MockStore)(nil).ListAirline), arg0, arg1)
 }
 
 // ListAirports mocks base method.
