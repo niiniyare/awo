@@ -16751,3 +16751,38 @@
 	)
 	RETURNING code, model, range, company_id, created_at
 	
+2022-07-13 05:11:46.786 EAT [31417] FATAL:  lock file "postmaster.pid" already exists
+2022-07-13 05:11:46.786 EAT [31417] HINT:  Is another postmaster (PID 22208) running in data directory "/data/data/com.termux/files/usr/var/lib/postgresql"?
+2022-07-13 05:12:29.215 EAT [31455] ERROR:  unrecognized configuration parameter "airlines"
+2022-07-13 05:12:29.215 EAT [31455] STATEMENT:  show  airlines;
+2022-07-13 05:12:44.791 EAT [31455] ERROR:  syntax error at or near "describe" at character 1
+2022-07-13 05:12:44.791 EAT [31455] STATEMENT:  describe  airlines;
+2022-07-13 05:13:26.425 EAT [31605] FATAL:  role "d" does not exist
+2022-07-13 05:16:02.324 EAT [31909] ERROR:  syntax error at or near "=" at character 1
+2022-07-13 05:16:02.324 EAT [31909] STATEMENT:  =d
+2022-07-13 05:16:05.962 EAT [31928] ERROR:  syntax error at or near "=" at character 1
+2022-07-13 05:16:05.962 EAT [31928] STATEMENT:  =d
+2022-07-13 05:16:15.088 EAT [31952] ERROR:  syntax error at or near "d" at character 1
+2022-07-13 05:16:15.088 EAT [31952] STATEMENT:  d
+2022-07-13 05:19:31.267 EAT [32511] FATAL:  database "admin" does not exist
+2022-07-13 05:19:52.334 EAT [32553] FATAL:  database "u0_a293" does not exist
+2022-07-13 05:21:57.948 EAT [32691] ERROR:  syntax error at or near "aircrafts" at character 6
+2022-07-13 05:21:57.948 EAT [32691] STATEMENT:  drop aircrafts
+	drop table aircraft
+	;
+2022-07-13 05:22:05.943 EAT [32691] ERROR:  cannot drop table aircrafts because other objects depend on it
+2022-07-13 05:22:05.943 EAT [32691] DETAIL:  constraint plane_port_access_aircraft_aircrafts_aircraft_code on table plane_port_access depends on table aircrafts
+	constraint seats_aircraft_aircrafts_aircraft_code on table seats depends on table aircrafts
+	constraint traveller_itinerary_aircraft_aircrafts_aircraft_code on table traveller_itinerary depends on table aircrafts
+	constraint hop_aircraft_aircrafts_aircraft_code on table hop depends on table aircrafts
+2022-07-13 05:22:05.943 EAT [32691] HINT:  Use DROP ... CASCADE to drop the dependent objects too.
+2022-07-13 05:22:05.943 EAT [32691] STATEMENT:  drop table aircrafts;
+2022-07-13 05:23:02.132 EAT [32691] ERROR:  table "sql_" does not exist
+2022-07-13 05:23:02.132 EAT [32691] STATEMENT:  drop table information_schema.sql_ CASCADE;
+2022-07-13 05:31:21.450 EAT [2224] FATAL:  database "postgres" does not exist
+2022-07-13 05:32:47.450 EAT [2731] FATAL:  database "postgres" does not exist
+2022-07-13 05:32:49.802 EAT [2740] FATAL:  database "postgres" does not exist
+2022-07-13 05:33:21.305 EAT [2754] ERROR:  cannot drop the currently open database
+2022-07-13 05:33:21.305 EAT [2754] STATEMENT:  DROP DATABASE demo;
+2022-07-13 05:33:21.306 EAT [2754] ERROR:  database "demo" already exists
+2022-07-13 05:33:21.306 EAT [2754] STATEMENT:  CREATE DATABASE demo;

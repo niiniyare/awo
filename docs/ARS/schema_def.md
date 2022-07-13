@@ -1,4 +1,5 @@
-## 1. **schema Description**
+
+1. ### **Schema Description**
 
 The main entity is a booking `(bookings)`.
 
@@ -12,10 +13,18 @@ At flight check-in, the passenger is issued a boarding pass `(boarding_passes)`,
 
 The number of seats `(seats)` in the aircraft and their distribution between different travel classes depends on the model of the aircraft `(aircrafts)` performing the flight. It is assumed that every aircraft model has only one cabin configuration. Database schema does not check that seat numbers in boarding passes have the corresponding seats in the aircraft (such verification can be done using table triggers, or at the application level).
 
+## **1.4.1. List of Relations**
 
-
-## Documentation
-
-[Documentation](https://linktodocumentation)
-
-
+`
+              List of relations
+  Schema  |      Name       | Type  |  Owner  
+----------+-----------------+-------+---------
+ bookings | aircrafts_data  | table | admin
+ bookings | airports_data   | table | admin
+ bookings | boarding_passes | table | admin
+ bookings | bookings        | table | admin
+ bookings | flights         | table | admin
+ bookings | seats           | table | admin
+ bookings | ticket_flights  | table | admin
+ bookings | tickets         | table | admin
+`
