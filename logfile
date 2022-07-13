@@ -16732,3 +16732,22 @@
 2022-07-09 21:47:34.767 EAT [17920] HINT:  Use DROP TABLE to remove a table.
 2022-07-09 21:47:34.767 EAT [17920] STATEMENT:  DROP TABLE IF EXISTS aircrafts_data CASCADE;
 	DROP VIEW IF EXISTS aircrafts CASCADE;
+2022-07-13 02:38:46.923 EAT [22208] LOG:  starting PostgreSQL 14.2 on aarch64-unknown-linux-android, compiled by Android (7714059, based on r416183c1) clang version 12.0.8 (https://android.googlesource.com/toolchain/llvm-project c935d99d7cf2016289302412d708641d52d2f7ee), 64-bit
+2022-07-13 02:38:46.925 EAT [22208] LOG:  listening on IPv4 address "127.0.0.1", port 5432
+2022-07-13 02:38:46.928 EAT [22208] LOG:  listening on Unix socket "/data/data/com.termux/files/usr/tmp/.s.PGSQL.5432"
+2022-07-13 02:38:47.011 EAT [22214] LOG:  database system was interrupted; last known up at 2022-07-10 05:35:42 EAT
+2022-07-13 02:38:47.283 EAT [22214] LOG:  database system was not properly shut down; automatic recovery in progress
+2022-07-13 02:38:47.291 EAT [22214] LOG:  redo starts at 0/1CB0C70
+2022-07-13 02:38:47.292 EAT [22214] LOG:  invalid record length at 0/1CB0D58: wanted 24, got 0
+2022-07-13 02:38:47.292 EAT [22214] LOG:  redo done at 0/1CB0D20 system usage: CPU: user: 0.00 s, system: 0.00 s, elapsed: 0.00 s
+2022-07-13 02:38:47.355 EAT [22208] LOG:  database system is ready to accept connections
+2022-07-13 02:39:02.068 EAT [22563] ERROR:  insert or update on table "aircrafts" violates foreign key constraint "airlines_pk"
+2022-07-13 02:39:02.068 EAT [22563] DETAIL:  Key (company_id)=(3) is not present in table "airlines".
+2022-07-13 02:39:02.068 EAT [22563] STATEMENT:  -- name: CreateAircraft :one
+	INSERT INTO aircrafts (
+	  code, model, range, company_id
+	) VALUES (
+	  $1, $2, $3 ,$4
+	)
+	RETURNING code, model, range, company_id, created_at
+	
