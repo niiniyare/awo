@@ -15,7 +15,7 @@ The number of seats `(seats)` in the aircraft and their distribution between dif
 
 ## **1.4.1. List of Relations**
 
-`
+```bash
               List of relations
   Schema  |      Name       | Type  |  Owner  
 ----------+-----------------+-------+---------
@@ -27,4 +27,4 @@ The number of seats `(seats)` in the aircraft and their distribution between dif
  bookings | seats           | table | admin
  bookings | ticket_flights  | table | admin
  bookings | tickets         | table | admin
-`
+```
