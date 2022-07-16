@@ -60,13 +60,13 @@ SET row_security = off;
 --
 
 CREATE TABLE IF NOT EXISTS airlines (
-    id BIGSERIAL NOT NULL,
+    id BIGSERIAL PRIMARY KEY NOT NULL,
     company_name VARCHAR(50) NOT NULL,
     iata_code VARCHAR(5) NOT NULL,
     main_airport VARCHAR(3) NOT NULL,
-    created_at timestamptz NOT NULL DEFAULT (now()),
+    created_at timestamptz NOT NULL DEFAULT (now())
  -- account numeric NOT NULL,
-    CONSTRAINT airlines_pk PRIMARY KEY (id)
+ --   CONSTRAINT airlines_pk PRIMARY KEY (id)
   );
 
 CREATE SEQUENCE IF NOT EXISTS airlines_id_seq

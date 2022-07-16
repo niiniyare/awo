@@ -1,28 +1,22 @@
+-- CREATE EXTENSION postgis;
 
-
-CREATE TABLE airports (
-  airport_code VARCHAR(3) NOT NULL,
-  airport_name TEXT NOT NULL,
-  country_code VARCHAR(3) NOT NULL,
-  city TEXT NOT NULL,
-  coordinates POINT NOT NULL,
-  timezone TEXT NOT NULL,
-  created_at timestamptz NOT NULL DEFAULT (now()),
-  CONSTRAINT airports_pkey PRIMARY KEY (airport_code)
-  );
-
-
- COMMENT  ON TABLE airports IS 'Airports (internal data)';
- COMMENT  ON COLUMN airports.airport_code IS 'Airport code';
-
-
- COMMENT  ON COLUMN airports.airport_name IS 'Airport name';
-
- COMMENT  ON COLUMN airports.city IS 'City';
-
- COMMENT  ON COLUMN airports.country_code IS 'Country';
-  
-COMMENT  ON COLUMN airports.coordinates IS 'Airport coordinates (longitude and latitude)';
-
-COMMENT  ON COLUMN airports.timezone IS 'Airport time zone';
-COMMENT  ON COLUMN airports.Created_at IS 'time airport record Created';
+CREATE TABLE airport (
+    id integer PRIMARY KEY GENERATED ALWAYS AS IDENTITY,
+    iata_code text NOT NULL,
+    -- Check if it is a valid airport iata code, e.g. TLV, LAX, etc.
+    CHECK (iata_code ~ '\A[A-Z]{3}\Z'),
+    icao_code text NOT NULL,
+    -- Check if it is a valid airport icao code, e.g. LLBG, KLAX, etc.
+    CHECK (icao_code ~ '\A[A-Z]{4}\Z'),
+    name text NOT NULL,
+    subdivision_code text NOT NULL,
+    -- Check if it is a valid ISO 3166-2 subdivision code, e.g. IL-M, US-CA, etc.
+    CHECK (subdivision_code ~ '\A[A-Z]{2}-[A-Z0-9]{1,3}\Z'),
+    city text NOT NULL,
+  -- we use below command if PostGIS is installed in our system 
+    
+  --  coordinates geography(point) NOT NULL,
+  -- If PostGIS not installed this'll will work
+    coordinates point NOT NULL,
+    UNIQUE (iata_code, icao_code)
+);

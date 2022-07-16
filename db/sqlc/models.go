@@ -10,6 +10,7 @@ import (
 
 // Aircrafts (internal data)
 type Aircraft struct {
+	ID int64 `json:"id"`
 	// Aircraft code, IATA
 	Code string `json:"code"`
 	// Aircraft model
