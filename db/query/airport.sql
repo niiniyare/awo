@@ -6,7 +6,7 @@ name,
 --subdivision_code,
 city, 
 coordinates) VALUES
-(  $1 , $2 , $3 , $4, $5, POINT($6)
+(  $1 , $2 , $3 , $4, POINT($5)
 )
 RETURNING * ;
 /*
@@ -23,10 +23,10 @@ RETURNING * ;
 */
 -- name: GetAirports :one
 SELECT * FROM airports
-WHERE airport_code = $1 LIMIT 1;
+WHERE iata_code = $1 LIMIT 1;
 
 -- name: ListAirports :many
-SELECT id, iata_code
+SELECT id, iata_code,
 name ,
 city
 FROM airports

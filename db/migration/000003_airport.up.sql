@@ -1,6 +1,6 @@
--- CREATE EXTENSION postgis;
+ CREATE EXTENSION IF NOT EXISTS postgis;
 
-CREATE TABLE airports (
+CREATE TABLE IF NOT EXISTS airports (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     iata_code text NOT NULL,
     -- Check if it is a valid airport iata code, e.g. TLV, LAX, etc.
@@ -9,7 +9,7 @@ CREATE TABLE airports (
     -- Check if it is a valid airport icao code, e.g. LLBG, KLAX, etc.
     CHECK (icao_code ~ '\A[A-Z]{4}\Z'),
     name text NOT NULL,
-   -- subdivision_code text NOT NULL,
+    subdivision_code text NOT NULL,
     -- Check if it is a valid ISO 3166-2 subdivision code, e.g. IL-M, US-CA, etc.
     CHECK (subdivision_code ~ '\A[A-Z]{2}-[A-Z0-9]{1,3}\Z'),
     city text NOT NULL,

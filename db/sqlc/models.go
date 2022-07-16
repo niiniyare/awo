@@ -29,20 +29,11 @@ type Airline struct {
 	CreatedAt   time.Time `json:"created_at"`
 }
 
-// Airports (internal data)
 type Airport struct {
-	// Airport code
-	AirportCode string `json:"airport_code"`
-	// Airport name
-	AirportName string `json:"airport_name"`
-	// Country
-	CountryCode string `json:"country_code"`
-	// City
-	City string `json:"city"`
-	// Airport coordinates (longitude and latitude)
+	ID          int64       `json:"id"`
+	IataCode    string      `json:"iata_code"`
+	IcaoCode    string      `json:"icao_code"`
+	Name        string      `json:"name"`
+	City        string      `json:"city"`
 	Coordinates interface{} `json:"coordinates"`
-	// Airport time zone
-	Timezone string `json:"timezone"`
-	// time airport record Created
-	CreatedAt time.Time `json:"created_at"`
 }
