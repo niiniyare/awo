@@ -1,6 +1,7 @@
 
 CREATE TABLE IF NOT EXISTS aircrafts (
-    code VARCHAR(3) PRIMARY KEY NOT NULL,
+    id BIGSERIAL PRIMARY KEY NOT NULL,
+    code VARCHAR(3)  NOT NULL,
     model VARCHAR(50) NOT NULL,
     range integer NOT NULL,
     company_id BIGSERIAL NOT NULL,

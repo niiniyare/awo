@@ -1,37 +1,38 @@
-
 -- name: CreateAirports :one
-INSERT INTO airports (
-  airport_code , 
-  airport_name ,
-  city , 
-  coordinates
-) VALUES (
-  $1 , $2 , $3 , $4
+INSERT INTO airports(
+iata_code, 
+icao_code, 
+name, 
+--subdivision_code,
+city, 
+coordinates) VALUES
+(  $1 , $2 , $3 , $4, POINT($5)
 )
 RETURNING * ;
+/*
 -- name: CreateAirportList :many
 INSERT INTO airports (
-  airport_code , 
-  airport_name ,
-  city , 
-  coordinates
+    iata_code
+    name ,
+    city ,
+    coordinates
 ) VALUES (
-  $1 , $2 , $3 , POINT($4)
+    $1 , $2 , $3 , SRID=4326;POINT($4)
 )
 RETURNING * ;
+*/
 -- name: GetAirports :one
 SELECT * FROM airports
-WHERE airport_code  = $1 LIMIT 1;
+WHERE iata_code = $1 LIMIT 1;
 
 -- name: ListAirports :many
-SELECT airport_code,
-  airport_name ,
-  city
+SELECT id, iata_code,
+name ,
+city
 FROM airports
-ORDER BY airport_code;
+ORDER BY id;
 
 -- name: DeleteAirports :exec
 DELETE FROM airports
-WHERE airport_code  = $1
+WHERE id = $1
 RETURNING *;
-

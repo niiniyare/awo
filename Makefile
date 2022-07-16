@@ -10,8 +10,8 @@ server:
 
 BUF_VERSION:=0.55.0
 
-install:
-	curl -sSL \
+install: ## Install dependencies and prepared development configuration
+	@curl -sSL \
     	"https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(shell uname -s)-$(shell uname -m)" \
     	-o "$(shell go env GOPATH)/bin/buf" && \
   	chmod +x "$(shell go env GOPATH)/bin/buf" && \
@@ -47,4 +47,8 @@ dbdocs:
 
 sql2dbml:
 	sql2dbml docs/schema.up.sql  --postgres -o docs/schema.dbml
-.PHONY: clean gen server client testinstall  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc
+help: 
+	@grep -E '^[a-zA-Z_-]+:.*?## .*9252' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "[36m%-30s[0m %s", 92521, 92522}'
+
+
+.PHONY: clean gen server client testinstall  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help

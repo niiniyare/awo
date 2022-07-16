@@ -1,10 +1,12 @@
 -- name: GetAircraft :one
 SELECT * FROM aircrafts
-WHERE code = $1 LIMIT 1;
+WHERE id = $1 LIMIT 1;
 
 -- name: ListAircraft :many
 SELECT * FROM aircrafts
-ORDER BY name;
+ORDER BY id
+LIMIT $1
+OFFSET $2;
 
 -- name: CreateAircraft :one
 INSERT INTO aircrafts (
@@ -16,7 +18,7 @@ RETURNING *;
 
 -- name: DeleteAircraft :exec
 DELETE FROM aircrafts
-WHERE code = $1;
+WHERE id = $1;
 /*
 -- Example
 INSERT INTO aircrafts (

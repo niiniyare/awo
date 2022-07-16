@@ -10,31 +10,23 @@ import (
 )
 
 const createAirportList = `-- name: CreateAirportList :many
+/*
 INSERT INTO airports (
-  airport_code , 
-  airport_name ,
-  city , 
-  coordinates
+    iata_code
+    name ,
+    city ,
+    coordinates
 ) VALUES (
-  $1 , $2 , $3 , POINT($4)
+    $1 , $2 , $3 , SRID=4326;POINT($4)
 )
-RETURNING airport_code, airport_name, country_code, city, coordinates, timezone, created_at
+RETURNING * ;
+*/
+SELECT id, iata_code, icao_code, name, city, coordinates FROM airports
+WHERE iata_code = $1 LIMIT 1
 `
 
-type CreateAirportListParams struct {
-	AirportCode string      `json:"airport_code"`
-	AirportName string      `json:"airport_name"`
-	City        string      `json:"city"`
-	Point       interface{} `json:"point"`
-}
-
-func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]Airport, error) {
-	rows, err := q.db.QueryContext(ctx, createAirportList,
-		arg.AirportCode,
-		arg.AirportName,
-		arg.City,
-		arg.Point,
-	)
+func (q *Queries) CreateAirportList(ctx context.Context, iataCode string) ([]Airport, error) {
+	rows, err := q.db.QueryContext(ctx, createAirportList, iataCode)
 	if err != nil {
 		return nil, err
 	}
@@ -43,13 +35,12 @@ func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListPa
 	for rows.Next() {
 		var i Airport
 		if err := rows.Scan(
-			&i.AirportCode,
-			&i.AirportName,
-			&i.CountryCode,
+			&i.ID,
+			&i.IataCode,
+			&i.IcaoCode,
+			&i.Name,
 			&i.City,
 			&i.Coordinates,
-			&i.Timezone,
-			&i.CreatedAt,
 		); err != nil {
 			return nil, err
 		}
@@ -65,87 +56,70 @@ func (q *Queries) CreateAirportList(ctx context.Context, arg CreateAirportListPa
 }
 
 const createAirports = `-- name: CreateAirports :one
-INSERT INTO airports (
-  airport_code , 
-  airport_name ,
-  city , 
-  coordinates
-) VALUES (
-  $1 , $2 , $3 , $4
+INSERT INTO airports(
+iata_code, 
+icao_code, 
+name, 
+city, 
+coordinates) VALUES
+(  $1 , $2 , $3 , $4, POINT($5)
 )
-RETURNING airport_code, airport_name, country_code, city, coordinates, timezone, created_at
+RETURNING id, iata_code, icao_code, name, city, coordinates
 `
 
 type CreateAirportsParams struct {
-	AirportCode string      `json:"airport_code"`
-	AirportName string      `json:"airport_name"`
-	City        string      `json:"city"`
-	Coordinates interface{} `json:"coordinates"`
+	IataCode string      `json:"iata_code"`
+	IcaoCode string      `json:"icao_code"`
+	Name     string      `json:"name"`
+	City     string      `json:"city"`
+	Point    interface{} `json:"point"`
 }
 
+//subdivision_code,
 func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) (Airport, error) {
 	row := q.db.QueryRowContext(ctx, createAirports,
-		arg.AirportCode,
-		arg.AirportName,
+		arg.IataCode,
+		arg.IcaoCode,
+		arg.Name,
 		arg.City,
-		arg.Coordinates,
+		arg.Point,
 	)
 	var i Airport
 	err := row.Scan(
-		&i.AirportCode,
-		&i.AirportName,
-		&i.CountryCode,
+		&i.ID,
+		&i.IataCode,
+		&i.IcaoCode,
+		&i.Name,
 		&i.City,
 		&i.Coordinates,
-		&i.Timezone,
-		&i.CreatedAt,
 	)
 	return i, err
 }
 
 const deleteAirports = `-- name: DeleteAirports :exec
 DELETE FROM airports
-WHERE airport_code  = $1
-RETURNING airport_code, airport_name, country_code, city, coordinates, timezone, created_at
+WHERE id = $1
+RETURNING id, iata_code, icao_code, name, city, coordinates
 `
 
-func (q *Queries) DeleteAirports(ctx context.Context, airportCode string) error {
-	_, err := q.db.ExecContext(ctx, deleteAirports, airportCode)
+func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAirports, id)
 	return err
 }
 
-const getAirports = `-- name: GetAirports :one
-SELECT airport_code, airport_name, country_code, city, coordinates, timezone, created_at FROM airports
-WHERE airport_code  = $1 LIMIT 1
-`
-
-func (q *Queries) GetAirports(ctx context.Context, airportCode string) (Airport, error) {
-	row := q.db.QueryRowContext(ctx, getAirports, airportCode)
-	var i Airport
-	err := row.Scan(
-		&i.AirportCode,
-		&i.AirportName,
-		&i.CountryCode,
-		&i.City,
-		&i.Coordinates,
-		&i.Timezone,
-		&i.CreatedAt,
-	)
-	return i, err
-}
-
 const listAirports = `-- name: ListAirports :many
-SELECT airport_code,
-  airport_name ,
-  city
+SELECT id, iata_code,
+name ,
+city
 FROM airports
-ORDER BY airport_code
+ORDER BY id
 `
 
 type ListAirportsRow struct {
-	AirportCode string `json:"airport_code"`
-	AirportName string `json:"airport_name"`
-	City        string `json:"city"`
+	ID       int64  `json:"id"`
+	IataCode string `json:"iata_code"`
+	Name     string `json:"name"`
+	City     string `json:"city"`
 }
 
 func (q *Queries) ListAirports(ctx context.Context) ([]ListAirportsRow, error) {
@@ -157,7 +131,12 @@ func (q *Queries) ListAirports(ctx context.Context) ([]ListAirportsRow, error) {
 	items := []ListAirportsRow{}
 	for rows.Next() {
 		var i ListAirportsRow
-		if err := rows.Scan(&i.AirportCode, &i.AirportName, &i.City); err != nil {
+		if err := rows.Scan(
+			&i.ID,
+			&i.IataCode,
+			&i.Name,
+			&i.City,
+		); err != nil {
 			return nil, err
 		}
 		items = append(items, i)

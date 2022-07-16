@@ -15,7 +15,7 @@ INSERT INTO aircrafts (
 ) VALUES (
   $1, $2, $3 ,$4
 )
-RETURNING code, model, range, company_id, created_at
+RETURNING id, code, model, range, company_id, created_at
 `
 
 type CreateAircraftParams struct {
@@ -34,6 +34,7 @@ func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) 
 	)
 	var i Aircraft
 	err := row.Scan(
+		&i.ID,
 		&i.Code,
 		&i.Model,
 		&i.Range,
@@ -45,23 +46,24 @@ func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) 
 
 const deleteAircraft = `-- name: DeleteAircraft :exec
 DELETE FROM aircrafts
-WHERE code = $1
+WHERE id = $1
 `
 
-func (q *Queries) DeleteAircraft(ctx context.Context, code string) error {
-	_, err := q.db.ExecContext(ctx, deleteAircraft, code)
+func (q *Queries) DeleteAircraft(ctx context.Context, id int64) error {
+	_, err := q.db.ExecContext(ctx, deleteAircraft, id)
 	return err
 }
 
 const getAircraft = `-- name: GetAircraft :one
-SELECT code, model, range, company_id, created_at FROM aircrafts
-WHERE code = $1 LIMIT 1
+SELECT id, code, model, range, company_id, created_at FROM aircrafts
+WHERE id = $1 LIMIT 1
 `
 
-func (q *Queries) GetAircraft(ctx context.Context, code string) (Aircraft, error) {
-	row := q.db.QueryRowContext(ctx, getAircraft, code)
+func (q *Queries) GetAircraft(ctx context.Context, id int64) (Aircraft, error) {
+	row := q.db.QueryRowContext(ctx, getAircraft, id)
 	var i Aircraft
 	err := row.Scan(
+		&i.ID,
 		&i.Code,
 		&i.Model,
 		&i.Range,
@@ -72,12 +74,19 @@ func (q *Queries) GetAircraft(ctx context.Context, code string) (Aircraft, error
 }
 
 const listAircraft = `-- name: ListAircraft :many
-SELECT code, model, range, company_id, created_at FROM aircrafts
-ORDER BY name
+SELECT id, code, model, range, company_id, created_at FROM aircrafts
+ORDER BY id
+LIMIT $1
+OFFSET $2
 `
 
-func (q *Queries) ListAircraft(ctx context.Context) ([]Aircraft, error) {
-	rows, err := q.db.QueryContext(ctx, listAircraft)
+type ListAircraftParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error) {
+	rows, err := q.db.QueryContext(ctx, listAircraft, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -86,6 +95,7 @@ func (q *Queries) ListAircraft(ctx context.Context) ([]Aircraft, error) {
 	for rows.Next() {
 		var i Aircraft
 		if err := rows.Scan(
+			&i.ID,
 			&i.Code,
 			&i.Model,
 			&i.Range,

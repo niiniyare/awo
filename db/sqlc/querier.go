@@ -11,15 +11,15 @@ import (
 type Querier interface {
 	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error)
 	CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error)
-	CreateAirportList(ctx context.Context, arg CreateAirportListParams) ([]Airport, error)
+	CreateAirportList(ctx context.Context, iataCode string) ([]Airport, error)
+	//subdivision_code,
 	CreateAirports(ctx context.Context, arg CreateAirportsParams) (Airport, error)
-	DeleteAircraft(ctx context.Context, code string) error
+	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
-	DeleteAirports(ctx context.Context, airportCode string) error
-	GetAircraft(ctx context.Context, code string) (Aircraft, error)
+	DeleteAirports(ctx context.Context, id int64) error
+	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
-	GetAirports(ctx context.Context, airportCode string) (Airport, error)
-	ListAircraft(ctx context.Context) ([]Aircraft, error)
+	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirports(ctx context.Context) ([]ListAirportsRow, error)
 }
