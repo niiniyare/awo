@@ -1,41 +1,41 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"os"
 	"testing"
 
-	_ "github.com/lib/pq"
-	"github.com/niiniyare/awo/util"
+	"github.com/jackc/pgx/v4/pgxpool"
+	_ "github.com/jackc/pgx/v4/stdlib"
 )
 
 var testQueries *Queries
-var testDB *sql.DB
+
+// var testDB *pgxpool.Conn
 
 func TestMain(m *testing.M) {
-	config, err := util.LoadConfig("../..")
+	//config, err := util.LoadConfig("../..")
+	//if err != nil {
+	//	log.Fatal("cannot load config:", err)
+	//}
+	// pgconfig := &pgconn.Config{
+	// 	Host:     "localhost",
+	// 	Port:     5432,
+	// 	Database: "flight",
+	// 	User:     "admin",
+	// 	Password: "admin",
+	// }
+	// var err error
+
+	//testDB,	testDB, err = pgi
+
+	testDB, err := pgxpool.Connect(context.Background(), "postgresql://admin:admin@localhost:5432/flight?sslmode=disable")
 	if err != nil {
-		log.Fatal("cannot load config:", err)
+		log.Fatalln("testDB failed to connect:", err)
 	}
 
-	testDB, err = pgx.Connect(context.Background(), config.DBSource)
-	if err != nil {
-		log.Fatal("cannot connect to db:", err)
-	}
-
-	testQueries = New(testDB)
-
-	os.Exit(m.Run())
-}
-
-func estMain(m *testing.M) {
-	config, err := util.LoadConfig("../..")
-	if err != nil {
-		log.Fatal("cannot load config:", err)
-	}
-
-	testDB, err = sql.Open(config.DBDriver, config.DBSource)
+	defer testDB.Close()
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}

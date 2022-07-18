@@ -59,7 +59,7 @@ func RandomCurrency() string {
 func RandomPoint() string {
     latitude := RandomFloat32(-90,90)
     longitude := RandomFloat32(-180, 180)
-	return fmt.Sprintf("POINT(%.6f %.6f)", longitude, latitude)
+	return fmt.Sprintf("(%.6f %.6f)", longitude, latitude)
 }
 
 func RandomEmail() string {

@@ -10,4 +10,7 @@ packages:
     emit_interface: true
     emit_exact_table_names: false
     emit_empty_slices: true
-    #sql_package: "pgx/v4"
+    sql_package: "pgx/v4"    
+    overrides: 
+      - column: "airports.coordinates" 
+        go_type: "github.com/jackc/pgtype.Point"

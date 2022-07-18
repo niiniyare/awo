@@ -41,7 +41,7 @@ sqlc:
 test:
 	go test -v -cover ./...
 mock:
-	mockgen -package mockdb -destination db/mock/store.go github.com/niiniyare/awo/db/sqlc Store
+	mockgen -package mockdb -destination db/mock/store.go github.com/niiniyare/awo/db/sqlc Querier
 dbdocs: 
 	dbdocs build docs/schema.dbml
 

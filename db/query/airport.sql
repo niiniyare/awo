@@ -1,4 +1,4 @@
--- name: CreateAirports :one
+-- name: CreateAirport :one
 INSERT INTO airports(
 iata_code, 
 icao_code, 
@@ -9,23 +9,11 @@ coordinates) VALUES
 (  $1 , $2 , $3 , $4, POINT($5)
 )
 RETURNING * ;
-/*
--- name: CreateAirportList :many
-INSERT INTO airports (
-    iata_code
-    name ,
-    city ,
-    coordinates
-) VALUES (
-    $1 , $2 , $3 , SRID=4326;POINT($4)
-)
-RETURNING * ;
-*/
--- name: GetAirports :one
+-- name: GetAirport :one
 SELECT * FROM airports
 WHERE iata_code = $1 LIMIT 1;
 
--- name: ListAirports :many
+-- name: ListAirport :many
 SELECT id, iata_code,
 name ,
 city
