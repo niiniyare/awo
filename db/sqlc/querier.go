@@ -11,17 +11,18 @@ import (
 type Querier interface {
 	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error)
 	CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error)
-	//subdivision_code,
+	//subdivision_code
+	//coordinates
 	CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error)
 	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
 	DeleteAirports(ctx context.Context, id int64) error
 	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
-	GetAirports(ctx context.Context, iataCode string) (Airport, error)
+	GetAirport(ctx context.Context, iataCode string) (Airport, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
-	ListAirports(ctx context.Context) ([]ListAirportsRow, error)
+	ListAirport(ctx context.Context) ([]ListAirportRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

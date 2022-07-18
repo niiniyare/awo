@@ -3,10 +3,11 @@ INSERT INTO airports(
 iata_code, 
 icao_code, 
 name, 
---subdivision_code,
-city, 
-coordinates) VALUES
-(  $1 , $2 , $3 , $4, POINT($5)
+--subdivision_code
+city 
+--coordinates
+) VALUES
+(  $1 , $2 , $3 , $4
 )
 RETURNING * ;
 -- name: GetAirport :one

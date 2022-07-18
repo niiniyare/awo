@@ -152,19 +152,19 @@ func (mr *MockQuerierMockRecorder) GetAirline(arg0, arg1 interface{}) *gomock.Ca
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAirline", reflect.TypeOf((*MockQuerier)(nil).GetAirline), arg0, arg1)
 }
 
-// GetAirports mocks base method.
-func (m *MockQuerier) GetAirports(arg0 context.Context, arg1 string) (db.Airport, error) {
+// GetAirport mocks base method.
+func (m *MockQuerier) GetAirport(arg0 context.Context, arg1 string) (db.Airport, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "GetAirports", arg0, arg1)
+	ret := m.ctrl.Call(m, "GetAirport", arg0, arg1)
 	ret0, _ := ret[0].(db.Airport)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// GetAirports indicates an expected call of GetAirports.
-func (mr *MockQuerierMockRecorder) GetAirports(arg0, arg1 interface{}) *gomock.Call {
+// GetAirport indicates an expected call of GetAirport.
+func (mr *MockQuerierMockRecorder) GetAirport(arg0, arg1 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAirports", reflect.TypeOf((*MockQuerier)(nil).GetAirports), arg0, arg1)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "GetAirport", reflect.TypeOf((*MockQuerier)(nil).GetAirport), arg0, arg1)
 }
 
 // ListAircraft mocks base method.
@@ -197,17 +197,17 @@ func (mr *MockQuerierMockRecorder) ListAirline(arg0, arg1 interface{}) *gomock.C
 	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirline", reflect.TypeOf((*MockQuerier)(nil).ListAirline), arg0, arg1)
 }
 
-// ListAirports mocks base method.
-func (m *MockQuerier) ListAirports(arg0 context.Context) ([]db.ListAirportsRow, error) {
+// ListAirport mocks base method.
+func (m *MockQuerier) ListAirport(arg0 context.Context) ([]db.ListAirportRow, error) {
 	m.ctrl.T.Helper()
-	ret := m.ctrl.Call(m, "ListAirports", arg0)
-	ret0, _ := ret[0].([]db.ListAirportsRow)
+	ret := m.ctrl.Call(m, "ListAirport", arg0)
+	ret0, _ := ret[0].([]db.ListAirportRow)
 	ret1, _ := ret[1].(error)
 	return ret0, ret1
 }
 
-// ListAirports indicates an expected call of ListAirports.
-func (mr *MockQuerierMockRecorder) ListAirports(arg0 interface{}) *gomock.Call {
+// ListAirport indicates an expected call of ListAirport.
+func (mr *MockQuerierMockRecorder) ListAirport(arg0 interface{}) *gomock.Call {
 	mr.mock.ctrl.T.Helper()
-	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirports", reflect.TypeOf((*MockQuerier)(nil).ListAirports), arg0)
+	return mr.mock.ctrl.RecordCallWithMethodType(mr.mock, "ListAirport", reflect.TypeOf((*MockQuerier)(nil).ListAirport), arg0)
 }
