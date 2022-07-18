@@ -2,13 +2,17 @@ package main
 
 import (
 	"fmt"
-	"time"
-
+	
 	"github.com/niiniyare/awo/util"
 )
 
 func main() {
-	now := time.Now()
+
+	fmt.Println(util.RandomPoint())
+
+}
+
+/*now := time.Now()
 	for a := 1; a < 10000; a++ {
 		//	RandomOwner()
 		fmt.Printf("%d:  %v \n", a, util.RandomString(6))
@@ -18,3 +22,4 @@ func main() {
 
 	fmt.Println("Elapsed MiliSeconds: ", diff.Milliseconds())
 }
+*/

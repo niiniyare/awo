@@ -21,7 +21,7 @@ INSERT INTO airports (
 )
 RETURNING * ;
 */
-SELECT id, iata_code, icao_code, name, city, coordinates FROM airports
+SELECT id, iata_code, icao_code, name, subdivision_code, city, coordinates FROM airports
 WHERE iata_code = $1 LIMIT 1
 `
 
@@ -39,6 +39,7 @@ func (q *Queries) CreateAirportList(ctx context.Context, iataCode string) ([]Air
 			&i.IataCode,
 			&i.IcaoCode,
 			&i.Name,
+			&i.SubdivisionCode,
 			&i.City,
 			&i.Coordinates,
 		); err != nil {
@@ -64,7 +65,7 @@ city,
 coordinates) VALUES
 (  $1 , $2 , $3 , $4, POINT($5)
 )
-RETURNING id, iata_code, icao_code, name, city, coordinates
+RETURNING id, iata_code, icao_code, name, subdivision_code, city, coordinates
 `
 
 type CreateAirportsParams struct {
@@ -90,6 +91,7 @@ func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) 
 		&i.IataCode,
 		&i.IcaoCode,
 		&i.Name,
+		&i.SubdivisionCode,
 		&i.City,
 		&i.Coordinates,
 	)
@@ -99,7 +101,7 @@ func (q *Queries) CreateAirports(ctx context.Context, arg CreateAirportsParams) 
 const deleteAirports = `-- name: DeleteAirports :exec
 DELETE FROM airports
 WHERE id = $1
-RETURNING id, iata_code, icao_code, name, city, coordinates
+RETURNING id, iata_code, icao_code, name, subdivision_code, city, coordinates
 `
 
 func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {

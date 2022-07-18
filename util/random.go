@@ -30,7 +30,14 @@ func RandomString(n int) string {
 
 	return sb.String()
 }
+func RandomFloat64(min,max float64)float64 {
+    return min + rand.Float64()*(max-min)
+    
+} 
 
+func RandomFloat32(min, max float32)float32 {
+    return min + rand.Float32()*(max-min)
+}
 // RandomOwner generates a random owner name
 func RandomOwner() string {
 	return RandomString(6)
@@ -48,7 +55,13 @@ func RandomCurrency() string {
 	return currencies[rand.Intn(n)]
 }
 
-// RandomEmail generates a random email
-func RandomEmail() string {
-	return fmt.Sprintf("%s@email.com", RandomString(6))
+// range from -90to90 for latitude and-180to180 for longitude.
+func RandomPoint() string {
+    latitude := RandomFloat32(-90,90)
+    longitude := RandomFloat32(-180, 180)
+	return fmt.Sprintf("POINT(%.6f %.6f)", longitude, latitude)
 }
+
+func RandomEmail() string {
+return fmt.Sprintf("%s@email.com", RandomString(6))
+	}

@@ -1,5 +1,5 @@
 package db
-
+/*
 import (
 	"context"
 	"database/sql"
@@ -44,3 +44,4 @@ func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) erro
 
 	return tx.Commit()
 }
+*/

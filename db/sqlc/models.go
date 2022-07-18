@@ -30,10 +30,11 @@ type Airline struct {
 }
 
 type Airport struct {
-	ID          int64       `json:"id"`
-	IataCode    string      `json:"iata_code"`
-	IcaoCode    string      `json:"icao_code"`
-	Name        string      `json:"name"`
-	City        string      `json:"city"`
-	Coordinates interface{} `json:"coordinates"`
+	ID              int64       `json:"id"`
+	IataCode        string      `json:"iata_code"`
+	IcaoCode        string      `json:"icao_code"`
+	Name            string      `json:"name"`
+	SubdivisionCode string      `json:"subdivision_code"`
+	City            string      `json:"city"`
+	Coordinates     interface{} `json:"coordinates"`
 }
