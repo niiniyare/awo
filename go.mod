@@ -9,7 +9,6 @@ require (
 	github.com/google/uuid v1.3.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.10.3
 	github.com/jackc/pgconn v1.12.1
-	github.com/jackc/pgtype v1.11.0
 	github.com/jackc/pgx/v4 v4.16.1
 	github.com/kyleconroy/sqlc v1.14.0
 	github.com/micro/micro/v3 v3.10.1
@@ -58,6 +57,7 @@ require (
 	github.com/jackc/pgpassfile v1.0.0 // indirect
 	github.com/jackc/pgproto3/v2 v2.3.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
+	github.com/jackc/pgtype v1.11.0 // indirect
 	github.com/jackc/puddle v1.2.1 // indirect
 	github.com/jinzhu/inflection v1.0.0 // indirect
 	github.com/klauspost/cpuid v1.3.1 // indirect
