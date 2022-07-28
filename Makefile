@@ -2,7 +2,10 @@ DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
 clean:
 	rm pkg/api/v1/*.go
 	rm swagger/*
-	
+test-coverage: 
+	go test -v ./... -covermode=count -coverpkg=./... -coverprofile coverage/coverage.out 
+	go tool cover -html coverage/coverage.out -o coverage/coverage.html 
+	open coverage/coverage.html	
 gen:
 	protoc --proto_path=api/proto/v1 api/proto/v1/*.proto --proto_path=third_party  --go_out=:pkg/api/v1 --go-grpc_out=:pkg/api/v1 --grpc-gateway_out=:pkg/api/v1 --openapiv2_out=:swagger
 server:
@@ -50,5 +53,7 @@ sql2dbml:
 help: 
 	@grep -E '^[a-zA-Z_-]+:.*?## .*9252' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "[36m%-30s[0m %s", 92521, 92522}'
 
+testdb:
+	go test -v -cover ./db/sqlc/...
 
 .PHONY: clean gen server client testinstall  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help
