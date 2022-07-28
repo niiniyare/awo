@@ -2,10 +2,6 @@ DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
 clean:
 	rm pkg/api/v1/*.go
 	rm swagger/*
-test-coverage: 
-	go test -v ./... -covermode=count -coverpkg=./... -coverprofile coverage/coverage.out 
-	go tool cover -html coverage/coverage.out -o coverage/coverage.html 
-	open coverage/coverage.html	
 gen:
 	protoc --proto_path=api/proto/v1 api/proto/v1/*.proto --proto_path=third_party  --go_out=:pkg/api/v1 --go-grpc_out=:pkg/api/v1 --grpc-gateway_out=:pkg/api/v1 --openapiv2_out=:swagger
 server:
