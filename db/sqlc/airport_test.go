@@ -75,11 +75,27 @@ func TestDeleteAirport(t *testing.T) {
 
 }
 
-func TestUpdateAirport(t *testing.T) {
+func TestListAirportAirport(t *testing.T) {
 	r := require.New(t)
-	airport1 := CreateRandomAirport(t)
-	r.NotEmpty(airport1)
 
-	
+	for i := 0; i < 10; i++ {
+
+		airport0 := CreateRandomAirport(t)
+		r.NotEmpty(airport0)
+
+	}
+
+	airport, err := testQueries.ListAirport(context.Background())
+
+	r.NoError(err)
+	r.NotEmpty(airport)
+	r.NotNil(airport)
+	r.GreaterOrEqual(len(airport), 0)
 
 }
+
+// func TestListAirport(t *testing.T) {
+//
+//
+//
+// }
