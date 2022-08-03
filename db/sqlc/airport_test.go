@@ -74,3 +74,12 @@ func TestDeleteAirport(t *testing.T) {
 	r.Empty(airport2)
 
 }
+
+func TestUpdateAirport(t *testing.T) {
+	r := require.New(t)
+	airport1 := CreateRandomAirport(t)
+	r.NotEmpty(airport1)
+
+	
+
+}

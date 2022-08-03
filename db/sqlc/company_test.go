@@ -94,7 +94,7 @@ func TestDeleteAirline(t *testing.T) {
 
 }
 
-func TestUpdateAirline(t *testing.T) {
-	t.Skip("not implemented")
-
-}
+// func TestUpdateAirline(t *testing.T) {
+// 	t.Skip("not implemented")
+//
+// }
