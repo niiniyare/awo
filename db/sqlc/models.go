@@ -40,7 +40,7 @@ type Airport struct {
 }
 
 type Flight struct {
-	FlightID           int32        `json:"flight_id"`
+	FlightID           int64        `json:"flight_id"`
 	FlightNo           string       `json:"flight_no"`
 	CompanyID          int64        `json:"company_id"`
 	ScheduledDeparture time.Time    `json:"scheduled_departure"`
@@ -55,7 +55,7 @@ type Flight struct {
 
 type FlightsV struct {
 	// Flight ID
-	FlightID int32 `json:"flight_id"`
+	FlightID int64 `json:"flight_id"`
 	// Flight number
 	FlightNo  string `json:"flight_no"`
 	CompanyID int64  `json:"company_id"`

@@ -1,7 +1,7 @@
 CREATE TABLE IF NOT EXISTS flights (
-    flight_id integer NOT NULL,
+    flight_id BIGSERIAL PRIMARY KEY NOT NULL,
     flight_no VARCHAR(6) NOT NULL,
-    company_id BIGSERIAL NOT NULL,
+    company_id BIGSERIAL REFERENCES airlines(id)NOT NULL,
     scheduled_departure timestamp with time zone NOT NULL,
     scheduled_arrival timestamp with time zone NOT NULL,
     departure_airport VARCHAR(3) NOT NULL,
@@ -61,45 +61,23 @@ CREATE VIEW flights_v AS
     airports arr
   WHERE ((f.departure_airport = dep.iata_code) AND (f.arrival_airport = arr.iata_code));
 
-
---
--- Name: VIEW flights_v; Type: COMMENT; Schema: bookings; Owner: -
---
-
   COMMENT  ON VIEW flights_v IS 'Flights (extended)';
-
-
---
--- Name: COLUMN flights_v.flight_id; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.flight_id IS 'Flight ID';
 
 
---
--- Name: COLUMN flights_v.flight_no; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.flight_no IS 'Flight number';
 
-
---
--- Name: COLUMN flights_v.scheduled_departure; Type: COMMENT; Schema: bookings; Owner: -
---
+COMMENT  ON COLUMN flights_v.company_id IS 'Airline company';
 
   COMMENT  ON COLUMN flights_v.scheduled_departure IS 'Scheduled departure time';
 
 
---
--- Name: COLUMN flights_v.scheduled_departure_local; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.scheduled_departure_local IS 'Scheduled departure time, local time at the point of departure';
 
 
---
--- Name: COLUMN flights_v.scheduled_arrival; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.scheduled_arrival IS 'Scheduled arrival time';
 
@@ -116,86 +94,50 @@ CREATE VIEW flights_v AS
   COMMENT  ON COLUMN flights_v.departure_airport_name IS 'Departure airport name';
 
 
---
--- Name: COLUMN flights_v.departure_city; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.departure_city IS 'City of departure';
 
 
---
--- Name: COLUMN flights_v.arrival_airport; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.arrival_airport IS 'Arrival airport code';
 
 
---
--- Name: COLUMN flights_v.arrival_airport_name; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.arrival_airport_name IS 'Arrival airport name';
 
 
---
--- Name: COLUMN flights_v.arrival_city; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.arrival_city IS 'City of arrival';
 
 
---
--- Name: COLUMN flights_v.status; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.status IS 'Flight status';
 
 
---
--- Name: COLUMN flights_v.aircraft_id; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.aircraft_id IS 'Aircraft code, IATA';
 
 
---
--- Name: COLUMN flights_v.actual_departure; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.actual_departure IS 'Actual departure time';
 
 
---
--- Name: COLUMN flights_v.actual_departure_local; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.actual_departure_local IS 'Actual departure time, local time at the point of departure';
 
 
---
--- Name: COLUMN flights_v.actual_arrival; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.actual_arrival IS 'Actual arrival time';
 
 
---
--- Name: COLUMN flights_v.actual_arrival_local; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.actual_arrival_local IS 'Actual arrival time, local time at the point of destination';
 
 
---
--- Name: COLUMN flights_v.actual_duration; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN flights_v.actual_duration IS 'Actual flight duration';
 
 
---
--- Name: routes; Type: VIEW; Schema: bookings; Owner: -
---
 
 CREATE VIEW routes AS
  WITH f3 AS (
@@ -243,79 +185,46 @@ CREATE VIEW routes AS
   WHERE ((f3.departure_airport = dep.iata_code) AND (f3.arrival_airport = arr.iata_code));
 
 
---
--- Name: VIEW routes; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON VIEW routes IS 'Routes';
 
 
---
--- Name: COLUMN routes.flight_no; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.flight_no IS 'Flight number';
 
 
---
--- Name: COLUMN routes.departure_airport; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.departure_airport IS 'Code of airport of departure';
 
 
---
--- Name: COLUMN routes.departure_airport_name; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.departure_airport_name IS 'Name of airport of departure';
 
 
---
--- Name: COLUMN routes.departure_city; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.departure_city IS 'City of departure';
 
 
---
--- Name: COLUMN routes.arrival_airport; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.arrival_airport IS 'Code of airport of arrival';
 
 
---
--- Name: COLUMN routes.arrival_airport_name; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.arrival_airport_name IS 'Name of airport of arrival';
 
 
---
--- Name: COLUMN routes.arrival_city; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.arrival_city IS 'City of arrival';
 
 
---
--- Name: COLUMN routes.aircraft_id; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.aircraft_id IS 'Aircraft code, IATA';
 
 
---
--- Name: COLUMN routes.duration; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.duration IS 'Scheduled duration of flight';
 
 
---
--- Name: COLUMN routes.days_of_week; Type: COMMENT; Schema: bookings; Owner: -
---
 
   COMMENT  ON COLUMN routes.days_of_week IS 'Days of week on which flights are scheduled';
 

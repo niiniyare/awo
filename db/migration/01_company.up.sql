@@ -1,9 +1,3 @@
---
--- PostgreSQL database dump
---
-
--- Dumped from database version 9.6.3
--- Dumped by pg_dump version 9.6.3
 
 SET statement_timeout = 0;
 SET lock_timeout = 0;
@@ -15,9 +9,6 @@ SET client_min_messages = warning;
 SET row_security = off;
 
 
---
--- Name: flightBookings; Type: DATABASE; Schema: -; Owner: -
---
 
 --CREATE DATABASE flightBookings;
 
@@ -25,39 +16,24 @@ SET row_security = off;
 --\connect flightBookings
 
 
---
--- Name: bookings; Type: SCHEMA; Schema: -; Owner: -
---
 
 --CREATE SCHEMA bookings;
 
 
---
--- Name: SCHEMA bookings; Type: COMMENT; Schema: -; Owner: -
---
 
 -- COMMENT  ON SCHEMA bookings IS 'Airlines flightBookings database schema';
 
 
---
--- Name: plpgsql; Type: EXTENSION; Schema: -; Owner: -
---
 
 --CREATE EXTENSION IF NOT EXISTS plpgsql WITH SCHEMA pg_catalog;
 
 
---
--- Name: EXTENSION plpgsql; Type: COMMENT; Schema: -; Owner: -
---
 
 --  COMMENT  ON EXTENSION plpgsql IS 'PL/pgSQL procedural language';
 
 
 --SET search_path = bookings, pg_catalog;
 
---
--- Name: lang(); Type: FUNCTION; Schema: bookings; Owner: -
---
 
 CREATE TABLE IF NOT EXISTS airlines (
     id BIGSERIAL PRIMARY KEY NOT NULL,
@@ -77,9 +53,6 @@ CREATE SEQUENCE IF NOT EXISTS airlines_id_seq
     CACHE 1;
 
 
---
--- Name: airlines_id_seq; Type: SEQUENCE OWNED BY; Schema: bookings; Owner: -
---
 
 ALTER SEQUENCE airlines_id_seq OWNED BY airlines.id;
 

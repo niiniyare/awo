@@ -1,3 +1,23 @@
+-- name: createFlight :one
+INSERT INTO flights (
+    flight_no,
+    company_id ,
+    scheduled_departure  ,
+    scheduled_arrival  ,
+    departure_airport ,
+    arrival_airport ,
+    status ,
+    aircraft_id ,
+    actual_departure ,
+    actual_arrival 
+    
+
+
+)
+VALUES (
+$1, $2, $3, $4, $5, $6, $7, $8, $9,$10
+)
+RETURNING *;
 /*
 -- name: GetFlightByCode :one
 SELECT * FROM flights_v

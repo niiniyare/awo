@@ -23,6 +23,7 @@ type Querier interface {
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirport(ctx context.Context) ([]ListAirportRow, error)
+	createFlight(ctx context.Context, arg createFlightParams) (Flight, error)
 }
 
 var _ Querier = (*Queries)(nil)
