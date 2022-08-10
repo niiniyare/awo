@@ -1,4 +1,4 @@
-DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=888ii8888i8
+DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
 clean:
 	rm pkg/api/v1/*.go
 	rm swagger/*

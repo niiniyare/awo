@@ -14,11 +14,12 @@ INSERT INTO airports(
 iata_code, 
 icao_code, 
 name, 
-city 
+city,
+timezone
 ) VALUES
-(  $1 , $2 , $3 , $4
+(  $1 , $2 , $3 , $4, $5
 )
-RETURNING id, iata_code, icao_code, name, city
+RETURNING id, iata_code, icao_code, name, city, timezone
 `
 
 type CreateAirportParams struct {
@@ -26,6 +27,7 @@ type CreateAirportParams struct {
 	IcaoCode string `json:"icao_code"`
 	Name     string `json:"name"`
 	City     string `json:"city"`
+	Timezone string `json:"timezone"`
 }
 
 //subdivision_code
@@ -36,6 +38,7 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 		arg.IcaoCode,
 		arg.Name,
 		arg.City,
+		arg.Timezone,
 	)
 	var i Airport
 	err := row.Scan(
@@ -44,6 +47,7 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 		&i.IcaoCode,
 		&i.Name,
 		&i.City,
+		&i.Timezone,
 	)
 	return i, err
 }
@@ -51,7 +55,7 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 const deleteAirports = `-- name: DeleteAirports :exec
 DELETE FROM airports
 WHERE id = $1
-RETURNING id, iata_code, icao_code, name, city
+RETURNING id, iata_code, icao_code, name, city, timezone
 `
 
 func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
@@ -60,7 +64,7 @@ func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
 }
 
 const getAirport = `-- name: GetAirport :one
-SELECT id, iata_code, icao_code, name, city FROM airports
+SELECT id, iata_code, icao_code, name, city, timezone FROM airports
 WHERE iata_code = $1 LIMIT 1
 `
 
@@ -73,6 +77,7 @@ func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, err
 		&i.IcaoCode,
 		&i.Name,
 		&i.City,
+		&i.Timezone,
 	)
 	return i, err
 }

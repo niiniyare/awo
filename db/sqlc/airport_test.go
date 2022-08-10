@@ -17,6 +17,7 @@ func CreateRandomAirport(t *testing.T) Airport {
 		IcaoCode: strings.ToUpper(util.RandomString(4)),
 		Name:     strings.ToUpper(util.RandomString(10)),
 		City:     strings.ToUpper(util.RandomString(4)),
+		Timezone: "Africa/Mogadishu",
 
 		// Coordinates: pgtype.Point{
 		// 	P: pgtype.Vec2{

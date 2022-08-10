@@ -18,5 +18,6 @@ CREATE TABLE IF NOT EXISTS airports (
   --  coordinates geography(point) NOT NULL,
   -- If PostGIS not installed this'll will work
    -- coordinates point NOT NULL,
-    UNIQUE (iata_code, icao_code)
+    UNIQUE (iata_code, icao_code),
+    timezone text NOT NULL
 );
