@@ -19,17 +19,17 @@ CREATE TABLE IF NOT EXISTS flights (
     
     actual_departure timestamp with time zone,
    
-    actual_arrival timestamp with time zone
+    actual_arrival timestamp with time zone,
     
-    -- CONSTRAINT flights_check CHECK ((scheduled_arrival > scheduled_departure)),
-    -- 
-    -- CONSTRAINT flights_flight_no_scheduled_departure_key UNIQUE (flight_no, scheduled_departure),
-    -- 
-    -- CONSTRAINT flights_check_airlines_key UNIQUE (flight_id, company_id),
-    -- 
-    -- CONSTRAINT flights_check1 CHECK (((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure))))
-    -- 
-    -- CONSTRAINT flights_status_check CHECK (((status)::text = ANY (ARRAY[('On Time'::VARCHAR)::text, ('Delayed'::VARCHAR)::text, ('Departed'::VARCHAR)::text, ('Arrived'::VARCHAR)::text, ('Scheduled'::VARCHAR)::text, ('Cancelled'::VARCHAR)::text])))
+    CONSTRAINT flights_check CHECK ((scheduled_arrival > scheduled_departure)),
+
+    CONSTRAINT flights_flight_no_scheduled_departure_key UNIQUE (flight_no, scheduled_departure),
+
+    CONSTRAINT flights_check_airlines_key UNIQUE (flight_id, company_id),
+
+    CONSTRAINT flights_check1 CHECK (((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure)))),
+
+    CONSTRAINT flights_status_check CHECK (((status)::text = ANY (ARRAY[('On Time'::VARCHAR)::text, ('Delayed'::VARCHAR)::text, ('Departed'::VARCHAR)::text, ('Arrived'::VARCHAR)::text, ('Scheduled'::VARCHAR)::text, ('Cancelled'::VARCHAR)::text])))
 );
 
 

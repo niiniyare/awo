@@ -33,15 +33,18 @@ fk := gf.NewCrypto()
 	
 	r := require.New(t)
 	now := time.Now()
-	sdate := now.AddDate(0,int(util.RandomInt(0,5)),0)
-	ddate := now.AddDate(0,int(util.RandomInt(6,10)),0)
-		fmt.Println(fk.DateRange(sdate,ddate))
-	arg :=
+	dep := now.AddDate(0,0,int(util.RandomInt(1,28)))
+	arr := dep.Add(time.Hour * time.Duration(util.RandomInt(1,12)))
+	fmt.Printf("ScheduledDeparture time: %v\n",dep.Format(time.UnixDate))
+	fmt.Printf("ScheduledArrival  time: %v\n",arr.Format(time.UnixDate))
+	fmt.Printf("Duration time: %v\n",dep.Sub(arr).Hours())
+
+			arg :=
 		CreateFlightParams{
 			FlightNo:           util.RandomFlightNo(airline.IataCode),
 			CompanyID:          airline.ID,
-			ScheduledDeparture: fk.DateRange(sdate,ddate),
-			ScheduledArrival:   fk.Date(),
+			ScheduledDeparture: dep,
+			ScheduledArrival:   arr,
 			DepartureAirport:   airport.IataCode,
 			ArrivalAirport:     airport1.IataCode,
 			Status:             onTime,
