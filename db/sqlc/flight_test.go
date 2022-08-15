@@ -2,14 +2,26 @@ package db
 
 import (
 	"context"
-"testing"
+	"fmt"
+	"testing"
+	"time"
 
-	gf "github.com/brianvoe/gofakeit"
+	gf "github.com/brianvoe/gofakeit/v6"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
 
+
+ const (
+  scheduled = "Scheduled"
+  onTime = "On Time"
+)
+
 func CreateRandomFlight(t *testing.T) Flight {
+fk := gf.NewCrypto() 
+
+		gf.SetGlobalFaker(fk)
+
 	t.Parallel()
 	airline := CreateTestAirline(t)
 
@@ -18,22 +30,23 @@ func CreateRandomFlight(t *testing.T) Flight {
 	airport1 := CreateRandomAirport(t)
 
 	aircraft := createRandomAircraft(t)
-	gf.Seed(0)
-
+	
 	r := require.New(t)
-	// sdtime := time.Now().Sub(gf.Int32()*int32(time.Now().Day())
+	now := time.Now()
+	sdate := now.AddDate(0,int(util.RandomInt(0,5)),0)
+	ddate := now.AddDate(0,int(util.RandomInt(6,10)),0)
+		fmt.Println(fk.DateRange(sdate,ddate))
 	arg :=
 		CreateFlightParams{
 			FlightNo:           util.RandomFlightNo(airline.IataCode),
 			CompanyID:          airline.ID,
-			ScheduledDeparture: gf.Date(),
-			ScheduledArrival:   gf.Date(),
+			ScheduledDeparture: fk.DateRange(sdate,ddate),
+			ScheduledArrival:   fk.Date(),
 			DepartureAirport:   airport.IataCode,
 			ArrivalAirport:     airport1.IataCode,
-			Status:             "Scheduled",
+			Status:             onTime,
 			AircraftID:         aircraft.ID,
 		}
-
 	flight, err := testQueries.CreateFlight(context.Background(), arg)
 	r.NoError(err)
 	r.NotEmpty(flight)
