@@ -1,14 +1,24 @@
 CREATE TABLE IF NOT EXISTS flights (
     flight_id BIGSERIAL PRIMARY KEY NOT NULL,
+    
     flight_no VARCHAR(6) NOT NULL,
+   
     company_id BIGSERIAL REFERENCES airlines(id)NOT NULL,
+    
     scheduled_departure timestamp with time zone NOT NULL,
+   
     scheduled_arrival timestamp with time zone NOT NULL,
+   
     departure_airport VARCHAR(3) NOT NULL,
+   
     arrival_airport VARCHAR(3) NOT NULL,
+    
     status VARCHAR(20) NOT NULL,
+    
     aircraft_id BIGSERIAL NOT NULL,
+    
     actual_departure timestamp with time zone,
+   
     actual_arrival timestamp with time zone,
     
     CONSTRAINT flights_check CHECK ((scheduled_arrival > scheduled_departure)),
@@ -17,21 +27,21 @@ CREATE TABLE IF NOT EXISTS flights (
     
     CONSTRAINT flights_check_airlines_key UNIQUE (flight_id, company_id),
     
-    CONSTRAINT flights_check1 CHECK (((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure)))),
+    CONSTRAINT flights_check1 CHECK (((actual_arrival IS NULL) OR ((actual_departure IS NOT NULL) AND (actual_arrival IS NOT NULL) AND (actual_arrival > actual_departure))))
     
-    CONSTRAINT flights_status_check CHECK (((status)::text = ANY (ARRAY[('On Time'::VARCHAR)::text, ('Delayed'::VARCHAR)::text, ('Departed'::VARCHAR)::text, ('Arrived'::VARCHAR)::text, ('Scheduled'::VARCHAR)::text, ('Cancelled'::VARCHAR)::text])))
+    -- CONSTRAINT flights_status_check CHECK (((status)::text = ANY (ARRAY[('On Time'::VARCHAR)::text, ('Delayed'::VARCHAR)::text, ('Departed'::VARCHAR)::text, ('Arrived'::VARCHAR)::text, ('Scheduled'::VARCHAR)::text, ('Cancelled'::VARCHAR)::text])))
 );
 
 
-CREATE SEQUENCE IF NOT EXISTS flights_flight_id_seq
-    START WITH 1
+CREATE SEQUENCE IF NOT EXISTS flight_id_seq
+    START WITH 100
     INCREMENT BY 1
     NO MINVALUE
     NO MAXVALUE
     CACHE 1;
 
 
-ALTER SEQUENCE flights_flight_id_seq OWNED BY flights.flight_id;
+ALTER SEQUENCE flight_id_seq OWNED BY flights.flight_id;
 
 
 CREATE VIEW flights_v AS
@@ -69,10 +79,9 @@ CREATE VIEW flights_v AS
 
   COMMENT  ON COLUMN flights_v.flight_no IS 'Flight number';
 
-COMMENT  ON COLUMN flights_v.company_id IS 'Airline company';
+  COMMENT  ON COLUMN flights_v.company_id IS 'Airline company';
 
   COMMENT  ON COLUMN flights_v.scheduled_departure IS 'Scheduled departure time';
-
 
 
   COMMENT  ON COLUMN flights_v.scheduled_departure_local IS 'Scheduled departure time, local time at the point of departure';
@@ -227,4 +236,28 @@ CREATE VIEW routes AS
 
 
   COMMENT  ON COLUMN routes.days_of_week IS 'Days of week on which flights are scheduled';
+/*
 
+flight_id, 
+flight_no, 
+company_id, 
+scheduled_departure,
+scheduled_departure_local, 
+scheduled_arrival,
+scheduled_arrival_local, 
+scheduled_duration, 
+departure_airport, 
+departure_airport_name, 
+departure_city, 
+arrival_airport, 
+arrival_airport_name, 
+arrival_city,
+status, 
+aircraft_id, 
+actual_departure,
+actual_departure_local,
+actual_arrival,
+ actual_arrival_local,
+ actual_duration
+ 
+ */

@@ -57,8 +57,9 @@ type FlightsV struct {
 	// Flight ID
 	FlightID int64 `json:"flight_id"`
 	// Flight number
-	FlightNo  string `json:"flight_no"`
-	CompanyID int64  `json:"company_id"`
+	FlightNo string `json:"flight_no"`
+	// Airline company
+	CompanyID int64 `json:"company_id"`
 	// Scheduled departure time
 	ScheduledDeparture time.Time `json:"scheduled_departure"`
 	// Scheduled departure time, local time at the point of departure

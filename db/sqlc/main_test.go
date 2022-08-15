@@ -8,17 +8,17 @@ import (
 
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/niiniyare/awo/util"
 )
 
 var testQueries *Queries
-
-// var testDB *pgxpool.Conn
+var testDB *pgxpool.Pool
 
 func TestMain(m *testing.M) {
-	//config, err := util.LoadConfig("../..")
-	//if err != nil {
-	//	log.Fatal("cannot load config:", err)
-	//}
+	config, err := util.LoadConfig("../..")
+	if err != nil {
+		log.Fatal("cannot load config:", err)
+	}
 	// pgconfig := &pgconn.Config{
 	// 	Host:     "localhost",
 	// 	Port:     5432,
@@ -30,7 +30,9 @@ func TestMain(m *testing.M) {
 
 	//testDB,	testDB, err = pgi
 
-	testDB, err := pgxpool.Connect(context.Background(), "postgresql://admin:admin@localhost:5432/flight?sslmode=disable")
+	// testDB, err = pgxpool.Connect(context.Background(), "postgresql://admin:admin@localhost:5432/flight?sslmode=disable")
+
+	testDB, err = pgxpool.Connect(context.Background(), config.DBSource)
 	if err != nil {
 		log.Fatalln("testDB failed to connect:", err)
 	}

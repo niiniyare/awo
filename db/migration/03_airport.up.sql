@@ -16,7 +16,8 @@ CREATE TABLE IF NOT EXISTS airports (
   -- we use below command if PostGIS is installed in our system 
     
   --  coordinates geography(point) NOT NULL,
-  -- If PostGIS not installed this'll will work
+  
+  -- If PostGIS not available flowing row will work.
    -- coordinates point NOT NULL,
     UNIQUE (iata_code, icao_code),
     timezone text NOT NULL
