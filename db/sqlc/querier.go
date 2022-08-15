@@ -14,12 +14,15 @@ type Querier interface {
 	//subdivision_code
 	//coordinates
 	CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error)
+	CreateFlight(ctx context.Context, arg CreateFlightParams) (Flight, error)
 	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
 	DeleteAirports(ctx context.Context, id int64) error
 	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
 	GetAirport(ctx context.Context, iataCode string) (Airport, error)
+	GetAllFlight(ctx context.Context) ([]Flight, error)
+	GetFlight(ctx context.Context, arg GetFlightParams) ([]FlightsV, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirport(ctx context.Context) ([]ListAirportRow, error)

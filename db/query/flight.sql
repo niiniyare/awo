@@ -1,3 +1,40 @@
+-- name: CreateFlight :one
+INSERT INTO flights (
+    flight_no,
+    company_id ,
+    scheduled_departure  ,
+    scheduled_arrival  ,
+    departure_airport ,
+    arrival_airport ,
+    status ,
+    aircraft_id ,
+    actual_departure ,
+    actual_arrival 
+    
+
+
+)
+VALUES (
+$1, $2, $3, $4, $5, $6, $7, $8, $9,$10
+)
+RETURNING *;
+
+
+-- name: GetAllFlight :many
+
+SELECT * FROM flights;
+
+
+
+-- name: GetFlight :many
+SELECT f.* 
+FROM flights_v f 
+WHERE f.departure_airport = $1
+AND f.arrival_airport = $2
+AND f.scheduled_departure > now() 
+ORDER BY f.scheduled_departure LIMIT 1;
+
+
 /*
 -- name: GetFlightByCode :one
 SELECT * FROM flights_v

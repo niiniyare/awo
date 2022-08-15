@@ -4,10 +4,11 @@ iata_code,
 icao_code, 
 name, 
 --subdivision_code
-city 
+city,
 --coordinates
+timezone
 ) VALUES
-(  $1 , $2 , $3 , $4
+(  $1 , $2 , $3 , $4, $5
 )
 RETURNING * ;
 -- name: GetAirport :one

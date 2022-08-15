@@ -7,19 +7,7 @@ gen:
 server:
 	go run cmd/server/main.go -port 8080
 
-BUF_VERSION:=0.55.0
-
-install: ## Install dependencies and prepared development configuration
-	@curl -sSL \
-    	"https://github.com/bufbuild/buf/releases/download/v${BUF_VERSION}/buf-$(shell uname -s)-$(shell uname -m)" \
-    	-o "$(shell go env GOPATH)/bin/buf" && \
-  	chmod +x "$(shell go env GOPATH)/bin/buf" && \
-  	go install github.com/kyleconroy/sqlc/cmd/sqlc@latest && \
-  	go install github.com/micro/micro/v3@latest  && \
-  	go install -tags 'postgres' github.com/golang-migrate/migrate/v4/cmd/migrate@latest && \
-  	go install github.com/golang/mock/mockgen@latest
-  	
-
+BUF_VERSION:=0.55.0 88ii8i8i8
 createdb:
 	createdb --username=admin --owner=admin flight
 dropdb:
@@ -52,4 +40,4 @@ help:
 testdb:
 	go test -v -cover ./db/sqlc/...
 
-.PHONY: clean gen server client testinstall  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help
+.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help
