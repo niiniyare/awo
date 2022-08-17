@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	scheduled string = "Scheduled"
-	onTime           = "On Time"
+	scheduled = "Scheduled"
+	onTime    = "On Time"
 )
 
 func CreateRandomFlight(t *testing.T) Flight {
@@ -31,21 +31,11 @@ func CreateRandomFlight(t *testing.T) Flight {
 	aircraft := createRandomAircraft(t)
 
 	r := require.New(t)
-
-	startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
-
-	endDate := time.Date(2023, time.September, 25, 72, 01, 0, 0, time.UTC)
-
-	dep := fk.DateRange(startDate, endDate)
-
-	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 28)))
-
-	/* 	arr := dep.Add(time.Hour * time.Duration(util.RandomInt(1, 12))) */
-
+	now := time.Now()
+	dep := now.AddDate(0, 0, int(util.RandomInt(1, 28)))
+	arr := dep.Add(time.Hour * time.Duration(util.RandomInt(1, 12)))
 	fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
-
 	fmt.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
-
 	fmt.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
 
 	arg :=
