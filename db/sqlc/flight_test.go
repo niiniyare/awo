@@ -6,7 +6,6 @@ import (
 	"testing"
 	"time"
 
-	gf "github.com/brianvoe/gofakeit/v6"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -17,11 +16,9 @@ const (
 )
 
 func CreateRandomFlight(t *testing.T) Flight {
-	fk := gf.NewCrypto()
-
-	gf.SetGlobalFaker(fk)
 
 	t.Parallel()
+
 	airline := CreateTestAirline(t)
 
 	airport := CreateRandomAirport(t)
@@ -34,11 +31,11 @@ func CreateRandomFlight(t *testing.T) Flight {
 
 	startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
 
-	endDate := time.Date(2023, time.September, 25, 72, 01, 0, 0, time.UTC)
+	// endDate := time.Date(2023, time.September, 25, 72, 01, 0, 0, time.UTC)
 
-	dep := fk.DateRange(startDate, endDate)
+	dep := fk.DateRange(startDate, startDate.Add(time.Hour*time.Duration(util.RandomInt(1, 12))))
 
-	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 28)))
+	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
 
 	/* 	arr := dep.Add(time.Hour * time.Duration(util.RandomInt(1, 12))) */
 
