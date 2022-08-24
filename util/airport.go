@@ -4,12 +4,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"os"
 )
 
 type AirportList struct {
 	Airport SampaleAirports `json:"airport,omitempty"`
 }
+//go:generate ffjson $GOFILE
 type SampaleAirports struct {
 	Icao      string  `json:"icao,omitempty"`
 	Iata      string  `json:"iata,omitempty"`
@@ -22,29 +22,30 @@ type SampaleAirports struct {
 	Lon       float64 `json:"lon,omitempty"`
 	Tz        string  `json:"tz,omitempty"`
 }
+/*
+func ReadFromJsonFile(path string) (airport []AirportList, err error) {
 
-func ReadFromJsonFile(path string) (SampaleAirports, error) {
-
-	data := SampaleAirports{}
-	f, err := os.Open(path)
-	if err != nil {
-		fmt.Errorf("cannot open file: %w", err)
-		return data, nil
-	}
-
-	file, err = ioutil.ReadAll()
+	// f, err := os.Open(path)
+	// if err != nil {
+	// 	fmt.Errorf("cannot open file: %w", err)
+	// 	return data, nil
+	// }
+	//
+	var file []byte
+	file, err = ioutil.ReadFile(path)
 
 	if err != nil {
 		fmt.Errorf("cannot ReadFile file: %w", err)
-		return data, nil
+		return
 	}
 
-	err = json.Unmarshal([]byte(file), &data)
+	err = json.Unmarshal(file, &airport)
 	if err != nil {
 		fmt.Errorf("cannot Unmarshal to from json: %w", err)
-		return data, nil
+		return
 
 	}
 
-	return data, nil
+	return
 }
+*/
