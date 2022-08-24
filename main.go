@@ -2,13 +2,19 @@ package main
 
 import (
 	"fmt"
-	
+
 	"github.com/niiniyare/awo/util"
 )
 
 func main() {
 
 	fmt.Println(util.RandomPoint())
+	smpdata, _ := util.ReadFromJsonFile("util/sample_data/airports.json")
+	for _, v := range smpdata {
+
+		fmt.Println(v)
+
+	}
 
 }
 
