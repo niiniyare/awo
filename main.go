@@ -7,10 +7,6 @@ import (
 	"strconv"
 )
 
-type AirportList struct {
-	Airports Airport `json:"airport,omitempty"`
-}
-
 type Airport struct {
 	Icao      string  `json:"icao,omitempty"`
 	Iata      string  `json:"iata,omitempty"`
@@ -29,12 +25,13 @@ func main() {
 	if err != nil {
 		fmt.Println(err.Error())
 	}
-
-	for i, line := range csvData {
+	no := 0
+	for _, line := range csvData {
 		lat, _ := strconv.ParseFloat(line[7], 64)
 		lon, _ := strconv.ParseFloat(line[8], 64)
 		elevation, _ := strconv.ParseInt(line[6], 10, 32)
-		data := Airport{
+
+		dt := Airport{
 			Icao:      line[0],
 			Iata:      line[1],
 			Name:      line[2],
@@ -46,9 +43,18 @@ func main() {
 			Lon:       lon,
 			Tz:        line[9],
 		}
-		fmt.Println(i, data.Icao+" "+data.Iata)
-	}
+		// name := strings.ReplaceAll(dt.Name, "'s", "\\'s")
+		// name := strings.ReplaceAll(dt.Name, "'s", "\\'s")
 
+		if len(dt.Iata) > 0 && len(dt.Iata) < 4 && dt.City != "" && dt.Name != "" && dt.Tz != "" && dt.Iata != "" && dt.Icao != "" {
+			fmt.Printf("INSERT INTO airports(iata_code,icao_code,name,city,timezone)VALUES")
+
+			fmt.Printf("('%v','%v','%v','%v','%v');\n", dt.Iata, dt.Icao, dt.Name, dt.City, dt.Tz)
+			no++
+		}
+
+	}
+	print(no)
 }
 func ReadCsvFile(filename string) ([][]string, error) {
 	// Open CSV file
