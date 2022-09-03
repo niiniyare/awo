@@ -12,7 +12,6 @@ type Querier interface {
 	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error)
 	CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error)
 	//subdivision_code
-	//coordinates
 	CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error)
 	CreateFlight(ctx context.Context, arg CreateFlightParams) (Flight, error)
 	DeleteAircraft(ctx context.Context, id int64) error

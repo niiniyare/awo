@@ -7,6 +7,9 @@ package db
 
 import (
 	"context"
+	"database/sql"
+
+	"github.com/jackc/pgtype"
 )
 
 const createAirport = `-- name: CreateAirport :one
@@ -14,30 +17,44 @@ INSERT INTO airports(
 iata_code, 
 icao_code, 
 name, 
+elevation,
 city,
+country,
+state,
+lat,
+lon,
 timezone
 ) VALUES
-(  $1 , $2 , $3 , $4, $5
+(  $1 , $2 , $3 , $4, $5, $6, $7, $8, $9, $10
 )
-RETURNING id, iata_code, icao_code, name, city, timezone
+RETURNING id, iata_code, icao_code, name, country, state, city, elevation, lat, lon, timezone
 `
 
 type CreateAirportParams struct {
-	IataCode string `json:"iata_code"`
-	IcaoCode string `json:"icao_code"`
-	Name     string `json:"name"`
-	City     string `json:"city"`
-	Timezone string `json:"timezone"`
+	IataCode  string         `json:"iata_code"`
+	IcaoCode  string         `json:"icao_code"`
+	Name      string         `json:"name"`
+	Elevation sql.NullString `json:"elevation"`
+	City      string         `json:"city"`
+	Country   string         `json:"country"`
+	State     string         `json:"state"`
+	Lat       pgtype.Numeric `json:"lat"`
+	Lon       pgtype.Numeric `json:"lon"`
+	Timezone  string         `json:"timezone"`
 }
 
 //subdivision_code
-//coordinates
 func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error) {
 	row := q.db.QueryRow(ctx, createAirport,
 		arg.IataCode,
 		arg.IcaoCode,
 		arg.Name,
+		arg.Elevation,
 		arg.City,
+		arg.Country,
+		arg.State,
+		arg.Lat,
+		arg.Lon,
 		arg.Timezone,
 	)
 	var i Airport
@@ -46,7 +63,12 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 		&i.IataCode,
 		&i.IcaoCode,
 		&i.Name,
+		&i.Country,
+		&i.State,
 		&i.City,
+		&i.Elevation,
+		&i.Lat,
+		&i.Lon,
 		&i.Timezone,
 	)
 	return i, err
@@ -55,7 +77,7 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 const deleteAirports = `-- name: DeleteAirports :exec
 DELETE FROM airports
 WHERE id = $1
-RETURNING id, iata_code, icao_code, name, city, timezone
+RETURNING id, iata_code, icao_code, name, country, state, city, elevation, lat, lon, timezone
 `
 
 func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
@@ -64,7 +86,7 @@ func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
 }
 
 const getAirport = `-- name: GetAirport :one
-SELECT id, iata_code, icao_code, name, city, timezone FROM airports
+SELECT id, iata_code, icao_code, name, country, state, city, elevation, lat, lon, timezone FROM airports
 WHERE iata_code = $1 LIMIT 1
 `
 
@@ -76,7 +98,12 @@ func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, err
 		&i.IataCode,
 		&i.IcaoCode,
 		&i.Name,
+		&i.Country,
+		&i.State,
 		&i.City,
+		&i.Elevation,
+		&i.Lat,
+		&i.Lon,
 		&i.Timezone,
 	)
 	return i, err

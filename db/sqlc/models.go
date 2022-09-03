@@ -7,6 +7,8 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/jackc/pgtype"
 )
 
 // Aircrafts (internal data)
@@ -31,12 +33,17 @@ type Airline struct {
 }
 
 type Airport struct {
-	ID       int64  `json:"id"`
-	IataCode string `json:"iata_code"`
-	IcaoCode string `json:"icao_code"`
-	Name     string `json:"name"`
-	City     string `json:"city"`
-	Timezone string `json:"timezone"`
+	ID        int64          `json:"id"`
+	IataCode  string         `json:"iata_code"`
+	IcaoCode  string         `json:"icao_code"`
+	Name      string         `json:"name"`
+	Country   string         `json:"country"`
+	State     string         `json:"state"`
+	City      string         `json:"city"`
+	Elevation sql.NullString `json:"elevation"`
+	Lat       pgtype.Numeric `json:"lat"`
+	Lon       pgtype.Numeric `json:"lon"`
+	Timezone  string         `json:"timezone"`
 }
 
 type Flight struct {
