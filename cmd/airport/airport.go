@@ -1,4 +1,4 @@
-package util
+package main
 
 import (
 	"encoding/csv"
@@ -9,22 +9,31 @@ import (
 	"strings"
 )
 
-var aircraftQueryInsert string = "INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)"
+var airportQueryInsert string = "INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)"
 var irportQueryValues string = "VALUES( '%v','%v', '%v', '%v','%v','%v','%v','%2.9f', '%2.9f', '%v');"
 
-type Aircraft struct {
-	Name     string `json:"Name,omitempty"`
-	Icao     string `json:"ICAO,omitempty"`
-	Iata     string `json:"IATA,omitempty"`
-	Capacity int    `json:"Capacity,omitempty"`
-	Country  string `json:"country,omitempty"`
+func main() {
+	airport.PrintSql()
 }
 
-var aircraft Aircraft
+type Airport struct {
+	Icao      string  `json:"icao,omitempty"`
+	Iata      string  `json:"iata,omitempty"`
+	Name      string  `json:"name,omitempty"`
+	City      string  `json:"city,omitempty"`
+	State     string  `json:"state,omitempty"`
+	Country   string  `json:"country,omitempty"`
+	Elevation int     `json:"elevation,omitempty"`
+	Lat       float64 `json:"lat,omitempty"`
+	Lon       float64 `json:"lon,omitempty"`
+	Tz        string  `json:"tz,omitempty"`
+}
 
-func (a Aircraft) Print() {
-	no := 0
-	data, err := aircraft.ReadAircraftFromCsvFile("util/sample_data/aircrafts.csv")
+var airport Airport
+
+func (a Airport) PrintSql() {
+	//	no := 0
+	data, err := airport.ReadAAirportFromCsvFile("airports.csv")
 
 	if err != nil {
 		log.Fatal(err)
@@ -44,33 +53,33 @@ func (a Aircraft) Print() {
 
 			fmt.Printf("VALUES('%v','%v','%v',%d,'%v','%v','%v',%f,%f,'%v');\n", dt.Iata, dt.Icao, name, dt.Elevation, city, state, dt.Country, dt.Lon, dt.Lat, dt.Tz)
 
-			no++
+			// no++
 
 		}
 	}
-	print(no)
+	//print(no)
 }
 
-func (a Aircraft) ReadAircraftFromCsvFile(filename string) ([]Aircraft, error) {
-	aircraft := []Aircraft{}
+func (a Airport) ReadAAirportFromCsvFile(filename string) ([]Airport, error) {
+	airport := []Airport{}
 
 	// Open CSV file
 	fileContent, err := os.Open(filename)
 	if err != nil {
-		return aircraft, err
+		return airport, err
 	}
 	defer fileContent.Close()
 	// Read File into a Variable
 	lines, err := csv.NewReader(fileContent).ReadAll()
 	if err != nil {
-		return aircraft, err
+		return airport, err
 	}
 	for _, line := range lines {
 		lat, _ := strconv.ParseFloat(line[7], 64)
 		lon, _ := strconv.ParseFloat(line[8], 64)
 		elevation, _ := strconv.ParseInt(line[6], 10, 32)
 
-		dt := Aircraft{
+		dt := Airport{
 			Icao:      line[0],
 			Iata:      line[1],
 			Name:      line[2],
@@ -82,8 +91,27 @@ func (a Aircraft) ReadAircraftFromCsvFile(filename string) ([]Aircraft, error) {
 			Lon:       lon,
 			Tz:        line[9],
 		}
-		aircraft = append(aircraft, dt)
+		airport = append(airport, dt)
 	}
-	return aircraft, nil
+	return airport, nil
 
+}
+
+type Airline struct {
+}
+
+func (a Airline) ReadAAirlineFromCsvFile(filename string) ([][]string, error) {
+	// Open CSV file
+	fileContent, err := os.Open(filename)
+	if err != nil {
+		return [][]string{}, err
+	}
+	defer fileContent.Close()
+
+	// Read File into a Variable
+	lines, err := csv.NewReader(fileContent).ReadAll()
+	if err != nil {
+		return [][]string{}, err
+	}
+	return lines, nil
 }
