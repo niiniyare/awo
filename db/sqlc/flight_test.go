@@ -31,13 +31,9 @@ func CreateRandomFlight(t *testing.T) Flight {
 
 	startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
 
-	// endDate := time.Date(2023, time.September, 25, 72, 01, 0, 0, time.UTC)
-
 	dep := fk.DateRange(startDate, startDate.Add(time.Hour*time.Duration(util.RandomInt(1, 12))))
 
 	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
-
-	/* 	arr := dep.Add(time.Hour * time.Duration(util.RandomInt(1, 12))) */
 
 	fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
 

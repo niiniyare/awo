@@ -13,6 +13,18 @@ import (
 
 func CreateRandomAirport(t *testing.T) Airport {
 
+	r := require.New(t)
+
+	lt := util.RandomFloat64(-90.0, 90)
+	ln := util.RandomFloat64(-180, 180)
+
+	lat := new(pgtype.Numeric)
+	err := lat.Set(lt)
+	r.NoError(err)
+
+	lon := new(pgtype.Numeric)
+	err = lon.Set(ln)
+	r.NoError(err)
 	arg := CreateAirportParams{
 		IataCode: strings.ToUpper(util.RandomString(3)),
 		IcaoCode: strings.ToUpper(util.RandomString(4)),
@@ -23,10 +35,11 @@ func CreateRandomAirport(t *testing.T) Airport {
 
 		Timezone: "Africa/Mogadishu",
 
-		Coordinates: pgtype.Point{P: pgtype.Vec2{util.RandomFloat64(-90, 90), util.RandomFloat64(-180, 180)},
-			Status: pgtype.Present},
+		// Coordinates: pgtype.Point{P: pgtype.Vec2{util.RandomFloat64(-90, 90), util.RandomFloat64(-180, 180)},
+		// 	Status: pgtype.Present},
+		Lat: *lat,
+		Lon: *lon,
 	}
-	r := require.New(t)
 
 	airport, err := testQueries.CreateAirport(context.Background(), arg)
 	r.NoError(err)

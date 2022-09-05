@@ -19,14 +19,17 @@ func createRandomAircraft(t *testing.T) Aircraft {
 
 	args := CreateAircraftParams{
 
-		Code:      strings.ToUpper(util.RandomString(3)),
+		IataCode:  strings.ToUpper(util.RandomString(3)),
+		IcaoCode:  strings.ToUpper(util.RandomString(4)),
 		Model:     "Boeing 737-800 Freighter",
 		Range:     3700,
 		CompanyID: airline.ID,
 	}
 	aircraft, err := testQueries.CreateAircraft(context.Background(), args)
 	r.NoError(err)
-	r.Equal(aircraft.Code, args.Code)
+
+	r.Equal(aircraft.IataCode, args.IataCode)
+	r.Equal(aircraft.IcaoCode, args.IcaoCode)
 	r.Equal(aircraft.Model, args.Model)
 	r.Equal(aircraft.Range, args.Range)
 	r.Equal(aircraft.CompanyID, airline.ID)
@@ -56,7 +59,8 @@ func TestGetAircraft(t *testing.T) {
 	r.NotEmpty(aircraft2)
 
 	r.Equal(aircraft2.ID, aircraft1.ID)
-	r.Equal(aircraft2.Code, aircraft1.Code)
+	r.Equal(aircraft2.IataCode, aircraft1.IataCode)
+	r.Equal(aircraft2.IcaoCode, aircraft1.IcaoCode)
 
 	r.Equal(aircraft2.Range, aircraft1.Range)
 	r.Equal(aircraft2.CompanyID, aircraft1.CompanyID)

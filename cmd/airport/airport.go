@@ -12,7 +12,9 @@ import (
 var file = "cmd/airport/airports.csv"
 
 func main() {
-	airport.PrintSlice()
+	// airport.PrintSlice()
+	airport.PrintSql()
+
 }
 
 type Airport struct {
@@ -31,7 +33,7 @@ type Airport struct {
 var airport Airport
 
 func (a Airport) PrintSql() {
-	//	no := 0
+	no := 0
 	data, err := airport.ReadAAirportFromCsvFile(file)
 
 	if err != nil {
@@ -43,20 +45,20 @@ func (a Airport) PrintSql() {
 		if dt.Iata == "" || dt.Icao == "" {
 			continue
 		}
-		name := strings.ReplaceAll(dt.Name, "'", "")
-		city := strings.ReplaceAll(dt.City, "'", "")
-		state := strings.ReplaceAll(dt.State, "'", "")
+		name := strings.ReplaceAll(dt.Name, "'", "''")
+		city := strings.ReplaceAll(dt.City, "'", "''")
+		state := strings.ReplaceAll(dt.State, "'", "''")
 
 		if len(dt.Iata) > 0 && len(dt.Iata) < 4 && dt.City != "" && dt.Name != "" && dt.Tz != "" && dt.Iata != "" && dt.Icao != "" && dt.Country != "" && dt.Elevation != 0 && dt.Lat != 0.0 || dt.Lon != 0.0 {
 			fmt.Printf("INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)")
 
 			fmt.Printf("VALUES('%v','%v','%v',%d,'%v','%v','%v',%f,%f,'%v');\n", dt.Iata, dt.Icao, name, dt.Elevation, city, state, dt.Country, dt.Lon, dt.Lat, dt.Tz)
 
-			// no++
+			no++
 
 		}
 	}
-	//print(no)
+	print(no)
 }
 
 func (a Airport) ReadAAirportFromCsvFile(filename string) ([]Airport, error) {

@@ -15,7 +15,9 @@ import (
 type Aircraft struct {
 	ID int64 `json:"id"`
 	// Aircraft code, IATA
-	Code string `json:"code"`
+	IataCode string `json:"iata_code"`
+	// Aircraft code, ICAO
+	IcaoCode string `json:"icao_code"`
 	// Aircraft model
 	Model string `json:"model"`
 	// Maximal flying distance, km

@@ -12,7 +12,7 @@ OFFSET $2;
 INSERT INTO aircrafts (
 iata_code, icao_code,  model, range, company_id
 ) VALUES (
-  $1, $2, $3 ,$4
+  $1, $2, $3 ,$4 ,$5
 )
 RETURNING *;
 
