@@ -9,11 +9,10 @@ import (
 	"strings"
 )
 
-var airportQueryInsert string = "INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)"
-var irportQueryValues string = "VALUES( '%v','%v', '%v', '%v','%v','%v','%v','%2.9f', '%2.9f', '%v');"
+var file = "cmd/airport/airports.csv"
 
 func main() {
-	airport.PrintSql()
+	airport.PrintSlice()
 }
 
 type Airport struct {
@@ -33,7 +32,7 @@ var airport Airport
 
 func (a Airport) PrintSql() {
 	//	no := 0
-	data, err := airport.ReadAAirportFromCsvFile("airports.csv")
+	data, err := airport.ReadAAirportFromCsvFile(file)
 
 	if err != nil {
 		log.Fatal(err)
@@ -114,4 +113,29 @@ func (a Airline) ReadAAirlineFromCsvFile(filename string) ([][]string, error) {
 		return [][]string{}, err
 	}
 	return lines, nil
+}
+func (a Airport) PrintSlice() {
+	//	no := 0
+	data, err := airport.ReadAAirportFromCsvFile(file)
+
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	airportSample := []string{}
+	fmt.Printf("package main\n\n var AirportSample = []string{\n")
+	for i, dt := range data {
+		if i == 0 {
+			continue
+		}
+		if dt.Iata != "" {
+			airportSample = append(airportSample, dt.Iata)
+		}
+	}
+
+	for _, v := range airportSample {
+		fmt.Printf("\t\"%v\",\n", v)
+
+	}
+	fmt.Print("}")
 }
