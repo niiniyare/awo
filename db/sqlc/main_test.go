@@ -14,11 +14,8 @@ import (
 
 var testQueries *Queries
 var testDB *pgxpool.Pool
-<<<<<<< HEAD
-=======
 
 var fk *gf.Faker
->>>>>>> aircraft
 
 func TestMain(m *testing.M) {
 	config, err := util.LoadConfig("../..")
