@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/jackc/pgtype"
 	"github.com/jackc/pgx/v4"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
@@ -12,23 +13,31 @@ import (
 
 func CreateRandomAirport(t *testing.T) Airport {
 
+	r := require.New(t)
+
+	lt := util.RandomFloat64(-90.0, 90)
+	ln := util.RandomFloat64(-180, 180)
+
+	lat := new(pgtype.Numeric)
+	err := lat.Set(lt)
+	r.NoError(err)
+
+	lon := new(pgtype.Numeric)
+	err = lon.Set(ln)
+	r.NoError(err)
 	arg := CreateAirportParams{
 		IataCode: strings.ToUpper(util.RandomString(3)),
 		IcaoCode: strings.ToUpper(util.RandomString(4)),
 		Name:     strings.ToUpper(util.RandomString(10)),
 		City:     strings.ToUpper(util.RandomString(4)),
+		Country:  strings.ToUpper(util.RandomString(3)),
+		State:    strings.ToUpper(util.RandomString(4)),
+
 		Timezone: "Africa/Mogadishu",
 
-		// Coordinates: pgtype.Point{
-		// 	P: pgtype.Vec2{
-
-		// 		X: util.RandomFloat64(-90, 90),
-
-		// 		Y: util.RandomFloat64(-180, 180)},
-		// 	Status: 1,
-		// },
+		Lat: *lat,
+		Lon: *lon,
 	}
-	r := require.New(t)
 
 	airport, err := testQueries.CreateAirport(context.Background(), arg)
 	r.NoError(err)
@@ -99,4 +108,7 @@ func TestListAirportAirport(t *testing.T) {
 //
 //
 //
+// }
+// func (c CreateAirportParams) SetCoordinates(lon, lat float64) error {
+// 	return c.Coordinates.Set(fmt.Sprint("%v,%v", lon, lat))
 // }

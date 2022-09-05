@@ -6,23 +6,19 @@ import (
 	"testing"
 	"time"
 
-	gf "github.com/brianvoe/gofakeit/v6"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
 
-
- const (
-  scheduled = "Scheduled"
-  onTime = "On Time"
+const (
+	scheduled string = "Scheduled"
+	onTime           = "On Time"
 )
 
 func CreateRandomFlight(t *testing.T) Flight {
-fk := gf.NewCrypto() 
-
-		gf.SetGlobalFaker(fk)
 
 	t.Parallel()
+
 	airline := CreateTestAirline(t)
 
 	airport := CreateRandomAirport(t)
@@ -30,18 +26,27 @@ fk := gf.NewCrypto()
 	airport1 := CreateRandomAirport(t)
 
 	aircraft := createRandomAircraft(t)
-	
+
 	r := require.New(t)
-	now := time.Now()
-	sdate := now.AddDate(0,int(util.RandomInt(0,5)),0)
-	ddate := now.AddDate(0,int(util.RandomInt(6,10)),0)
-		fmt.Println(fk.DateRange(sdate,ddate))
+
+	startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
+
+	dep := fk.DateRange(startDate, startDate.Add(time.Hour*time.Duration(util.RandomInt(1, 12))))
+
+	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
+
+	fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
+
+	fmt.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
+
+	fmt.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
+
 	arg :=
 		CreateFlightParams{
 			FlightNo:           util.RandomFlightNo(airline.IataCode),
 			CompanyID:          airline.ID,
-			ScheduledDeparture: fk.DateRange(sdate,ddate),
-			ScheduledArrival:   fk.Date(),
+			ScheduledDeparture: dep,
+			ScheduledArrival:   arr,
 			DepartureAirport:   airport.IataCode,
 			ArrivalAirport:     airport1.IataCode,
 			Status:             onTime,

@@ -11,15 +11,16 @@ import (
 
 const createAircraft = `-- name: CreateAircraft :one
 INSERT INTO aircrafts (
-  code, model, range, company_id
+iata_code, icao_code,  model, range, company_id
 ) VALUES (
-  $1, $2, $3 ,$4
+  $1, $2, $3 ,$4 ,$5
 )
-RETURNING id, code, model, range, company_id, created_at
+RETURNING id, iata_code, icao_code, model, range, company_id, created_at
 `
 
 type CreateAircraftParams struct {
-	Code      string `json:"code"`
+	IataCode  string `json:"iata_code"`
+	IcaoCode  string `json:"icao_code"`
 	Model     string `json:"model"`
 	Range     int32  `json:"range"`
 	CompanyID int64  `json:"company_id"`
@@ -27,7 +28,8 @@ type CreateAircraftParams struct {
 
 func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error) {
 	row := q.db.QueryRow(ctx, createAircraft,
-		arg.Code,
+		arg.IataCode,
+		arg.IcaoCode,
 		arg.Model,
 		arg.Range,
 		arg.CompanyID,
@@ -35,7 +37,8 @@ func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) 
 	var i Aircraft
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
+		&i.IataCode,
+		&i.IcaoCode,
 		&i.Model,
 		&i.Range,
 		&i.CompanyID,
@@ -55,7 +58,7 @@ func (q *Queries) DeleteAircraft(ctx context.Context, id int64) error {
 }
 
 const getAircraft = `-- name: GetAircraft :one
-SELECT id, code, model, range, company_id, created_at FROM aircrafts
+SELECT id, iata_code, icao_code, model, range, company_id, created_at FROM aircrafts
 WHERE id = $1 LIMIT 1
 `
 
@@ -64,7 +67,8 @@ func (q *Queries) GetAircraft(ctx context.Context, id int64) (Aircraft, error) {
 	var i Aircraft
 	err := row.Scan(
 		&i.ID,
-		&i.Code,
+		&i.IataCode,
+		&i.IcaoCode,
 		&i.Model,
 		&i.Range,
 		&i.CompanyID,
@@ -74,7 +78,7 @@ func (q *Queries) GetAircraft(ctx context.Context, id int64) (Aircraft, error) {
 }
 
 const listAircraft = `-- name: ListAircraft :many
-SELECT id, code, model, range, company_id, created_at FROM aircrafts
+SELECT id, iata_code, icao_code, model, range, company_id, created_at FROM aircrafts
 ORDER BY id
 LIMIT $1
 OFFSET $2
@@ -96,7 +100,8 @@ func (q *Queries) ListAircraft(ctx context.Context, arg ListAircraftParams) ([]A
 		var i Aircraft
 		if err := rows.Scan(
 			&i.ID,
-			&i.Code,
+			&i.IataCode,
+			&i.IcaoCode,
 			&i.Model,
 			&i.Range,
 			&i.CompanyID,

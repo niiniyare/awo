@@ -7,13 +7,17 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/jackc/pgtype"
 )
 
 // Aircrafts (internal data)
 type Aircraft struct {
 	ID int64 `json:"id"`
 	// Aircraft code, IATA
-	Code string `json:"code"`
+	IataCode string `json:"iata_code"`
+	// Aircraft code, ICAO
+	IcaoCode string `json:"icao_code"`
 	// Aircraft model
 	Model string `json:"model"`
 	// Maximal flying distance, km
@@ -31,12 +35,17 @@ type Airline struct {
 }
 
 type Airport struct {
-	ID       int64  `json:"id"`
-	IataCode string `json:"iata_code"`
-	IcaoCode string `json:"icao_code"`
-	Name     string `json:"name"`
-	City     string `json:"city"`
-	Timezone string `json:"timezone"`
+	ID        int64          `json:"id"`
+	IataCode  string         `json:"iata_code"`
+	IcaoCode  string         `json:"icao_code"`
+	Name      string         `json:"name"`
+	Country   string         `json:"country"`
+	State     string         `json:"state"`
+	City      string         `json:"city"`
+	Elevation sql.NullString `json:"elevation"`
+	Lat       pgtype.Numeric `json:"lat"`
+	Lon       pgtype.Numeric `json:"lon"`
+	Timezone  string         `json:"timezone"`
 }
 
 type Flight struct {

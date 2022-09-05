@@ -6,6 +6,7 @@ import (
 	"os"
 	"testing"
 
+	gf "github.com/brianvoe/gofakeit/v6"
 	"github.com/jackc/pgx/v4/pgxpool"
 	_ "github.com/jackc/pgx/v4/stdlib"
 	"github.com/niiniyare/awo/util"
@@ -13,6 +14,11 @@ import (
 
 var testQueries *Queries
 var testDB *pgxpool.Pool
+<<<<<<< HEAD
+=======
+
+var fk *gf.Faker
+>>>>>>> aircraft
 
 func TestMain(m *testing.M) {
 	config, err := util.LoadConfig("../..")
@@ -43,6 +49,8 @@ func TestMain(m *testing.M) {
 	}
 
 	testQueries = New(testDB)
+
+	fk = gf.NewCrypto()
 
 	os.Exit(m.Run())
 }

@@ -10,9 +10,9 @@ OFFSET $2;
 
 -- name: CreateAircraft :one
 INSERT INTO aircrafts (
-  code, model, range, company_id
+iata_code, icao_code,  model, range, company_id
 ) VALUES (
-  $1, $2, $3 ,$4
+  $1, $2, $3 ,$4 ,$5
 )
 RETURNING *;
 
