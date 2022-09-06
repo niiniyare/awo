@@ -22,19 +22,6 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal("cannot load config:", err)
 	}
-	// pgconfig := &pgconn.Config{
-	// 	Host:     "localhost",
-	// 	Port:     5432,
-	// 	Database: "flight",
-	// 	User:     "admin",
-	// 	Password: "admin",
-	// }
-	// var err error
-
-	//testDB,	testDB, err = pgi
-
-	// testDB, err = pgxpool.Connect(context.Background(), "postgresql://admin:admin@localhost:5432/flight?sslmode=disable")
-
 	testDB, err = pgxpool.Connect(context.Background(), config.DBSource)
 	if err != nil {
 		log.Fatalln("testDB failed to connect:", err)
