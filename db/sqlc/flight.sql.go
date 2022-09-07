@@ -76,59 +76,24 @@ func (q *Queries) CreateFlight(ctx context.Context, arg CreateFlightParams) (Fli
 	return i, err
 }
 
-const getAllFlight = `-- name: GetAllFlight :many
-
-SELECT flight_id, flight_no, company_id, scheduled_departure, scheduled_arrival, departure_airport, arrival_airport, status, aircraft_id, actual_departure, actual_arrival FROM flights
-`
-
-func (q *Queries) GetAllFlight(ctx context.Context) ([]Flight, error) {
-	rows, err := q.db.Query(ctx, getAllFlight)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	items := []Flight{}
-	for rows.Next() {
-		var i Flight
-		if err := rows.Scan(
-			&i.FlightID,
-			&i.FlightNo,
-			&i.CompanyID,
-			&i.ScheduledDeparture,
-			&i.ScheduledArrival,
-			&i.DepartureAirport,
-			&i.ArrivalAirport,
-			&i.Status,
-			&i.AircraftID,
-			&i.ActualDeparture,
-			&i.ActualArrival,
-		); err != nil {
-			return nil, err
-		}
-		items = append(items, i)
-	}
-	if err := rows.Err(); err != nil {
-		return nil, err
-	}
-	return items, nil
-}
-
-const getFlight = `-- name: GetFlight :many
+const flightAvailability = `-- name: FlightAvailability :many
 SELECT f.flight_id, f.flight_no, f.company_id, f.scheduled_departure, f.scheduled_departure_local, f.scheduled_arrival, f.scheduled_arrival_local, f.scheduled_duration, f.departure_airport, f.departure_airport_name, f.departure_city, f.arrival_airport, f.arrival_airport_name, f.arrival_city, f.status, f.aircraft_id, f.actual_departure, f.actual_departure_local, f.actual_arrival, f.actual_arrival_local, f.actual_duration 
 FROM flights_v f 
 WHERE f.departure_airport = $1
 AND f.arrival_airport = $2
-AND f.scheduled_departure > now() 
-ORDER BY f.scheduled_departure LIMIT 1
+AND f.scheduled_departure > now()
+AND f.company_id = $3
+ORDER BY f.scheduled_departure LIMIT 2
 `
 
-type GetFlightParams struct {
+type FlightAvailabilityParams struct {
 	DepartureAirport string `json:"departure_airport"`
 	ArrivalAirport   string `json:"arrival_airport"`
+	CompanyID        int64  `json:"company_id"`
 }
 
-func (q *Queries) GetFlight(ctx context.Context, arg GetFlightParams) ([]FlightsV, error) {
-	rows, err := q.db.Query(ctx, getFlight, arg.DepartureAirport, arg.ArrivalAirport)
+func (q *Queries) FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error) {
+	rows, err := q.db.Query(ctx, flightAvailability, arg.DepartureAirport, arg.ArrivalAirport, arg.CompanyID)
 	if err != nil {
 		return nil, err
 	}
@@ -158,6 +123,50 @@ func (q *Queries) GetFlight(ctx context.Context, arg GetFlightParams) ([]Flights
 			&i.ActualArrival,
 			&i.ActualArrivalLocal,
 			&i.ActualDuration,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getAllFlight = `-- name: GetAllFlight :many
+
+SELECT flight_id, flight_no, company_id, scheduled_departure, scheduled_arrival, departure_airport, arrival_airport, status, aircraft_id, actual_departure, actual_arrival FROM flights
+LIMIT $1
+OFFSET $2
+`
+
+type GetAllFlightParams struct {
+	Limit  int32 `json:"limit"`
+	Offset int32 `json:"offset"`
+}
+
+func (q *Queries) GetAllFlight(ctx context.Context, arg GetAllFlightParams) ([]Flight, error) {
+	rows, err := q.db.Query(ctx, getAllFlight, arg.Limit, arg.Offset)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	items := []Flight{}
+	for rows.Next() {
+		var i Flight
+		if err := rows.Scan(
+			&i.FlightID,
+			&i.FlightNo,
+			&i.CompanyID,
+			&i.ScheduledDeparture,
+			&i.ScheduledArrival,
+			&i.DepartureAirport,
+			&i.ArrivalAirport,
+			&i.Status,
+			&i.AircraftID,
+			&i.ActualDeparture,
+			&i.ActualArrival,
 		); err != nil {
 			return nil, err
 		}

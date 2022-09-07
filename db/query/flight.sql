@@ -22,17 +22,21 @@ RETURNING *;
 
 -- name: GetAllFlight :many
 
-SELECT * FROM flights;
+SELECT * FROM flights
+LIMIT $1
+OFFSET $2
+;
 
 
 
--- name: GetFlight :many
+-- name: FlightAvailability :many
 SELECT f.* 
 FROM flights_v f 
 WHERE f.departure_airport = $1
 AND f.arrival_airport = $2
-AND f.scheduled_departure > now() 
-ORDER BY f.scheduled_departure LIMIT 1;
+AND f.scheduled_departure > now()
+AND f.company_id = $3
+ORDER BY f.scheduled_departure LIMIT 2;
 
 
 /*

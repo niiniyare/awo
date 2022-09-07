@@ -17,11 +17,11 @@ type Querier interface {
 	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
 	DeleteAirports(ctx context.Context, id int64) error
+	FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error)
 	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
 	GetAirport(ctx context.Context, iataCode string) (Airport, error)
-	GetAllFlight(ctx context.Context) ([]Flight, error)
-	GetFlight(ctx context.Context, arg GetFlightParams) ([]FlightsV, error)
+	GetAllFlight(ctx context.Context, arg GetAllFlightParams) ([]Flight, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirport(ctx context.Context) ([]ListAirportRow, error)

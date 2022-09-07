@@ -84,3 +84,18 @@ func TestCreateFlight(t *testing.T) {
 // 	r.NoError(err)
 // 	r.NotEmpty(tf)
 // }
+//
+// func TestAvailabilityFlight(t *testing.T) {
+// 	r := require.New(t)
+// 	f1 := CreateRandomFlight(t)
+//
+// 	args := FlightAvailabilityParams{
+// 		DepartureAirport: f1.DepartureAirport,
+// 		ArrivalAirport:   f1.ArrivalAirport,
+// 		CompanyID:        f1.CompanyID,
+// 		Limit:            2,
+// 	}
+// 	result, err := testQueries.FlightAvailability(context.Background(), args)
+// 	r.NoError(err)
+// 	r.NotEmpty(result)
+// }
