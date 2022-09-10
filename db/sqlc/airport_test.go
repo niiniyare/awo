@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"strings"
 	"testing"
 
@@ -79,6 +80,7 @@ func TestDeleteAirport(t *testing.T) {
 	r.NoError(err)
 	airport2, err2 := testQueries.GetAirport(context.Background(), airport1.IataCode)
 
+	fmt.Errorf("%w\n", err2)
 	r.Error(err2)
 	r.EqualError(err2, pgx.ErrNoRows.Error())
 	r.Empty(airport2)

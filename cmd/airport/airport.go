@@ -52,7 +52,7 @@ func (a Airport) PrintSql() {
 		if len(dt.Iata) > 0 && len(dt.Iata) < 4 && dt.City != "" && dt.Name != "" && dt.Tz != "" && dt.Iata != "" && dt.Icao != "" && dt.Country != "" && dt.Elevation != 0 && dt.Lat != 0.0 || dt.Lon != 0.0 {
 			fmt.Printf("INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)")
 
-			fmt.Printf("VALUES('%v','%v','%v',%d,'%v','%v','%v',%f,%f,'%v');\n", dt.Iata, dt.Icao, name, dt.Elevation, city, state, dt.Country, dt.Lon, dt.Lat, dt.Tz)
+			fmt.Printf("VALUES('%v','%v','%v',%d,'%v','%v','%v',%f,%f,'%v');\n", dt.Iata, dt.Icao, name, dt.Elevation, city, dt.Country, state, dt.Lon, dt.Lat, dt.Tz)
 
 			no++
 
