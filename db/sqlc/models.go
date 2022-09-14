@@ -72,13 +72,13 @@ type FlightsV struct {
 	// Scheduled departure time
 	ScheduledDeparture time.Time `json:"scheduled_departure"`
 	// Scheduled departure time, local time at the point of departure
-	ScheduledDepartureLocal interface{} `json:"scheduled_departure_local"`
+	ScheduledDepartureLocal pgtype.Time `json:"scheduled_departure_local"`
 	// Scheduled arrival time
 	ScheduledArrival time.Time `json:"scheduled_arrival"`
 	// Scheduled arrival time, local time at the point of destination
-	ScheduledArrivalLocal interface{} `json:"scheduled_arrival_local"`
+	ScheduledArrivalLocal pgtype.Time `json:"scheduled_arrival_local"`
 	// Scheduled flight duration
-	ScheduledDuration int32 `json:"scheduled_duration"`
+	ScheduledDuration pgtype.Interval `json:"scheduled_duration"`
 	// Deprature airport code
 	DepartureAirport string `json:"departure_airport"`
 	// Departure airport name
@@ -98,13 +98,13 @@ type FlightsV struct {
 	// Actual departure time
 	ActualDeparture sql.NullTime `json:"actual_departure"`
 	// Actual departure time, local time at the point of departure
-	ActualDepartureLocal interface{} `json:"actual_departure_local"`
+	ActualDepartureLocal pgtype.Time `json:"actual_departure_local"`
 	// Actual arrival time
 	ActualArrival sql.NullTime `json:"actual_arrival"`
 	// Actual arrival time, local time at the point of destination
-	ActualArrivalLocal interface{} `json:"actual_arrival_local"`
+	ActualArrivalLocal pgtype.Time `json:"actual_arrival_local"`
 	// Actual flight duration
-	ActualDuration int32 `json:"actual_duration"`
+	ActualDuration pgtype.Interval `json:"actual_duration"`
 }
 
 type Route struct {

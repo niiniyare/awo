@@ -12,5 +12,18 @@ packages:
     emit_empty_slices: true
     sql_package: "pgx/v4"
     overrides:
-      # - column: "airports.coordinates"
-      # go_type: "github.com/jackc/pgtype.Point"
+      - column: "flights_v.scheduled_arrival_local"
+        go_type: "github.com/jackc/pgtype.Time"
+      - column: "flights_v.scheduled_departure_local"
+        go_type: "github.com/jackc/pgtype.Time"
+      - column: "flights_v.actual_departure_local"
+        go_type: "github.com/jackc/pgtype.Time"
+      - column: "flights_v.actual_arrival_local"
+        go_type: "github.com/jackc/pgtype.Time"
+      - column: "flights_v.scheduled_duration"
+        go_type: "github.com/jackc/pgtype.Interval"
+      - column: "flights_v.actual_duration"
+        go_type: "github.com/jackc/pgtype.Interval"
+
+        # - column: "airports.coordinates"
+      #   # go_type: "github.com/jackc/pgtype.Point"

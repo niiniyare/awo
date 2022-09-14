@@ -2,7 +2,7 @@ package db
 
 import (
 	"context"
-	"fmt"
+	"database/sql"
 	"testing"
 	"time"
 
@@ -35,23 +35,30 @@ func CreateRandomFlight(t *testing.T) Flight {
 
 	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
 
-	fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
-
-	fmt.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
-
-	fmt.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
-
-	arg :=
-		CreateFlightParams{
-			FlightNo:           util.RandomFlightNo(airline.IataCode),
-			CompanyID:          airline.ID,
-			ScheduledDeparture: dep,
-			ScheduledArrival:   arr,
-			DepartureAirport:   airport.IataCode,
-			ArrivalAirport:     airport1.IataCode,
-			Status:             onTime,
-			AircraftID:         aircraft.ID,
-		}
+	// fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
+	//
+	// fmt.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
+	//
+	// fmt.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
+	//
+	actualtime := sql.NullTime{Time: arr}
+	aclerr := actualtime.Scan(arr)
+	r.NoError(aclerr)
+	actualDeparture := sql.NullTime{Time: arr}
+	aclerr = actualDeparture.Scan(dep)
+	r.NoError(aclerr)
+	arg := CreateFlightParams{
+		FlightNo:           util.RandomFlightNo(airline.IataCode),
+		CompanyID:          airline.ID,
+		ScheduledDeparture: dep,
+		ScheduledArrival:   arr,
+		DepartureAirport:   airport.IataCode,
+		ArrivalAirport:     airport1.IataCode,
+		Status:             onTime,
+		AircraftID:         aircraft.ID,
+		ActualDeparture:    actualDeparture,
+		ActualArrival:      actualtime,
+	}
 	flight, err := testQueries.CreateFlight(context.Background(), arg)
 	r.NoError(err)
 	r.NotEmpty(flight)
@@ -64,27 +71,35 @@ func TestCreateFlight(t *testing.T) {
 	CreateRandomFlight(t)
 }
 
-//
-// func TestGetflight(t *testing.T) {
-//
-// 	flight := CreateRandomFlight(t)
-//
-// 	arg := GetFlightParams{
-// 		DepartureAirport: flight.DepartureAirport,
-// 		ArrivalAirport:   flight.ArrivalAirport,
-// 	}
-// 	fmt.Printf("%v\n", flight)
-// 	tf, err := testQueries.GetFlight(context.Background(), arg)
-// 	for _, v := range tf {
-// 		fmt.Println(v)
-//
-// 	}
-// 	r := require.New(t)
-//
-// 	r.NoError(err)
-// 	r.NotEmpty(tf)
-// }
-//
+func TestGetflight(t *testing.T) {
+	r := require.New(t)
+
+	flight := CreateRandomFlight(t)
+	r.NotEmpty(flight)
+	arg := FlightAvailabilityParams{
+		DepartureAirport: flight.DepartureAirport,
+		ArrivalAirport:   flight.ArrivalAirport,
+		CompanyID:        flight.CompanyID,
+	}
+	// fmt.Printf("%+v\n", flight)
+	tf, err := testQueries.FlightAvailability(context.Background(), arg)
+	// fmt.Errorf("FlightAvailability: %w", err)
+	r.NoError(err)
+
+	for _, f := range tf {
+
+		r.NotEmpty(f)
+
+		r.Equal(f.ArrivalAirport, flight.ArrivalAirport)
+		r.Equal(f.DepartureAirport, flight.DepartureAirport)
+		r.Equal(f.FlightNo, flight.FlightNo)
+		r.Equal(f.FlightID, flight.FlightID)
+
+	}
+
+	r.NotEmpty(tf)
+}
+
 // func TestAvailabilityFlight(t *testing.T) {
 // 	r := require.New(t)
 // 	f1 := CreateRandomFlight(t)

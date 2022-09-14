@@ -876,7 +876,7 @@ INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('BBS','EGLK','Blackbushe Airport',325,'Yateley','GB','England',-0.847500,51.323898,'Europe/London');
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('LHR','EGLL','London Heathrow Airport',83,'London','GB','England',-0.461941,51.470600,'Europe/London');
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('SEN','EGMC','Southend Airport',49,'Southend','GB','England',0.695556,51.571400,'Europe/London');
-INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES(' As','EGMD','Lydd Airport',13,'Lydd','GB','England',0.939167,50.956100,'Europe/London');
+INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES(' LYX','EGMD','Lydd Airport',13,'Lydd','GB','England',0.939167,50.956100,'Europe/London');
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('MSE','EGMH','Kent International Airport',178,'Manston','GB','England',1.346110,51.342201,'Europe/London');
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('CAX','EGNC','Carlisle Airport',190,'Carlisle','GB','England',-2.809170,54.937500,'Europe/London');
 INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES(' We','EGND','HUDDERSFIELD (Crosland Moor)',825,'Huddersfield','GB','England',-1.830278,53.621667,'Europe/London');
