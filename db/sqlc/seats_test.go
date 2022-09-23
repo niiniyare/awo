@@ -19,7 +19,7 @@ func CreateRondomSeats(t *testing.T) Seat {
 	arg := CreateSeatParams{
 		AircraftID:     aircraft.ID,
 		SeatNo:         util.RandomAlphaString(2),
-		FareConditions: "Economic",
+		FareConditions: "Economy'",
 	}
 	seat, err := testQueries.CreateSeat(context.Background(), arg)
 
@@ -34,12 +34,11 @@ func CreateRondomSeats(t *testing.T) Seat {
 
 func TestGetSeat(t *testing.T) {
 	r := require.New(t)
-	for i := 0; i < 10; i++ {
 
-		seat1 := CreateRondomSeats(t)
+	seat1 := CreateRondomSeats(t)
 
-		r.NotEmpty(seat1)
-	}
+	r.NotEmpty(seat1)
+
 	seat, err := testQueries.GetSeats(context.Background())
 
 	r.NoError(err)
