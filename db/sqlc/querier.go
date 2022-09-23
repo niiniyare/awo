@@ -28,6 +28,12 @@ type Querier interface {
 	//
 	FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error)
 	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
+	// iata_code,
+	// icao_code,
+	// model,
+	// range,
+	// company_id
+	GetAircraftSeatsWithIataCode(ctx context.Context, iataCode string) ([]GetAircraftSeatsWithIataCodeRow, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
 	GetAirport(ctx context.Context, iataCode string) (Airport, error)
 	GetSeats(ctx context.Context) ([]Seat, error)

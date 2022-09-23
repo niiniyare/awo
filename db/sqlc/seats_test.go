@@ -2,6 +2,7 @@ package db
 
 import (
 	"context"
+	"fmt"
 	"testing"
 
 	"github.com/niiniyare/awo/util"
@@ -16,10 +17,12 @@ func CreateRondomSeats(t *testing.T) Seat {
 
 	r.NotEmpty(aircraft)
 
+	Seat := fmt.Sprintf("%v%d", util.RandomString(1), util.RandomInt(1, 5))
+
 	arg := CreateSeatParams{
 		AircraftID:     aircraft.ID,
-		SeatNo:         util.RandomAlphaString(2),
-		FareConditions: "Economy'",
+		SeatNo:         Seat,
+		FareConditions: "Economy",
 	}
 	seat, err := testQueries.CreateSeat(context.Background(), arg)
 
