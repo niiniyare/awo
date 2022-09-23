@@ -130,3 +130,12 @@ type Route struct {
 	// Days of week on which flights are scheduled
 	DaysOfWeek interface{} `json:"days_of_week"`
 }
+
+type Seat struct {
+	// Aircraft code, IATA
+	AircraftID int64 `json:"aircraft_id"`
+	// Seat number
+	SeatNo string `json:"seat_no"`
+	// Travel class
+	FareConditions string `json:"fare_conditions"`
+}

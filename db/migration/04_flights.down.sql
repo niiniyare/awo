@@ -1,3 +1,0 @@
-DROP VIEW IF EXISTS routes;
-DROP VIEW IF EXISTS flights_v;
-DROP TABLE IF EXISTS flights;

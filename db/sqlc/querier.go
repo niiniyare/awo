@@ -14,6 +14,7 @@ type Querier interface {
 	//subdivision_code
 	CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error)
 	CreateFlight(ctx context.Context, arg CreateFlightParams) (Flight, error)
+	CreateSeat(ctx context.Context, arg CreateSeatParams) (Seat, error)
 	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
 	DeleteAirports(ctx context.Context, id int64) error
@@ -29,6 +30,7 @@ type Querier interface {
 	GetAircraft(ctx context.Context, id int64) (Aircraft, error)
 	GetAirline(ctx context.Context, id int64) (Airline, error)
 	GetAirport(ctx context.Context, iataCode string) (Airport, error)
+	GetSeats(ctx context.Context) ([]Seat, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirport(ctx context.Context) ([]ListAirportRow, error)
