@@ -1,26 +1,27 @@
 package db
 
-/*
 import (
 	"context"
-	"database/sql"
 	"fmt"
+
+	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v4/pgxpool"
 )
 
 // Store defines all functions to execute db queries and transactions
 type Store interface {
 	Querier
-//	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
+	//	TransferTx(ctx context.Context, arg TransferTxParams) (TransferTxResult, error)
 }
 
 // SQLStore provides all functions to execute SQL queries and transactions
 type SQLStore struct {
-	db *sql.DB
+	db *pgxpool.Conn
 	*Queries
 }
 
 // NewStore creates a new store
-func NewStore(db *sql.DB) Store {
+func NewStore(db *pgxpool.Conn) Store {
 	return &SQLStore{
 		db:      db,
 		Queries: New(db),
@@ -29,7 +30,7 @@ func NewStore(db *sql.DB) Store {
 
 // ExecTx executes a function within a database transaction
 func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) error {
-	tx, err := store.db.BeginTx(ctx, nil)
+	tx, err := store.db.BeginTx(ctx, pgx.TxOptions{})
 	if err != nil {
 		return err
 	}
@@ -37,12 +38,11 @@ func (store *SQLStore) execTx(ctx context.Context, fn func(*Queries) error) erro
 	q := New(tx)
 	err = fn(q)
 	if err != nil {
-		if rbErr := tx.Rollback(); rbErr != nil {
+		if rbErr := tx.Rollback(ctx); rbErr != nil {
 			return fmt.Errorf("tx err: %v, rb err: %v", err, rbErr)
 		}
 		return err
 	}
 
-	return tx.Commit()
+	return tx.Commit(ctx)
 }
-*/
