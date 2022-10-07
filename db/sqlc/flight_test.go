@@ -97,7 +97,7 @@ func TestGetflight(t *testing.T) {
 
 	}
 
-	r.NotNil(f)
+	r.NotNil(tf)
 }
 
 // func TestAvailabilityFlight(t *testing.T) {
