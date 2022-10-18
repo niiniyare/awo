@@ -39,6 +39,6 @@ help:
 	@grep -E '^[a-zA-Z_-]+:.*?## .*9252' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "[36m%-30s[0m %s", 92521, 92522}'
 
 testdb:
-	go test -v -cover ./db/sqlc/...
+	go test -v -cover -count=1 ./db/sqlc/...
 
 .PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help
