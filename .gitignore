@@ -5,6 +5,7 @@
 # dir
 ./external/_examples/booktest
 
+# file
 logfile
 coverage.out
-script/coverage.txt
+./script/coverage.txt 
