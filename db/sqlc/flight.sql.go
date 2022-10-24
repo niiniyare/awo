@@ -100,7 +100,6 @@ type FlightAvailabilityParams struct {
 // AND f.scheduled_departure > now()
 // AND f.company_id = $3
 // ORDER BY f.scheduled_departure LIMIT 2
-//
 func (q *Queries) FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error) {
 	rows, err := q.db.Query(ctx, flightAvailability, arg.DepartureAirport, arg.ArrivalAirport, arg.CompanyID)
 	if err != nil {

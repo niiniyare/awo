@@ -43,7 +43,7 @@ type CreateAirportParams struct {
 	Timezone  string         `json:"timezone"`
 }
 
-//subdivision_code
+// subdivision_code
 func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error) {
 	row := q.db.QueryRow(ctx, createAirport,
 		arg.IataCode,
