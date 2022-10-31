@@ -27,49 +27,9 @@ INSERT INTO cabin_class VALUES
  * Create tables
  */
 
-<<<<<<< HEAD
--- CREATE TABLE airport (
---     id BIGSERIAL PRIMARY KEY NOT NULL,
---     iata_code text NOT NULL,
---     -- Check if it is a valid airport iata code, e.g. TLV, LAX, etc.
---     CHECK (iata_code ~ '\A[A-Z]{3}\Z'),
---     icao_code text NOT NULL,
---     -- Check if it is a valid airport icao code, e.g. LLBG, KLAX, etc.
---     CHECK (icao_code ~ '\A[A-Z]{4}\Z'),
---     name text NOT NULL,
---     subdivision_code text NOT NULL,
---     -- Check if it is a valid ISO 3166-2 subdivision code, e.g. IL-M, US-CA, etc.
---     CHECK (subdivision_code ~ '\A[A-Z]{2}-[A-Z0-9]{1,3}\Z'),
---     city text NOT NULL,
---     geo_location point NOT NULL,
---     -- geo_location geography(point) NOT NULL,
---     UNIQUE (iata_code, icao_code)
--- -- );
--- --
--- CREATE TABLE service (
---     id integer PRIMARY KEY,
---     origin_airport_id integer NOT NULL REFERENCES airport (id),
---     destination_airport_id integer NOT NULL REFERENCES airport (id),
---     UNIQUE (origin_airport_id, destination_airport_id)
--- );
---
--- CREATE TABLE aircraft_model (
---     id BIGSERIAL PRIMARY KEY NOT NULL,
---     icao_code text NOT NULL,
---     -- Check if it is a valid aircraft icao code, e.g. A5, B487, etc.
---     CHECK (icao_code ~ '\A[A-Z0-9]{2,4}\Z'),
---     iata_code text NOT NULL,
---     -- Check if it is a valid aircraft iata code, e.g. A4F, 313, etc.
---     CHECK (iata_code ~ '\A[A-Z0-9]{3}\Z'),
---     name text NOT NULL,
---     UNIQUE (icao_code, iata_code)
--- );
---
-=======
 
 
 
->>>>>>> 41c416a (corrected 'seats extanded' migration)
 CREATE TABLE seat_map (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     aircraft_id integer REFERENCES aircrafts (id),
@@ -82,25 +42,7 @@ CREATE TABLE seat_map (
     CHECK (column_layout ~ '\A[A-Z#]+(?:-[A-Z#]+)*\Z'),
     UNIQUE (aircraft_id, start_row, end_row)
 );
-<<<<<<< HEAD
---
--- CREATE TABLE flight (
---     id BIGSERIAL PRIMARY KEY NOT NULL,
---     service_id integer NOT NULL REFERENCES service (id),
---     departure_terminal text NOT NULL,
---     departure_time timestamptz NOT NULL,
---     arrival_terminal text NOT NULL,
---     arrival_time timestamptz NOT NULL,
---     CHECK (departure_time < arrival_time),
---     aircraft_id integer NOT NULL REFERENCES aircrafts (id)
--- );
---
-=======
 
-
-
-
->>>>>>> 41c416a (corrected 'seats extanded' migration)
 CREATE TABLE booked_seat (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     flight_id integer NOT NULL REFERENCES flights (flight_id),
