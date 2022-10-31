@@ -48,6 +48,19 @@ type Airport struct {
 	Timezone  string         `json:"timezone"`
 }
 
+type BookedSeat struct {
+	ID         int64  `json:"id"`
+	FlightID   int32  `json:"flight_id"`
+	CabinClass string `json:"cabin_class"`
+	SeatRow    int32  `json:"seat_row"`
+	SeatColumn string `json:"seat_column"`
+}
+
+type CabinClass struct {
+	Value       string `json:"value"`
+	Description string `json:"description"`
+}
+
 type Flight struct {
 	FlightID           int64        `json:"flight_id"`
 	FlightNo           string       `json:"flight_no"`
@@ -138,4 +151,13 @@ type Seat struct {
 	SeatNo string `json:"seat_no"`
 	// Travel class
 	FareConditions string `json:"fare_conditions"`
+}
+
+type SeatMap struct {
+	ID           int64         `json:"id"`
+	AircraftID   sql.NullInt32 `json:"aircraft_id"`
+	CabinClass   string        `json:"cabin_class"`
+	StartRow     int32         `json:"start_row"`
+	EndRow       int32         `json:"end_row"`
+	ColumnLayout string        `json:"column_layout"`
 }
