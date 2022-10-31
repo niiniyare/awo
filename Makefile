@@ -1,5 +1,5 @@
 DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
-DB_SOURCE=postgres://wegmjdaf:khexFaRIW0eslZ6GPRY5VFyCM7w_vMVc@tyke.db.elephantsql.com/wegmjdaf?sslmode=disable
+# DB_URL=postgres://wegmjdaf:khexFaRIW0eslZ6GPRY5VFyCM7w_vMVc@tyke.db.elephantsql.com/wegmjdaf?sslmode=disable
 clean:
 	rm pkg/api/v1/*.go
 	rm swagger/*
