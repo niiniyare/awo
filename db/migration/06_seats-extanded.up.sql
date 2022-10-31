@@ -1,18 +1,6 @@
-/*
- * Initialization script for the Inventory PostgreSQL database.
- * Uses PostGIS for geographic location data.
- *
- * Supported for:
- *   - PostgreSQL version 14 and above.
- *   - PostGIS version 3.1 and above.
- */
-
--- CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 
-/*
- * Define enum tables
- */
+
 
 CREATE TABLE cabin_class (
     value text PRIMARY KEY,
@@ -39,6 +27,7 @@ INSERT INTO cabin_class VALUES
  * Create tables
  */
 
+<<<<<<< HEAD
 -- CREATE TABLE airport (
 --     id BIGSERIAL PRIMARY KEY NOT NULL,
 --     iata_code text NOT NULL,
@@ -76,6 +65,11 @@ INSERT INTO cabin_class VALUES
 --     UNIQUE (icao_code, iata_code)
 -- );
 --
+=======
+
+
+
+>>>>>>> 41c416a (corrected 'seats extanded' migration)
 CREATE TABLE seat_map (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     aircraft_id integer REFERENCES aircrafts (id),
@@ -88,6 +82,7 @@ CREATE TABLE seat_map (
     CHECK (column_layout ~ '\A[A-Z#]+(?:-[A-Z#]+)*\Z'),
     UNIQUE (aircraft_id, start_row, end_row)
 );
+<<<<<<< HEAD
 --
 -- CREATE TABLE flight (
 --     id BIGSERIAL PRIMARY KEY NOT NULL,
@@ -100,6 +95,12 @@ CREATE TABLE seat_map (
 --     aircraft_id integer NOT NULL REFERENCES aircrafts (id)
 -- );
 --
+=======
+
+
+
+
+>>>>>>> 41c416a (corrected 'seats extanded' migration)
 CREATE TABLE booked_seat (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     flight_id integer NOT NULL REFERENCES flights (flight_id),
