@@ -32,7 +32,7 @@ INSERT INTO cabin_class VALUES
 
 CREATE TABLE seat_map (
     id BIGSERIAL PRIMARY KEY NOT NULL,
-    aircraft_id integer REFERENCES aircrafts (id),
+    aircraft_id integer REFERENCES aircrafts (id) NOT NULL,
     cabin_class text REFERENCES cabin_class (value) NOT NULL,
     start_row integer NOT NULL CHECK (start_row > 0),
     end_row integer NOT NULL CHECK (end_row > 0),
@@ -68,4 +68,14 @@ CREATE TABLE booked_seat (
 --
 --
 --
+--
+-- -- Boeing 787-9 Dreamliner seat map
+-- INSERT INTO seat_map (aircraft_model_id, cabin_class, start_row, end_row, column_layout) VALUES
+--     (1, 'F', 1, 8, 'A-DG-K'),
+--     (1, 'B', 10, 14, 'AC-DFG-HK'),
+--     (1, 'E', 21, 28, 'ABC-DFG-HJK'),
+--     (1, 'E', 29, 30, '###-###-HJK'),
+--     (1, 'E', 35, 36, 'ABC-###-HJK'),
+--     (1, 'E', 37, 48, 'ABC-DFG-HJK'),
+--     (1, 'E', 49, 50, '###-DFG-###');
 --

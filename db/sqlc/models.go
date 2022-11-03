@@ -154,10 +154,10 @@ type Seat struct {
 }
 
 type SeatMap struct {
-	ID           int64         `json:"id"`
-	AircraftID   sql.NullInt32 `json:"aircraft_id"`
-	CabinClass   string        `json:"cabin_class"`
-	StartRow     int32         `json:"start_row"`
-	EndRow       int32         `json:"end_row"`
-	ColumnLayout string        `json:"column_layout"`
+	ID           int64  `json:"id"`
+	AircraftID   int32  `json:"aircraft_id"`
+	CabinClass   string `json:"cabin_class"`
+	StartRow     int32  `json:"start_row"`
+	EndRow       int32  `json:"end_row"`
+	ColumnLayout string `json:"column_layout"`
 }
