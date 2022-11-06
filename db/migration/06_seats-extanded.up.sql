@@ -68,21 +68,20 @@ CREATE TABLE booked_seat (
 --
 --
 --
---
--- -- Boeing 787-9 Dreamliner seat map
-INSERT INTO
-    seat_map (
-        aircraft_id,
-        cabin_class,
-        start_row,
-        end_row,
-        column_layout
-    )
-VALUES
-    (1, 'F', 1, 8, 'A-DG-K'),
-    (1, 'B', 10, 14, 'AC-DFG-HK'),
-    (1, 'E', 21, 28, 'ABC-DFG-HJK'),
-    (1, 'E', 29, 30, '###-###-HJK'),
-    (1, 'E', 35, 36, 'ABC-###-HJK'),
-    (1, 'E', 37, 48, 'ABC-DFG-HJK'),
-    (1, 'E', 49, 50, '###-DFG-###');
+-- INSERT INTO
+--     seat_map (
+--         aircraft_id,
+--         cabin_class,
+--         start_row,
+--         end_row,
+--         column_layout
+--     )
+-- VALUES
+--     (1, 'F', 1, 8, 'A-DG-K'),
+--     (1, 'B', 10, 14, 'AC-DFG-HK'),
+--     (1, 'E', 21, 28, 'ABC-DFG-HJK'),
+--     (1, 'E', 29, 30, '###-###-HJK'),
+--     (1, 'E', 35, 36, 'ABC-###-HJK'),
+--     (1, 'E', 37, 48, 'ABC-DFG-HJK'),
+--     (1, 'E', 49, 50, '###-DFG-###');
+
