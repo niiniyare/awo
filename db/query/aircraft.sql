@@ -8,6 +8,8 @@ ORDER BY id
 LIMIT $1
 OFFSET $2;
 
+INSERT INTO aircrafts(iata_code, icao_code,  model, range, company_id)VALUES( 'AT4','AT43', 'Aerospatiale/Alenia ATR 42-300 / 320', 619,2);
+
 -- name: CreateAircraft :one
 INSERT INTO aircrafts (
 iata_code, icao_code,  model, range, company_id

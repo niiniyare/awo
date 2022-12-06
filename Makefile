@@ -40,5 +40,12 @@ help:
 
 testdb:
 	go test -v -cover -count=1 ./db/sqlc/...
+seed-airport:
+	psql flight --command='\i cmd/airport/airport.sql'
 
-.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help
+seed-aircraft:
+	psql flight --command='\i cmd/aircraft/aircraft.sql'
+
+
+.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft
+

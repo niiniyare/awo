@@ -1,25 +1,14 @@
 CREATE TABLE IF NOT EXISTS flights (
     flight_id BIGSERIAL PRIMARY KEY NOT NULL,
-    
     flight_no VARCHAR(6) NOT NULL,
-   
     company_id BIGSERIAL REFERENCES airlines(id)NOT NULL,
-    
     scheduled_departure timestamp with time zone NOT NULL,
-   
     scheduled_arrival timestamp with time zone NOT NULL,
-   
     departure_airport VARCHAR(3) NOT NULL,
-   
     arrival_airport VARCHAR(3) NOT NULL,
-    
     status VARCHAR(20) NOT NULL,
-    
     aircraft_id BIGSERIAL NOT NULL,
-    
     actual_departure timestamp with time zone,
-   
-
     actual_arrival timestamp with time zone,
     
     CONSTRAINT flights_check CHECK ((scheduled_arrival > scheduled_departure)),
@@ -75,8 +64,6 @@ CREATE VIEW flights_v AS
   COMMENT  ON VIEW flights_v IS 'Flights (extended)';
 
   COMMENT  ON COLUMN flights_v.flight_id IS 'Flight ID';
-
-
 
   COMMENT  ON COLUMN flights_v.flight_no IS 'Flight number';
 

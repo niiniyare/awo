@@ -12,8 +12,8 @@ import (
 )
 
 const (
-	scheduled string = "Scheduled"
-	onTime           = "On Time"
+	scheduled = "Scheduled"
+	onTime    = "On Time"
 )
 
 func CreateRandomFlight(t *testing.T) Flight {
