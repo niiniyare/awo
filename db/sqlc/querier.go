@@ -17,7 +17,7 @@ type Querier interface {
 	CreateSeat(ctx context.Context, arg CreateSeatParams) (Seat, error)
 	DeleteAircraft(ctx context.Context, id int64) error
 	DeleteAirline(ctx context.Context, id int64) error
-	DeleteAirports(ctx context.Context, id int64) error
+	DeleteAirports(ctx context.Context, iataCode string) (Airport, error)
 	// SELECT f.flight_id, f.flight_no, f.company_id, f.scheduled_departure, f.scheduled_departure_local, f.scheduled_arrival, f.scheduled_arrival_local, f.scheduled_duration, f.departure_airport, f.departure_airport_name, f.departure_city, f.arrival_airport, f.arrival_airport_name, f.arrival_city, f.status, f.aircraft_id, f.actual_departure, f.actual_departure_local, f.actual_arrival, f.actual_arrival_local, COALESCE(f.actual_duration ,0) as  actual_duration
 	// FROM flights_v f
 	// WHERE f.departure_airport = $1
@@ -40,7 +40,7 @@ type Querier interface {
 	InsertNewSeatMap(ctx context.Context, arg []InsertNewSeatMapParams) (int64, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
-	ListAirport(ctx context.Context) ([]ListAirportRow, error)
+	ListAirport(ctx context.Context, arg ListAirportParams) ([]ListAirportRow, error)
 }
 
 var _ Querier = (*Queries)(nil)

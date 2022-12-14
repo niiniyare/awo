@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"fmt"
 	"strings"
 	"testing"
 
@@ -16,8 +15,8 @@ func CreateRandomAirport(t *testing.T) Airport {
 
 	r := require.New(t)
 
-	lt := util.RandomFloat64(-90.0, 90)
-	ln := util.RandomFloat64(-180, 180)
+	lt := util.RandomFloat64(-90.0, 90.99)
+	ln := util.RandomFloat64(-180.0, 180.99)
 
 	lat := new(pgtype.Numeric)
 	err := lat.Set(lt)
@@ -26,6 +25,7 @@ func CreateRandomAirport(t *testing.T) Airport {
 	lon := new(pgtype.Numeric)
 	err = lon.Set(ln)
 	r.NoError(err)
+
 	arg := CreateAirportParams{
 		IataCode: strings.ToUpper(util.RandomString(3)),
 		IcaoCode: strings.ToUpper(util.RandomString(4)),
@@ -33,11 +33,9 @@ func CreateRandomAirport(t *testing.T) Airport {
 		City:     strings.ToUpper(util.RandomString(4)),
 		Country:  strings.ToUpper(util.RandomString(3)),
 		State:    strings.ToUpper(util.RandomString(4)),
-
 		Timezone: "Africa/Mogadishu",
-
-		Lat: *lat,
-		Lon: *lon,
+		Lat:      *lat,
+		Lon:      *lon,
 	}
 
 	airport, err := testQueries.CreateAirport(context.Background(), arg)
@@ -75,16 +73,13 @@ func TestDeleteAirport(t *testing.T) {
 	airport1 := CreateRandomAirport(t)
 	r.NotEmpty(airport1)
 
-	err := testQueries.DeleteAirports(context.Background(), airport1.ID)
+	airport2, err := testQueries.DeleteAirports(context.Background(), airport1.IataCode)
 
 	r.NoError(err)
 	airport2, err2 := testQueries.GetAirport(context.Background(), airport1.IataCode)
-
-	fmt.Errorf("%w\n", err2)
-	r.Error(err2)
 	r.EqualError(err2, pgx.ErrNoRows.Error())
 	r.Empty(airport2)
-
+	// r.Equal(airport1.ID, airport2.ID)
 }
 
 func TestListAirportAirport(t *testing.T) {
@@ -97,7 +92,10 @@ func TestListAirportAirport(t *testing.T) {
 
 	}
 
-	airport, err := testQueries.ListAirport(context.Background())
+	airport, err := testQueries.ListAirport(context.Background(), ListAirportParams{
+		Limit:  5,
+		Offset: 5,
+	})
 
 	r.NoError(err)
 	r.NotEmpty(airport)

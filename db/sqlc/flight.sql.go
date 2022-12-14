@@ -23,10 +23,7 @@ INSERT INTO flights (
     aircraft_id ,
     actual_departure ,
     actual_arrival 
-    
-
-
-)
+    )
 VALUES (
 $1, $2, $3, $4, $5, $6, $7, $8, $9,$10
 )
@@ -78,19 +75,43 @@ func (q *Queries) CreateFlight(ctx context.Context, arg CreateFlightParams) (Fli
 
 const flightAvailability = `-- name: FlightAvailability :many
 
-SELECT f.flight_id, f.flight_no, f.company_id, f.scheduled_departure, f.scheduled_departure_local, f.scheduled_arrival, f.scheduled_arrival_local, f.scheduled_duration,  f.departure_airport, f.departure_airport_name, f.departure_city, f.arrival_airport, f.arrival_airport_name, f.arrival_city, f.status, f.aircraft_id, f.actual_departure, f.actual_departure_local, f.actual_arrival, f.actual_arrival_local , f.actual_duration
+SELECT 
+  f.flight_id
+, f.flight_no
+, f.company_id
+, f.scheduled_departure
+, f.scheduled_departure_local
+, f.scheduled_arrival
+, f.scheduled_arrival_local
+, f.scheduled_duration
+, f.departure_airport
+, f.departure_airport_name
+, f.departure_city
+, f.arrival_airport
+, f.arrival_airport_name
+, f.arrival_city
+, f.status
+, f.aircraft_id
+, f.actual_departure
+, f.actual_departure_local
+, f.actual_arrival
+, f.actual_arrival_local
+, f.actual_duration
 FROM flights_v f 
-WHERE f.departure_airport = $1
-AND f.arrival_airport = $2
-AND f.scheduled_departure > now()
-AND f.company_id = $3
-ORDER BY f.scheduled_departure
+WHERE   f.departure_airport = $1
+    AND f.arrival_airport = $2
+    -- AND f.scheduled_departure > now()
+    AND f.company_id = $3
+    AND f.scheduled_departure = $4
+    -- AND f.scheduled_arrival = $5
+    AND f.status IN ('On Time', 'Delayed', 'Scheduled')
 `
 
 type FlightAvailabilityParams struct {
-	DepartureAirport string `json:"departure_airport"`
-	ArrivalAirport   string `json:"arrival_airport"`
-	CompanyID        int64  `json:"company_id"`
+	DepartureAirport   string    `json:"departure_airport"`
+	ArrivalAirport     string    `json:"arrival_airport"`
+	CompanyID          int64     `json:"company_id"`
+	ScheduledDeparture time.Time `json:"scheduled_departure"`
 }
 
 // SELECT f.flight_id, f.flight_no, f.company_id, f.scheduled_departure, f.scheduled_departure_local, f.scheduled_arrival, f.scheduled_arrival_local, f.scheduled_duration, f.departure_airport, f.departure_airport_name, f.departure_city, f.arrival_airport, f.arrival_airport_name, f.arrival_city, f.status, f.aircraft_id, f.actual_departure, f.actual_departure_local, f.actual_arrival, f.actual_arrival_local, COALESCE(f.actual_duration ,0) as  actual_duration
@@ -101,7 +122,12 @@ type FlightAvailabilityParams struct {
 // AND f.company_id = $3
 // ORDER BY f.scheduled_departure LIMIT 2
 func (q *Queries) FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error) {
-	rows, err := q.db.Query(ctx, flightAvailability, arg.DepartureAirport, arg.ArrivalAirport, arg.CompanyID)
+	rows, err := q.db.Query(ctx, flightAvailability,
+		arg.DepartureAirport,
+		arg.ArrivalAirport,
+		arg.CompanyID,
+		arg.ScheduledDeparture,
+	)
 	if err != nil {
 		return nil, err
 	}

@@ -22,12 +22,12 @@ WHERE iata_code = $1;
 -- name: ListAirport :many
 SELECT id, iata_code, name ,city
 FROM airports
-OFSET $1
+OFFSET $1
 LIMIT $2;
 
--- name: DeleteAirports :exec
+-- name: DeleteAirports :one
 DELETE FROM airports
-WHERE id = $1
+WHERE iata_code = $1
 RETURNING *;
 
 -- INSERT INTO airports(iata_code, icao_code, name, elevation, city, country, state, lat, lon, timezone)VALUES('ALU','HCMA','Alula Airport',6,'Alula','SO','Bari',50.748000,11.958200,'Africa/Mogadishu');

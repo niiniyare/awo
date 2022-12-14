@@ -52,9 +52,11 @@ SELECT
 FROM flights_v f 
 WHERE   f.departure_airport = $1
     AND f.arrival_airport = $2
-    AND f.scheduled_departure > now()
+    -- AND f.scheduled_departure > now()
     AND f.company_id = $3
-ORDER BY f.scheduled_departure ;
+    AND f.scheduled_departure = $4
+    -- AND f.scheduled_arrival = $5
+    AND f.status IN ('On Time', 'Delayed', 'Scheduled');
 --
 --
 -- SELECT f.* 

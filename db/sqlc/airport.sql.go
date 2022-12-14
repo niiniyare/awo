@@ -74,20 +74,34 @@ func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (A
 	return i, err
 }
 
-const deleteAirports = `-- name: DeleteAirports :exec
+const deleteAirports = `-- name: DeleteAirports :one
 DELETE FROM airports
-WHERE id = $1
+WHERE iata_code = $1
 RETURNING id, iata_code, icao_code, name, country, state, city, elevation, lat, lon, timezone
 `
 
-func (q *Queries) DeleteAirports(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteAirports, id)
-	return err
+func (q *Queries) DeleteAirports(ctx context.Context, iataCode string) (Airport, error) {
+	row := q.db.QueryRow(ctx, deleteAirports, iataCode)
+	var i Airport
+	err := row.Scan(
+		&i.ID,
+		&i.IataCode,
+		&i.IcaoCode,
+		&i.Name,
+		&i.Country,
+		&i.State,
+		&i.City,
+		&i.Elevation,
+		&i.Lat,
+		&i.Lon,
+		&i.Timezone,
+	)
+	return i, err
 }
 
 const getAirport = `-- name: GetAirport :one
 SELECT id, iata_code, icao_code, name, country, state, city, elevation, lat, lon, timezone FROM airports
-WHERE iata_code = $1 LIMIT 1
+WHERE iata_code = $1
 `
 
 func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, error) {
@@ -110,12 +124,16 @@ func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, err
 }
 
 const listAirport = `-- name: ListAirport :many
-SELECT id, iata_code,
-name ,
-city
+SELECT id, iata_code, name ,city
 FROM airports
-ORDER BY id
+OFFSET $1
+LIMIT $2
 `
+
+type ListAirportParams struct {
+	Offset int32 `json:"offset"`
+	Limit  int32 `json:"limit"`
+}
 
 type ListAirportRow struct {
 	ID       int64  `json:"id"`
@@ -124,8 +142,8 @@ type ListAirportRow struct {
 	City     string `json:"city"`
 }
 
-func (q *Queries) ListAirport(ctx context.Context) ([]ListAirportRow, error) {
-	rows, err := q.db.Query(ctx, listAirport)
+func (q *Queries) ListAirport(ctx context.Context, arg ListAirportParams) ([]ListAirportRow, error) {
+	rows, err := q.db.Query(ctx, listAirport, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
