@@ -8,9 +8,9 @@ var _ = Service("flight", func() {
 	Method("search", func() {
 		Description("Search for available flights")
 
-		Payload(FlightSearchPrams)
+		Payload(FlightSearchRequestPrams)
 
-		Result(CollectionOf(FlightResult))
+		Result(CollectionOf(FlightSearchResponse))
 
 		Error("NotFound")
 		Error("BadRequest")

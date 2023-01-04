@@ -5,7 +5,7 @@ import (
 	. "goa.design/goa/v3/dsl"
 )
 
-var _ = Service("booking_ticket", func() {
+var _ = Service("booking", func() {
 
 	Method("book", func() {
 		Description("Book a flight using IATA NDC standard")

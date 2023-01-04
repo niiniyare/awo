@@ -9,3 +9,4 @@ external/_examples/booktest
 logfile
 coverage.out
 script/coverage.txt 
+vendor

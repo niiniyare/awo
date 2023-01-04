@@ -25,24 +25,55 @@ var _ = API("flight", func() {
 	// 	Description("API Documentation")
 	// 	URL("https://example.com/api-docs")
 	// })
-	Server("http://localhost:8080")
-})
+	Server("api", func() {
+		Description("calcsvr hosts the Calculator Service.")
 
-var _ = Service("flight", func() {
-	Method("search", func() {
-		Description("Search for available flights")
+		// List the services hosted by this server.
 
-		Payload(FlightSearchPrams)
+		Services("flight", "booking")
 
-		Result(CollectionOf(FlightResult))
+		// List the Hosts and their transport URLs.
+		Host("production", func() {
+			Description("Production host.")
+			// URIs can be parameterized using {param} notation.
+			URI("https://{version}.goa.design/calc")
+			URI("grpcs://{version}.goa.design")
 
-		Error("NotFound")
-		Error("BadRequest")
-		HTTP(func() {
-			GET("")
-			Response(StatusOK)
-
+			// Variable describes a URI variable.
+			Variable("version", String, "API version", func() {
+				// URI parameters must have a default value and/or an
+				// enum validation.
+				Default("v1")
+			})
 		})
-	})
 
+		Host("development", func() {
+			Description("Development hosts.")
+			// Transport specific URLs, supported schemes are:
+			// 'http', 'https', 'grpc' and 'grpcs' with the respective default
+			// ports: 80, 443, 8080, 8443.
+			URI("http://localhost:80/calc")
+			URI("grpc://localhost:8080")
+		})
+
+	})
 })
+
+// var _ = Service("flight", func() {
+// 	Method("search", func() {
+// 		Description("Search for available flights")
+//
+// 		Payload(FlightSearchRequestPrams)
+//
+// 		Result(CollectionOf(FlightResult))
+//
+// 		Error("NotFound")
+// 		Error("BadRequest")
+// 		HTTP(func() {
+// 			GET("")
+// 			Response(StatusOK)
+//
+// 		})
+// 	})
+//
+// })
