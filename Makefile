@@ -54,4 +54,10 @@ seed-aircraft:  ## seed aircraft sample records to database
 
 test/html: ## Go: tests with HTML coverage report
 	bash ./script/test_coverage_browser.sh
-.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html
+
+redis-graph: ## test redis-graph database one the cloud, This is just a test database for this project
+	redis-cli -u redis://default:w1w7iRHouMVw01VqDK0ulA0zV7nTMmAs@redis-16650.c212.ap-south-1-1.ec2.cloud.redislabs.com:16650
+
+
+
+.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html redis-graph

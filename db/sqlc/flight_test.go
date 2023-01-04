@@ -3,7 +3,7 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
+	"log"
 	"testing"
 	"time"
 
@@ -36,11 +36,11 @@ func CreateRandomFlight(t *testing.T) Flight {
 
 	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
 
-	fmt.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
+	log.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
 
-	fmt.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
+	log.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
 
-	fmt.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
+	log.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
 
 	actualtime := sql.NullTime{Time: arr}
 	aclerr := actualtime.Scan(arr)
@@ -82,7 +82,7 @@ func TestGetflight(t *testing.T) {
 		ArrivalAirport:   flight.ArrivalAirport,
 		CompanyID:        flight.CompanyID,
 	}
-	// fmt.Printf("%+v\n", flight)
+	// log.Printf("%+v\n", flight)
 	tf, err := testQueries.FlightAvailability(context.Background(), arg)
 	// fmt.Errorf("FlightAvailability: %w", err)
 	r.NoError(err)
