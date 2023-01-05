@@ -11,15 +11,18 @@ require (
 	github.com/spf13/viper v1.12.0
 	github.com/stretchr/testify v1.7.1
 	goa.design/goa/v3 v3.10.2
+	goa.design/model v1.7.9
 	golang.org/x/crypto v0.1.0
 )
 
 require (
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/dimfeld/httppath v0.0.0-20170720192232-ee938bf73598 // indirect
+	github.com/dimfeld/httptreemux/v5 v5.4.0 // indirect
 	github.com/fsnotify/fsnotify v1.5.4 // indirect
 	github.com/google/uuid v1.3.0 // indirect
 	github.com/gopherjs/gopherjs v1.17.2 // indirect
+	github.com/gorilla/websocket v1.5.0 // indirect
 	github.com/hashicorp/errwrap v1.1.0 // indirect
 	github.com/hashicorp/go-multierror v1.1.1 // indirect
 	github.com/hashicorp/hcl v1.0.0 // indirect
@@ -29,7 +32,6 @@ require (
 	github.com/jackc/pgproto3/v2 v2.3.0 // indirect
 	github.com/jackc/pgservicefile v0.0.0-20200714003250-2b9c44734f2b // indirect
 	github.com/jackc/puddle v1.2.1 // indirect
-	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/lib/pq v1.10.6 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/manveru/faker v0.0.0-20171103152722-9fbc68a78c4d // indirect
