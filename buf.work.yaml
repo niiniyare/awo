@@ -1,0 +1,4 @@
+version: v1
+directories:
+  - pkg/api/v1/proto
+

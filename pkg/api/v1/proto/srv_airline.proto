@@ -1,0 +1,28 @@
+
+syntax = "proto3";
+
+package pb;
+
+option go_package = "github.com/niiniyare/awo/pkg/api/v1/pb";
+
+
+
+import "rpc_airline.proto";
+
+
+service AirlinesService {
+  rpc CreateAirline (CreateAirlineRequest) returns (AirlineRes) {}
+
+
+  rpc GetAirline (GetAirlineRequest) returns (AirlineRes) {}
+
+
+
+  rpc UpdateAirline (UpdateAirlineRequest) returns (AirlineRes) {}
+
+
+  rpc DeleteAirline (DeleteAirlineRequest) returns (AirlineRes) {}
+
+
+  rpc ListAirlines (ListAirlinesReq) returns (ListAirlineRes) {}
+}
