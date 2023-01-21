@@ -22,10 +22,10 @@ const _ = grpc.SupportPackageIsVersion7
 //
 // For semantics around ctx use and closing/ending streaming RPCs, please refer to https://pkg.go.dev/google.golang.org/grpc/?tab=doc#ClientConn.NewStream.
 type AirlinesServiceClient interface {
-	CreateAirline(ctx context.Context, in *CreateAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error)
-	GetAirline(ctx context.Context, in *GetAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error)
-	UpdateAirline(ctx context.Context, in *UpdateAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error)
-	DeleteAirline(ctx context.Context, in *DeleteAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error)
+	CreateAirline(ctx context.Context, in *CreateAirlineRequest, opts ...grpc.CallOption) (*CreateAirlineResponse, error)
+	GetAirline(ctx context.Context, in *GetAirlineRequest, opts ...grpc.CallOption) (*GetAirlineResponse, error)
+	UpdateAirline(ctx context.Context, in *UpdateAirlineRequest, opts ...grpc.CallOption) (*UpdateAirlineResponse, error)
+	DeleteAirline(ctx context.Context, in *DeleteAirlineRequest, opts ...grpc.CallOption) (*DeleteAirlineResponse, error)
 	ListAirlines(ctx context.Context, in *ListAirlinesReq, opts ...grpc.CallOption) (*ListAirlineRes, error)
 }
 
@@ -37,8 +37,8 @@ func NewAirlinesServiceClient(cc grpc.ClientConnInterface) AirlinesServiceClient
 	return &airlinesServiceClient{cc}
 }
 
-func (c *airlinesServiceClient) CreateAirline(ctx context.Context, in *CreateAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error) {
-	out := new(AirlineRes)
+func (c *airlinesServiceClient) CreateAirline(ctx context.Context, in *CreateAirlineRequest, opts ...grpc.CallOption) (*CreateAirlineResponse, error) {
+	out := new(CreateAirlineResponse)
 	err := c.cc.Invoke(ctx, "/pb.AirlinesService/CreateAirline", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -46,8 +46,8 @@ func (c *airlinesServiceClient) CreateAirline(ctx context.Context, in *CreateAir
 	return out, nil
 }
 
-func (c *airlinesServiceClient) GetAirline(ctx context.Context, in *GetAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error) {
-	out := new(AirlineRes)
+func (c *airlinesServiceClient) GetAirline(ctx context.Context, in *GetAirlineRequest, opts ...grpc.CallOption) (*GetAirlineResponse, error) {
+	out := new(GetAirlineResponse)
 	err := c.cc.Invoke(ctx, "/pb.AirlinesService/GetAirline", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -55,8 +55,8 @@ func (c *airlinesServiceClient) GetAirline(ctx context.Context, in *GetAirlineRe
 	return out, nil
 }
 
-func (c *airlinesServiceClient) UpdateAirline(ctx context.Context, in *UpdateAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error) {
-	out := new(AirlineRes)
+func (c *airlinesServiceClient) UpdateAirline(ctx context.Context, in *UpdateAirlineRequest, opts ...grpc.CallOption) (*UpdateAirlineResponse, error) {
+	out := new(UpdateAirlineResponse)
 	err := c.cc.Invoke(ctx, "/pb.AirlinesService/UpdateAirline", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -64,8 +64,8 @@ func (c *airlinesServiceClient) UpdateAirline(ctx context.Context, in *UpdateAir
 	return out, nil
 }
 
-func (c *airlinesServiceClient) DeleteAirline(ctx context.Context, in *DeleteAirlineRequest, opts ...grpc.CallOption) (*AirlineRes, error) {
-	out := new(AirlineRes)
+func (c *airlinesServiceClient) DeleteAirline(ctx context.Context, in *DeleteAirlineRequest, opts ...grpc.CallOption) (*DeleteAirlineResponse, error) {
+	out := new(DeleteAirlineResponse)
 	err := c.cc.Invoke(ctx, "/pb.AirlinesService/DeleteAirline", in, out, opts...)
 	if err != nil {
 		return nil, err
@@ -86,10 +86,10 @@ func (c *airlinesServiceClient) ListAirlines(ctx context.Context, in *ListAirlin
 // All implementations must embed UnimplementedAirlinesServiceServer
 // for forward compatibility
 type AirlinesServiceServer interface {
-	CreateAirline(context.Context, *CreateAirlineRequest) (*AirlineRes, error)
-	GetAirline(context.Context, *GetAirlineRequest) (*AirlineRes, error)
-	UpdateAirline(context.Context, *UpdateAirlineRequest) (*AirlineRes, error)
-	DeleteAirline(context.Context, *DeleteAirlineRequest) (*AirlineRes, error)
+	CreateAirline(context.Context, *CreateAirlineRequest) (*CreateAirlineResponse, error)
+	GetAirline(context.Context, *GetAirlineRequest) (*GetAirlineResponse, error)
+	UpdateAirline(context.Context, *UpdateAirlineRequest) (*UpdateAirlineResponse, error)
+	DeleteAirline(context.Context, *DeleteAirlineRequest) (*DeleteAirlineResponse, error)
 	ListAirlines(context.Context, *ListAirlinesReq) (*ListAirlineRes, error)
 	mustEmbedUnimplementedAirlinesServiceServer()
 }
@@ -98,16 +98,16 @@ type AirlinesServiceServer interface {
 type UnimplementedAirlinesServiceServer struct {
 }
 
-func (UnimplementedAirlinesServiceServer) CreateAirline(context.Context, *CreateAirlineRequest) (*AirlineRes, error) {
+func (UnimplementedAirlinesServiceServer) CreateAirline(context.Context, *CreateAirlineRequest) (*CreateAirlineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method CreateAirline not implemented")
 }
-func (UnimplementedAirlinesServiceServer) GetAirline(context.Context, *GetAirlineRequest) (*AirlineRes, error) {
+func (UnimplementedAirlinesServiceServer) GetAirline(context.Context, *GetAirlineRequest) (*GetAirlineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetAirline not implemented")
 }
-func (UnimplementedAirlinesServiceServer) UpdateAirline(context.Context, *UpdateAirlineRequest) (*AirlineRes, error) {
+func (UnimplementedAirlinesServiceServer) UpdateAirline(context.Context, *UpdateAirlineRequest) (*UpdateAirlineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method UpdateAirline not implemented")
 }
-func (UnimplementedAirlinesServiceServer) DeleteAirline(context.Context, *DeleteAirlineRequest) (*AirlineRes, error) {
+func (UnimplementedAirlinesServiceServer) DeleteAirline(context.Context, *DeleteAirlineRequest) (*DeleteAirlineResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DeleteAirline not implemented")
 }
 func (UnimplementedAirlinesServiceServer) ListAirlines(context.Context, *ListAirlinesReq) (*ListAirlineRes, error) {

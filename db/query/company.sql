@@ -11,11 +11,14 @@ OFFSET $2;
 
 -- name: CreateAirline :one
 INSERT INTO airlines (
-  company_name,
-  iata_code,
-  main_airport
+      company_name,
+      iata_code, 
+      icao_code, 
+      callsign, 
+      registared_country, 
+      main_airport
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4,$5,$6
 )
 RETURNING *;
 

@@ -1,3 +1,15 @@
+# See https://tech.davis-hansson.com/p/make/
+SHELL := bash
+.DELETE_ON_ERROR:
+.SHELLFLAGS := -eu -o pipefail -c
+.DEFAULT_GOAL := all
+MAKEFLAGS += --warn-undefined-variables
+MAKEFLAGS += --no-builtin-rules
+MAKEFLAGS += --no-print-directory
+BIN=$(abspath ~/go/bin)
+
+# Set to use a different compiler. For example, `GO=go1.18rc1 make test`.
+GO ?= go
 .DEFAULT_GOAL := help
 DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
 # DB_URL=postgres://wegmjdaf:khexFaRIW0eslZ6GPRY5VFyCM7w_vMVc@tyke.db.elephantsql.com/wegmjdaf?sslmode=disable
@@ -98,5 +110,8 @@ evans:
 
 buf: ## removes files generated before re-generates grpc, grpc gatewayes and swagger doc if needed using buf
 	buf generate --output $(PB)
-
+	
+buf-lint: ## lint protobuf files using buf tool
+	@buf lint --error-format=json --exclude-path=pkg/api/v1/proto/google,pkg/api/v1/proto/protoc-gen-openapiv2 | jq
 .PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html redis-graph proto evans buf
+

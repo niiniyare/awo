@@ -1,0 +1,80 @@
+syntax = "proto3";
+
+package pb;
+
+
+option go_package = "github.com/niiniyare/awo/pkg/api/v1/pb";
+
+message CreateAirportRequest {
+  string name = 1;
+  string iata_code = 2;
+  string icao_code = 3;
+  string city = 4;
+  string country_code = 5;
+  string state = 6;
+  double lat = 7;
+  double long = 8;
+  double elevation = 9;
+}
+
+message Airport {
+  string name = 1;
+  string iata_code = 2;
+  string icao_code = 3;
+  string city = 4;
+  string country_code = 5;
+  string state = 6;
+  double lat = 7;
+  double long = 8;
+  double elevation = 9;
+}
+
+message CreateAirportResponse {
+  Airport airport = 1;
+}
+message ListAirportRes {
+  repeated Airport airport = 1;
+}
+
+message ListAirportReq {
+  int64 limit = 1;
+  int64 offset = 2;
+}
+
+message GetAirportRequest {
+  int64 id = 1;
+  optional string name = 2;
+  optional string iata_code = 3;
+  optional string icao_code = 4;
+}
+message GetAirportResponse {
+  Airport airport = 1;
+}
+
+message UpdateAirportRequest {
+  int64 id = 1;
+  optional string name = 2;
+  optional string iata_code = 3;
+  optional string icao_code = 4;
+  optional string city = 5;
+  optional string country_code = 6;
+  optional string state = 7;
+  optional double lat = 8;
+  optional double long = 9;
+  optional double elevation = 10;
+}
+
+message UpdateAirportResponse {
+  Airport airport = 1;
+}
+
+message DeleteAirportRequest {
+  optional int64 id = 1;
+  optional string name = 2;
+  optional string iata_code = 3;
+  optional string icao_code = 4;
+}
+
+message DeleteAirportResponse {
+  Airport airport = 1;
+}

@@ -7,34 +7,52 @@ package db
 
 import (
 	"context"
+	"database/sql"
 )
 
 const createAirline = `-- name: CreateAirline :one
 INSERT INTO airlines (
-  company_name,
-  iata_code,
-  main_airport
+      company_name,
+      iata_code, 
+      icao_code, 
+      callsign, 
+      registared_country, 
+      main_airport
 ) VALUES (
-  $1, $2, $3
+  $1, $2, $3, $4,$5,$6
 )
-RETURNING id, company_name, iata_code, main_airport, created_at
+RETURNING id, company_name, iata_code, icao_code, callsign, registared_country, main_airport, created_at, updated_at
 `
 
 type CreateAirlineParams struct {
-	CompanyName string `json:"company_name"`
-	IataCode    string `json:"iata_code"`
-	MainAirport string `json:"main_airport"`
+	CompanyName       string         `json:"company_name"`
+	IataCode          string         `json:"iata_code"`
+	IcaoCode          sql.NullString `json:"icao_code"`
+	Callsign          sql.NullString `json:"callsign"`
+	RegistaredCountry sql.NullString `json:"registared_country"`
+	MainAirport       string         `json:"main_airport"`
 }
 
 func (q *Queries) CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error) {
-	row := q.db.QueryRow(ctx, createAirline, arg.CompanyName, arg.IataCode, arg.MainAirport)
+	row := q.db.QueryRow(ctx, createAirline,
+		arg.CompanyName,
+		arg.IataCode,
+		arg.IcaoCode,
+		arg.Callsign,
+		arg.RegistaredCountry,
+		arg.MainAirport,
+	)
 	var i Airline
 	err := row.Scan(
 		&i.ID,
 		&i.CompanyName,
 		&i.IataCode,
+		&i.IcaoCode,
+		&i.Callsign,
+		&i.RegistaredCountry,
 		&i.MainAirport,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
@@ -50,7 +68,7 @@ func (q *Queries) DeleteAirline(ctx context.Context, id int64) error {
 }
 
 const getAirline = `-- name: GetAirline :one
-SELECT id, company_name, iata_code, main_airport, created_at FROM airlines
+SELECT id, company_name, iata_code, icao_code, callsign, registared_country, main_airport, created_at, updated_at FROM airlines
 WHERE id = $1 
 LIMIT 1
 `
@@ -62,14 +80,18 @@ func (q *Queries) GetAirline(ctx context.Context, id int64) (Airline, error) {
 		&i.ID,
 		&i.CompanyName,
 		&i.IataCode,
+		&i.IcaoCode,
+		&i.Callsign,
+		&i.RegistaredCountry,
 		&i.MainAirport,
 		&i.CreatedAt,
+		&i.UpdatedAt,
 	)
 	return i, err
 }
 
 const listAirline = `-- name: ListAirline :many
-SELECT id, company_name, iata_code, main_airport, created_at FROM airlines
+SELECT id, company_name, iata_code, icao_code, callsign, registared_country, main_airport, created_at, updated_at FROM airlines
 ORDER BY company_name
 LIMIT $1
 OFFSET $2
@@ -93,8 +115,12 @@ func (q *Queries) ListAirline(ctx context.Context, arg ListAirlineParams) ([]Air
 			&i.ID,
 			&i.CompanyName,
 			&i.IataCode,
+			&i.IcaoCode,
+			&i.Callsign,
+			&i.RegistaredCountry,
 			&i.MainAirport,
 			&i.CreatedAt,
+			&i.UpdatedAt,
 		); err != nil {
 			return nil, err
 		}

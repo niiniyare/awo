@@ -1,21 +1,20 @@
-CREATE TABLE IF NOT EXISTS Schedules (
-    schedule_id BIGSERIAL PRIMARY KEY NOT NULL,
-    flight_no VARCHAR(6) NOT NULL,
-    departure_airport VARCHAR(3) NOT NULL,
-    arrival_airport VARCHAR(3) NOT NULL,
-    scheduled_departure_date DATE NOT NULL,
-    scheduled_arrival_date DATE NOT NULL,
-    flight_no VARCHAR(6) NOT NULL,
-    company_id BIGSERIAL REFERENCES airlines(id)NOT NULL,
-
-    CONSTRAINT flights_check CHECK ((scheduled_arrival_date > scheduled_departure_date)),
-
-
-    CONSTRAINT flights_flight_no_scheduled_departure_key UNIQUE (flight_no, scheduled_departure),
-
-    CONSTRAINT flights_check_airlines_key UNIQUE (flight_no, company_id)
-    );
-
+-- CREATE TABLE IF NOT EXISTS Schedules (
+--     schedule_id BIGSERIAL PRIMARY KEY NOT NULL,
+--     flight_no VARCHAR(6) NOT NULL,
+--     departure_airport VARCHAR(3) NOT NULL,
+--     arrival_airport VARCHAR(3) NOT NULL,
+--     scheduled_departure_date DATE NOT NULL,
+--     scheduled_arrival_date DATE NOT NULL,
+--     company_id BIGSERIAL REFERENCES airlines(id)NOT NULL,
+--
+--     CONSTRAINT flights_check CHECK ((scheduled_arrival_date > scheduled_departure_date)),
+--
+--
+--     CONSTRAINT flights_flight_no_scheduled_departure_key UNIQUE (flight_no, scheduled_departure),
+--
+--     CONSTRAINT flights_check_airlines_key UNIQUE (flight_no, company_id)
+--     );
+--
 CREATE TABLE IF NOT EXISTS flights (
     flight_id BIGSERIAL PRIMARY KEY NOT NULL,
     flight_no VARCHAR(6) NOT NULL,
@@ -42,15 +41,15 @@ CREATE TABLE IF NOT EXISTS flights (
 );
 
 
-CREATE SEQUENCE IF NOT EXISTS flight_id_seq
-    START WITH 100
-    INCREMENT BY 1
-    NO MINVALUE
-    NO MAXVALUE
-    CACHE 1;
-
-
-ALTER SEQUENCE flight_no_seq OWNED BY flights.flight_no;
+-- CREATE SEQUENCE IF NOT EXISTS flight_id_seq
+--     START WITH 100
+--     INCREMENT BY 1
+--     NO MINVALUE
+--     NO MAXVALUE
+--     CACHE 1;
+--
+--
+-- ALTER SEQUENCE flight_no_seq OWNED BY flights.flight_no;
 
 
 CREATE VIEW flights_v AS

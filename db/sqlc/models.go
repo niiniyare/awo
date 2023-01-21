@@ -27,11 +27,15 @@ type Aircraft struct {
 }
 
 type Airline struct {
-	ID          int64     `json:"id"`
-	CompanyName string    `json:"company_name"`
-	IataCode    string    `json:"iata_code"`
-	MainAirport string    `json:"main_airport"`
-	CreatedAt   time.Time `json:"created_at"`
+	ID                int64          `json:"id"`
+	CompanyName       string         `json:"company_name"`
+	IataCode          string         `json:"iata_code"`
+	IcaoCode          sql.NullString `json:"icao_code"`
+	Callsign          sql.NullString `json:"callsign"`
+	RegistaredCountry sql.NullString `json:"registared_country"`
+	MainAirport       string         `json:"main_airport"`
+	CreatedAt         time.Time      `json:"created_at"`
+	UpdatedAt         time.Time      `json:"updated_at"`
 }
 
 type Airport struct {
@@ -142,6 +146,16 @@ type Route struct {
 	Duration int32 `json:"duration"`
 	// Days of week on which flights are scheduled
 	DaysOfWeek interface{} `json:"days_of_week"`
+}
+
+type Schedule struct {
+	ScheduleID             int64     `json:"schedule_id"`
+	FlightNo               string    `json:"flight_no"`
+	DepartureAirport       string    `json:"departure_airport"`
+	ArrivalAirport         string    `json:"arrival_airport"`
+	ScheduledDepartureDate time.Time `json:"scheduled_departure_date"`
+	ScheduledArrivalDate   time.Time `json:"scheduled_arrival_date"`
+	CompanyID              int64     `json:"company_id"`
 }
 
 type Seat struct {
