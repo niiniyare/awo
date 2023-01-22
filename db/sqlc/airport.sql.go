@@ -124,7 +124,17 @@ func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, err
 }
 
 const listAirport = `-- name: ListAirport :many
-SELECT id, iata_code, name ,city
+SELECT 
+iata_code, 
+icao_code, 
+name, 
+elevation,
+city,
+country,
+state,
+lat,
+lon,
+timezone
 FROM airports
 OFFSET $1
 LIMIT $2
@@ -136,10 +146,16 @@ type ListAirportParams struct {
 }
 
 type ListAirportRow struct {
-	ID       int64  `json:"id"`
-	IataCode string `json:"iata_code"`
-	Name     string `json:"name"`
-	City     string `json:"city"`
+	IataCode  string         `json:"iata_code"`
+	IcaoCode  string         `json:"icao_code"`
+	Name      string         `json:"name"`
+	Elevation sql.NullString `json:"elevation"`
+	City      string         `json:"city"`
+	Country   string         `json:"country"`
+	State     string         `json:"state"`
+	Lat       pgtype.Numeric `json:"lat"`
+	Lon       pgtype.Numeric `json:"lon"`
+	Timezone  string         `json:"timezone"`
 }
 
 func (q *Queries) ListAirport(ctx context.Context, arg ListAirportParams) ([]ListAirportRow, error) {
@@ -152,10 +168,16 @@ func (q *Queries) ListAirport(ctx context.Context, arg ListAirportParams) ([]Lis
 	for rows.Next() {
 		var i ListAirportRow
 		if err := rows.Scan(
-			&i.ID,
 			&i.IataCode,
+			&i.IcaoCode,
 			&i.Name,
+			&i.Elevation,
 			&i.City,
+			&i.Country,
+			&i.State,
+			&i.Lat,
+			&i.Lon,
+			&i.Timezone,
 		); err != nil {
 			return nil, err
 		}

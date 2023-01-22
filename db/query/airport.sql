@@ -20,7 +20,17 @@ SELECT * FROM airports
 WHERE iata_code = $1;
 
 -- name: ListAirport :many
-SELECT id, iata_code, name ,city
+SELECT 
+iata_code, 
+icao_code, 
+name, 
+elevation,
+city,
+country,
+state,
+lat,
+lon,
+timezone
 FROM airports
 OFFSET $1
 LIMIT $2;

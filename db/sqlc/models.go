@@ -148,16 +148,6 @@ type Route struct {
 	DaysOfWeek interface{} `json:"days_of_week"`
 }
 
-type Schedule struct {
-	ScheduleID             int64     `json:"schedule_id"`
-	FlightNo               string    `json:"flight_no"`
-	DepartureAirport       string    `json:"departure_airport"`
-	ArrivalAirport         string    `json:"arrival_airport"`
-	ScheduledDepartureDate time.Time `json:"scheduled_departure_date"`
-	ScheduledArrivalDate   time.Time `json:"scheduled_arrival_date"`
-	CompanyID              int64     `json:"company_id"`
-}
-
 type Seat struct {
 	// Aircraft code, IATA
 	AircraftID int64 `json:"aircraft_id"`

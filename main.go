@@ -13,7 +13,6 @@ import (
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
-	// _ "github.com/niiniyare/awo/doc/statik"
 	"github.com/niiniyare/awo/util"
 	// "github.com/rs/zerolog"
 	// "github.com/rs/zerolog/log"
