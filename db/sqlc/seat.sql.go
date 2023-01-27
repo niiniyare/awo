@@ -110,11 +110,3 @@ func (q *Queries) GetSeats(ctx context.Context) ([]Seat, error) {
 	}
 	return items, nil
 }
-
-type InsertNewSeatMapParams struct {
-	AircraftID   int32  `json:"aircraft_id"`
-	CabinClass   string `json:"cabin_class"`
-	StartRow     int32  `json:"start_row"`
-	EndRow       int32  `json:"end_row"`
-	ColumnLayout string `json:"column_layout"`
-}

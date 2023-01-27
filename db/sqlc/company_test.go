@@ -5,16 +5,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
 
 func CreateTestAirline(t *testing.T) *Airline {
 	arg := CreateAirlineParams{
-		CompanyName: util.RandomString(7),
-		IataCode:    strings.ToUpper(util.RandomString(2)),
-		MainAirport: strings.ToUpper(util.RandomString(3)),
+		CompanyName:       util.RandomString(7),
+		IataCode:          strings.ToUpper(util.RandomString(2)),
+		RegistaredCountry: strings.ToUpper(util.RandomString(2)),
 	}
 	airline, err := testQueries.CreateAirline(context.Background(), arg)
 	r := require.New(t)
@@ -22,7 +22,7 @@ func CreateTestAirline(t *testing.T) *Airline {
 	r.NotEmpty(airline)
 	r.Equal(arg.CompanyName, airline.CompanyName)
 	r.Equal(arg.IataCode, airline.IataCode)
-	r.Equal(arg.MainAirport, airline.MainAirport)
+	r.Equal(arg.RegistaredCountry, airline.RegistaredCountry)
 	r.NotZero(airline.ID)
 
 	r.NotZero(airline.CreatedAt)
@@ -48,7 +48,7 @@ func TestGetAirline(t *testing.T) {
 
 	r.Equal(airline.IataCode, res.IataCode)
 
-	r.Equal(airline.MainAirport, res.MainAirport)
+	r.Equal(airline.RegistaredCountry, res.RegistaredCountry)
 
 }
 
@@ -72,7 +72,7 @@ func TestListAirline(t *testing.T) {
 		r.NotZero(airline.CreatedAt)
 		r.NotEmpty(airline.CompanyName)
 		r.NotEmpty(airline.IataCode)
-		r.NotEmpty(airline.MainAirport)
+		r.NotEmpty(airline.RegistaredCountry)
 
 	}
 

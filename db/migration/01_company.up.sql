@@ -39,10 +39,10 @@ CREATE TABLE IF NOT EXISTS airlines (
     id BIGSERIAL PRIMARY KEY NOT NULL,
     company_name VARCHAR(50) NOT NULL,
     iata_code VARCHAR(2) NOT NULL,
-    icao_code   VARCHAR(3),
-    callsign VARCHAR(15),
-    registared_country VARCHAR(2),
-    main_airport VARCHAR(3) NOT NULL,
+    -- icao_code   VARCHAR(3),
+    -- callsign VARCHAR(15),
+    registared_country VARCHAR(2)NOT NULL,
+    -- main_airport VARCHAR(3) NOT NULL,
     created_at timestamptz NOT NULL DEFAULT (now()),
     updated_at timestamptz NOT NULL DEFAULT('0001-01-01 00:00:00Z')
  --   CONSTRAINT airlines_pk PRIMARY KEY (id)

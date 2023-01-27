@@ -6,7 +6,7 @@ import (
 	"testing"
 
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v4"
+	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )

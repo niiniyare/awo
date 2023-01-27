@@ -15,29 +15,40 @@ func (s *GRPCServer) CreateAirline(ctx context.Context, req *pb.CreateAirlineReq
 	arg := db.CreateAirlineParams{
 		CompanyName: req.GetName(),
 		IataCode:    req.GetIataCode(),
-		MainAirport: req.GetHub_Airport(),
 	}
 	airline, err := s.store.CreateAirline(ctx, arg)
 	if err != nil {
 		return nil, status.Error(codes.Internal, "failed to Create Airline err:"+err.Error())
 	}
 	res := &pb.CreateAirlineResponse{
-		Id:          airline.ID,
-		Name:        airline.CompanyName,
-		IataCode:    airline.IataCode,
-		IcaoCode:    airline.IcaoCode.String,
-		Callsign:    airline.Callsign.String,
-		Hub_Airport: airline.MainAirport,
-		Created_At:  timestamppb.New(airline.CreatedAt),
-		Updated_At:  timestamppb.New(airline.UpdatedAt),
+		Id:         airline.ID,
+		Name:       airline.CompanyName,
+		IataCode:   airline.IataCode,
+		Created_At: timestamppb.New(airline.CreatedAt),
+		Updated_At: timestamppb.New(airline.UpdatedAt),
 	}
 	return res, nil
 }
 
 func (s *GRPCServer) GetAirline(ctx context.Context, req *pb.GetAirlineRequest) (*pb.GetAirlineResponse, error) {
+	airline, err := s.store.GetAirline(ctx, req.GetId())
+	if err != nil {
+		if err != pgx.ErrNoRows {
+			return nil, status.Errorf(codes.NotFound, "Airline Company NotFound err: %s", err)
 
-	return nil, status.Errorf(codes.Unimplemented, "method GetAirline not implemented")
+		}
+		return nil, status.Errorf(codes.Internal, "Airline Company NotFound err: %s", err)
 
+	}
+	res := &pb.GetAirlineResponse{
+		Id:         airline.ID,
+		Name:       airline.CompanyName,
+		IataCode:   airline.IataCode,
+		Created_At: timestamppb.New(airline.CreatedAt),
+		Updated_At: timestamppb.New(airline.UpdatedAt),
+	}
+
+	return res, nil
 }
 func (s *GRPCServer) UpdateAirline(ctx context.Context, req *pb.UpdateAirlineRequest) (*pb.UpdateAirlineResponse, error) {
 

@@ -27,15 +27,12 @@ type Aircraft struct {
 }
 
 type Airline struct {
-	ID                int64          `json:"id"`
-	CompanyName       string         `json:"company_name"`
-	IataCode          string         `json:"iata_code"`
-	IcaoCode          sql.NullString `json:"icao_code"`
-	Callsign          sql.NullString `json:"callsign"`
-	RegistaredCountry sql.NullString `json:"registared_country"`
-	MainAirport       string         `json:"main_airport"`
-	CreatedAt         time.Time      `json:"created_at"`
-	UpdatedAt         time.Time      `json:"updated_at"`
+	ID                int64     `json:"id"`
+	CompanyName       string    `json:"company_name"`
+	IataCode          string    `json:"iata_code"`
+	RegistaredCountry string    `json:"registared_country"`
+	CreatedAt         time.Time `json:"created_at"`
+	UpdatedAt         time.Time `json:"updated_at"`
 }
 
 type Airport struct {

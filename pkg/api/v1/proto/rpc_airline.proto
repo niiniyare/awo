@@ -10,9 +10,7 @@ message CreateAirlineRequest {
   string name = 1;
   string iata_code = 2;
   string icao_code = 3;
-  string callsign = 4;
   string country_code = 5;
-  string hub_Airport = 6;
 }
 
 message Links {
@@ -27,9 +25,7 @@ message Airline {
   string name = 2;
   string iata_code = 3;
   string icao_code = 4;
-  string callsign = 5;
   string country_code = 6;
-  string hub_Airport = 7;
   google.protobuf.Timestamp created_At = 8;
   google.protobuf.Timestamp updated_At = 9;
 }
@@ -39,9 +35,7 @@ message CreateAirlineResponse {
   string name = 2;
   string iata_code = 3;
   string icao_code = 4;
-  string callsign = 5;
   string country_code = 6;
-  string hub_Airport = 7;
   google.protobuf.Timestamp created_At = 8;
   google.protobuf.Timestamp updated_At = 9;
 }
@@ -65,9 +59,7 @@ message GetAirlineResponse {
   string name = 2;
   string iata_code = 3;
   string icao_code = 4;
-  string callsign = 5;
   string country_code = 6;
-  string hub_Airport = 7;
   google.protobuf.Timestamp created_At = 8;
   google.protobuf.Timestamp updated_At = 9;
 }
@@ -84,9 +76,7 @@ message UpdateAirlineResponse {
   string name = 2;
   string iata_code = 3;
   string icao_code = 4;
-  string callsign = 5;
   string country_code = 6;
-  string hub_Airport = 7;
   google.protobuf.Timestamp created_At = 8;
   google.protobuf.Timestamp updated_At = 9;
 }
@@ -102,9 +92,7 @@ message DeleteAirlineRequest {
 /*            string name = 1; */
 /*            string iata_code = 2; */
 /*            string icao_code = 3; */
-/*            string callsign = 4; */
 /*            string country_code = 5; */
-/*            string hub_Airport = 6; */
 /*  optional   string slug = 7; */
 /*  optional   Links  links = 8; */
 /*     google.protobuf.Timestamp created_At = 9; */
@@ -116,10 +104,7 @@ message DeleteAirlineResponse {
   string name = 2;
   string iata_code = 3;
   string icao_code = 4;
-  string callsign = 5;
   string country_code = 6;
-  string hub_Airport = 7;
-  google.protobuf.Timestamp created_At = 8;
   google.protobuf.Timestamp updated_At = 9;
 }
 
@@ -129,8 +114,6 @@ message DeleteAirlineResponse {
 /*     uint32 iata_prefix = 3; */
 /*     uint32 iata_accounting = 4; */
 /*     string icao_code = 5; */
-/*     string callsign = 6; */
-/*     string country_code = 7; */
 /*     uint32 iosa_registered = 8; */
 /*     uint32 is_scheduled = 9; */
 /*     uint32 is_passenger = 10; */

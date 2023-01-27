@@ -3,40 +3,41 @@ package main
 import (
 	"context"
 	"fmt"
-	"log"
+
 	"net"
+	"os"
 
 	"github.com/jackc/pgx/v4"
 	db "github.com/niiniyare/awo/db/sqlc"
 	"github.com/niiniyare/awo/pkg/api/v1/pb"
 	grpc_server "github.com/niiniyare/awo/pkg/grpc"
+	"github.com/rs/zerolog"
+	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
 
 	"github.com/niiniyare/awo/util"
-	// "github.com/rs/zerolog"
-	// "github.com/rs/zerolog/log"
 )
 
 func main() {
 	config, err := util.LoadConfig(".")
 	if err != nil {
-		log.Fatal(err)
+		log.Fatal().Err(err).Msg("cannot load config")
 	}
-	//TODO: setup Logger
-	// if config.Environment == "development" {
-	// 	log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
-	// }
+	// TODO: setup Logger
+	if config.Environment == "development" {
+		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
+	}
 	ctx := context.Background()
 
 	conn, err := pgx.Connect(ctx, config.DBSource)
 	if err != nil {
-		log.Fatalln("testDB failed to connect:", err)
+		log.Fatal().Err(err).Msg("cannot connect to db")
 	}
 
 	defer conn.Close(ctx)
 	if err != nil {
-		log.Fatal("cannot connect to db:", err)
+		log.Fatal().Err(err).Msg("cannot connect to db")
 	}
 
 	store := db.NewStore(conn)
@@ -49,7 +50,7 @@ func main() {
 func runGrpcServer(config util.Config, store db.Store) {
 	server, err := grpc_server.NewGGRPCServer(config, store)
 	if err != nil {
-		log.Fatal("cannot create server")
+		log.Fatal().Err(err).Msg("cannot create server")
 	}
 
 	// gprcLogger := grpc.UnaryInterceptor(gapi.GrpcLogger )
@@ -59,13 +60,14 @@ func runGrpcServer(config util.Config, store db.Store) {
 
 	listener, err := net.Listen("tcp", config.GRPCServerAddress)
 	if err != nil {
-		log.Fatal("cannot create listener")
+		log.Fatal().Err(err).Msg("cannot create listener")
+
 	}
 
-	log.Printf("start gRPC server at %s", listener.Addr().String())
+	log.Info().Msgf("start gRPC server at %v", listener.Addr().String())
 	err = grpcServer.Serve(listener)
 	if err != nil {
-		log.Fatal("cannot start gRPC server")
+		log.Fatal().Err(err).Msg("cannot start gRPC server")
 	}
 }
 

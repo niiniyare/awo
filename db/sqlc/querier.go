@@ -10,6 +10,7 @@ import (
 
 type Querier interface {
 	CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error)
+	// /*   */     callsign,
 	CreateAirline(ctx context.Context, arg CreateAirlineParams) (Airline, error)
 	//subdivision_code
 	CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error)
@@ -37,7 +38,6 @@ type Querier interface {
 	GetAirline(ctx context.Context, id int64) (Airline, error)
 	GetAirport(ctx context.Context, iataCode string) (Airport, error)
 	GetSeats(ctx context.Context) ([]Seat, error)
-	InsertNewSeatMap(ctx context.Context, arg []InsertNewSeatMapParams) (int64, error)
 	ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error)
 	ListAirline(ctx context.Context, arg ListAirlineParams) ([]Airline, error)
 	ListAirport(ctx context.Context, arg ListAirportParams) ([]ListAirportRow, error)

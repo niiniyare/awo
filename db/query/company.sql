@@ -13,12 +13,12 @@ OFFSET $2;
 INSERT INTO airlines (
       company_name,
       iata_code, 
-      icao_code, 
-      callsign, 
-      registared_country, 
-      main_airport
+      -- icao_code, 
+-- /*   */     callsign, 
+      registared_country 
+      -- main_airport
 ) VALUES (
-  $1, $2, $3, $4,$5,$6
+  $1, $2, $3
 )
 RETURNING *;
 
