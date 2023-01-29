@@ -16,13 +16,25 @@ INSERT INTO cabin_class VALUES
  * Define functions
  */
 
--- CREATE OR REPLACE FUNCTION column_layout_seats_count(column_layout text) RETURNS integer
+CREATE OR REPLACE FUNCTION  column_layout_seats_count(column_layout text)
+RETURNS integer AS $total$  
+declare  
+    total integer;  
+BEGIN  
+   char_length(translate(column_layout, '-#', ''))into total;  
+   RETURN total;  
+END;  
+$total$ LANGUAGE plpgsql;
+
+
+-- CREATE FUNCTION column_layout_seats_count(column_layout text) RETURNS integer
 -- LANGUAGE SQL
 -- IMMUTABLE
 -- RETURNS NULL ON NULL INPUT
 -- RETURN char_length(translate(column_layout, '-#', ''));
---
---
+
+
+
 /*
  * Create tables
  */
@@ -59,13 +71,20 @@ CREATE TABLE booked_seat (
  * Create views
  */
 
+CREATE VIEW cabin_seats_count AS
+    SELECT aircraft_id,
+           cabin_class,
+           sum((end_row - start_row + 1) * column_layout_seats_count(column_layout)) AS seat_count
+    FROM seat_map
+    GROUP BY aircraft_id, cabin_class;
+--
 -- CREATE VIEW cabin_seats_count AS
 --     SELECT aircraft_id,
 --            cabin_class,
 --            sum((end_row - start_row + 1) * column_layout_seats_count(column_layout)) AS seat_count
 --     FROM seat_map
---     GROUP BY aircraft_id, cabin_class;
---
+--     GROUP BY aircraft_model_id, cabin_class;
+
 --
 --
 -- INSERT INTO

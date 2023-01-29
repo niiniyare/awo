@@ -62,6 +62,12 @@ type CabinClass struct {
 	Description string `json:"description"`
 }
 
+type CabinSeatsCount struct {
+	AircraftID int32  `json:"aircraft_id"`
+	CabinClass string `json:"cabin_class"`
+	SeatCount  int64  `json:"seat_count"`
+}
+
 type Flight struct {
 	FlightID           int64        `json:"flight_id"`
 	FlightNo           string       `json:"flight_no"`
