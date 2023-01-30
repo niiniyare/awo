@@ -27,7 +27,7 @@ type CreateAircraftParams struct {
 }
 
 func (q *Queries) CreateAircraft(ctx context.Context, arg CreateAircraftParams) (Aircraft, error) {
-	row := q.db.QueryRow(ctx, createAircraft,
+	row := q.queryRow(ctx, q.createAircraftStmt, createAircraft,
 		arg.IataCode,
 		arg.IcaoCode,
 		arg.Model,
@@ -53,7 +53,7 @@ WHERE id = $1
 `
 
 func (q *Queries) DeleteAircraft(ctx context.Context, id int64) error {
-	_, err := q.db.Exec(ctx, deleteAircraft, id)
+	_, err := q.exec(ctx, q.deleteAircraftStmt, deleteAircraft, id)
 	return err
 }
 
@@ -63,7 +63,7 @@ WHERE id = $1 LIMIT 1
 `
 
 func (q *Queries) GetAircraft(ctx context.Context, id int64) (Aircraft, error) {
-	row := q.db.QueryRow(ctx, getAircraft, id)
+	row := q.queryRow(ctx, q.getAircraftStmt, getAircraft, id)
 	var i Aircraft
 	err := row.Scan(
 		&i.ID,
@@ -90,7 +90,7 @@ type ListAircraftParams struct {
 }
 
 func (q *Queries) ListAircraft(ctx context.Context, arg ListAircraftParams) ([]Aircraft, error) {
-	rows, err := q.db.Query(ctx, listAircraft, arg.Limit, arg.Offset)
+	rows, err := q.query(ctx, q.listAircraftStmt, listAircraft, arg.Limit, arg.Offset)
 	if err != nil {
 		return nil, err
 	}
@@ -110,6 +110,9 @@ func (q *Queries) ListAircraft(ctx context.Context, arg ListAircraftParams) ([]A
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

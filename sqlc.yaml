@@ -10,20 +10,25 @@ packages:
     emit_interface: true
     emit_exact_table_names: false
     emit_empty_slices: true
-    sql_package: "pgx/v4"
+    emit_methods_with_db_argument: false
+    sql_package: "database/sql"
     overrides:
-      - column: "flights_v.scheduled_arrival_local"
-        go_type: "github.com/jackc/pgtype.Time"
-      - column: "flights_v.scheduled_departure_local"
-        go_type: "github.com/jackc/pgtype.Time"
-      - column: "flights_v.actual_departure_local"
-        go_type: "github.com/jackc/pgtype.Time"
-      - column: "flights_v.actual_arrival_local"
-        go_type: "github.com/jackc/pgtype.Time"
-      - column: "flights_v.scheduled_duration"
-        go_type: "github.com/jackc/pgtype.Interval"
-      - column: "flights_v.actual_duration"
-        go_type: "github.com/jackc/pgtype.Interval"
-
-        # - column: "airports.coordinates"
-      #   # go_type: "github.com/jackc/pgtype.Point"
+      - column: "routes.days_of_week"
+        go_type: "slice.string"
+      #
+      # - column: "flights_v.scheduled_arrival_local"
+      #   go_type: "github.com/jackc/pgtype.Time"
+      # - column: "flights_v.scheduled_departure_local"
+      #   go_type: "github.com/jackc/pgtype.Time"
+      # - column: "flights_v.actual_departure_local"
+      #   go_type: "github.com/jackc/pgtype.Time"
+      # - column: "flights_v.actual_arrival_local"
+      #   go_type: "github.com/jackc/pgtype.Time"
+      # - column: "flights_v.scheduled_duration"
+      #   go_type: "github.com/jackc/pgtype.Interval"
+      # - column: "flights_v.actual_duration"
+      #   go_type: "github.com/jackc/pgtype.Interval"
+      #
+      #
+      #   # - column: "airports.coordinates"
+      # #   # go_type: "github.com/jackc/pgtype.Point"

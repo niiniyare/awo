@@ -8,8 +8,6 @@ package db
 import (
 	"context"
 	"database/sql"
-
-	"github.com/jackc/pgtype"
 )
 
 const createAirport = `-- name: CreateAirport :one
@@ -38,14 +36,14 @@ type CreateAirportParams struct {
 	City      string         `json:"city"`
 	Country   string         `json:"country"`
 	State     string         `json:"state"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lon       pgtype.Numeric `json:"lon"`
+	Lat       string         `json:"lat"`
+	Lon       string         `json:"lon"`
 	Timezone  string         `json:"timezone"`
 }
 
 // subdivision_code
 func (q *Queries) CreateAirport(ctx context.Context, arg CreateAirportParams) (Airport, error) {
-	row := q.db.QueryRow(ctx, createAirport,
+	row := q.queryRow(ctx, q.createAirportStmt, createAirport,
 		arg.IataCode,
 		arg.IcaoCode,
 		arg.Name,
@@ -81,7 +79,7 @@ RETURNING id, iata_code, icao_code, name, country, state, city, elevation, lat, 
 `
 
 func (q *Queries) DeleteAirports(ctx context.Context, iataCode string) (Airport, error) {
-	row := q.db.QueryRow(ctx, deleteAirports, iataCode)
+	row := q.queryRow(ctx, q.deleteAirportsStmt, deleteAirports, iataCode)
 	var i Airport
 	err := row.Scan(
 		&i.ID,
@@ -105,7 +103,7 @@ WHERE iata_code = $1
 `
 
 func (q *Queries) GetAirport(ctx context.Context, iataCode string) (Airport, error) {
-	row := q.db.QueryRow(ctx, getAirport, iataCode)
+	row := q.queryRow(ctx, q.getAirportStmt, getAirport, iataCode)
 	var i Airport
 	err := row.Scan(
 		&i.ID,
@@ -153,13 +151,13 @@ type ListAirportRow struct {
 	City      string         `json:"city"`
 	Country   string         `json:"country"`
 	State     string         `json:"state"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lon       pgtype.Numeric `json:"lon"`
+	Lat       string         `json:"lat"`
+	Lon       string         `json:"lon"`
 	Timezone  string         `json:"timezone"`
 }
 
 func (q *Queries) ListAirport(ctx context.Context, arg ListAirportParams) ([]ListAirportRow, error) {
-	rows, err := q.db.Query(ctx, listAirport, arg.Offset, arg.Limit)
+	rows, err := q.query(ctx, q.listAirportStmt, listAirport, arg.Offset, arg.Limit)
 	if err != nil {
 		return nil, err
 	}
@@ -182,6 +180,9 @@ func (q *Queries) ListAirport(ctx context.Context, arg ListAirportParams) ([]Lis
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

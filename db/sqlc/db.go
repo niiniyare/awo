@@ -6,27 +6,243 @@ package db
 
 import (
 	"context"
-
-	"github.com/jackc/pgconn"
-	"github.com/jackc/pgx/v4"
+	"database/sql"
+	"fmt"
 )
 
 type DBTX interface {
-	Exec(context.Context, string, ...interface{}) (pgconn.CommandTag, error)
-	Query(context.Context, string, ...interface{}) (pgx.Rows, error)
-	QueryRow(context.Context, string, ...interface{}) pgx.Row
+	ExecContext(context.Context, string, ...interface{}) (sql.Result, error)
+	PrepareContext(context.Context, string) (*sql.Stmt, error)
+	QueryContext(context.Context, string, ...interface{}) (*sql.Rows, error)
+	QueryRowContext(context.Context, string, ...interface{}) *sql.Row
 }
 
 func New(db DBTX) *Queries {
 	return &Queries{db: db}
 }
 
-type Queries struct {
-	db DBTX
+func Prepare(ctx context.Context, db DBTX) (*Queries, error) {
+	q := Queries{db: db}
+	var err error
+	if q.createAircraftStmt, err = db.PrepareContext(ctx, createAircraft); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateAircraft: %w", err)
+	}
+	if q.createAirlineStmt, err = db.PrepareContext(ctx, createAirline); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateAirline: %w", err)
+	}
+	if q.createAirportStmt, err = db.PrepareContext(ctx, createAirport); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateAirport: %w", err)
+	}
+	if q.createFlightStmt, err = db.PrepareContext(ctx, createFlight); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateFlight: %w", err)
+	}
+	if q.createSeatStmt, err = db.PrepareContext(ctx, createSeat); err != nil {
+		return nil, fmt.Errorf("error preparing query CreateSeat: %w", err)
+	}
+	if q.deleteAircraftStmt, err = db.PrepareContext(ctx, deleteAircraft); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAircraft: %w", err)
+	}
+	if q.deleteAirlineStmt, err = db.PrepareContext(ctx, deleteAirline); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAirline: %w", err)
+	}
+	if q.deleteAirportsStmt, err = db.PrepareContext(ctx, deleteAirports); err != nil {
+		return nil, fmt.Errorf("error preparing query DeleteAirports: %w", err)
+	}
+	if q.flightAvailabilityStmt, err = db.PrepareContext(ctx, flightAvailability); err != nil {
+		return nil, fmt.Errorf("error preparing query FlightAvailability: %w", err)
+	}
+	if q.getAircraftStmt, err = db.PrepareContext(ctx, getAircraft); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAircraft: %w", err)
+	}
+	if q.getAircraftSeatsWithIataCodeStmt, err = db.PrepareContext(ctx, getAircraftSeatsWithIataCode); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAircraftSeatsWithIataCode: %w", err)
+	}
+	if q.getAirlineStmt, err = db.PrepareContext(ctx, getAirline); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAirline: %w", err)
+	}
+	if q.getAirportStmt, err = db.PrepareContext(ctx, getAirport); err != nil {
+		return nil, fmt.Errorf("error preparing query GetAirport: %w", err)
+	}
+	if q.getSeatsStmt, err = db.PrepareContext(ctx, getSeats); err != nil {
+		return nil, fmt.Errorf("error preparing query GetSeats: %w", err)
+	}
+	if q.listAircraftStmt, err = db.PrepareContext(ctx, listAircraft); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAircraft: %w", err)
+	}
+	if q.listAirlineStmt, err = db.PrepareContext(ctx, listAirline); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAirline: %w", err)
+	}
+	if q.listAirportStmt, err = db.PrepareContext(ctx, listAirport); err != nil {
+		return nil, fmt.Errorf("error preparing query ListAirport: %w", err)
+	}
+	return &q, nil
 }
 
-func (q *Queries) WithTx(tx pgx.Tx) *Queries {
+func (q *Queries) Close() error {
+	var err error
+	if q.createAircraftStmt != nil {
+		if cerr := q.createAircraftStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createAircraftStmt: %w", cerr)
+		}
+	}
+	if q.createAirlineStmt != nil {
+		if cerr := q.createAirlineStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createAirlineStmt: %w", cerr)
+		}
+	}
+	if q.createAirportStmt != nil {
+		if cerr := q.createAirportStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createAirportStmt: %w", cerr)
+		}
+	}
+	if q.createFlightStmt != nil {
+		if cerr := q.createFlightStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createFlightStmt: %w", cerr)
+		}
+	}
+	if q.createSeatStmt != nil {
+		if cerr := q.createSeatStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing createSeatStmt: %w", cerr)
+		}
+	}
+	if q.deleteAircraftStmt != nil {
+		if cerr := q.deleteAircraftStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAircraftStmt: %w", cerr)
+		}
+	}
+	if q.deleteAirlineStmt != nil {
+		if cerr := q.deleteAirlineStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAirlineStmt: %w", cerr)
+		}
+	}
+	if q.deleteAirportsStmt != nil {
+		if cerr := q.deleteAirportsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing deleteAirportsStmt: %w", cerr)
+		}
+	}
+	if q.flightAvailabilityStmt != nil {
+		if cerr := q.flightAvailabilityStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing flightAvailabilityStmt: %w", cerr)
+		}
+	}
+	if q.getAircraftStmt != nil {
+		if cerr := q.getAircraftStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAircraftStmt: %w", cerr)
+		}
+	}
+	if q.getAircraftSeatsWithIataCodeStmt != nil {
+		if cerr := q.getAircraftSeatsWithIataCodeStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAircraftSeatsWithIataCodeStmt: %w", cerr)
+		}
+	}
+	if q.getAirlineStmt != nil {
+		if cerr := q.getAirlineStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAirlineStmt: %w", cerr)
+		}
+	}
+	if q.getAirportStmt != nil {
+		if cerr := q.getAirportStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getAirportStmt: %w", cerr)
+		}
+	}
+	if q.getSeatsStmt != nil {
+		if cerr := q.getSeatsStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing getSeatsStmt: %w", cerr)
+		}
+	}
+	if q.listAircraftStmt != nil {
+		if cerr := q.listAircraftStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAircraftStmt: %w", cerr)
+		}
+	}
+	if q.listAirlineStmt != nil {
+		if cerr := q.listAirlineStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAirlineStmt: %w", cerr)
+		}
+	}
+	if q.listAirportStmt != nil {
+		if cerr := q.listAirportStmt.Close(); cerr != nil {
+			err = fmt.Errorf("error closing listAirportStmt: %w", cerr)
+		}
+	}
+	return err
+}
+
+func (q *Queries) exec(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) (sql.Result, error) {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).ExecContext(ctx, args...)
+	case stmt != nil:
+		return stmt.ExecContext(ctx, args...)
+	default:
+		return q.db.ExecContext(ctx, query, args...)
+	}
+}
+
+func (q *Queries) query(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) (*sql.Rows, error) {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).QueryContext(ctx, args...)
+	case stmt != nil:
+		return stmt.QueryContext(ctx, args...)
+	default:
+		return q.db.QueryContext(ctx, query, args...)
+	}
+}
+
+func (q *Queries) queryRow(ctx context.Context, stmt *sql.Stmt, query string, args ...interface{}) *sql.Row {
+	switch {
+	case stmt != nil && q.tx != nil:
+		return q.tx.StmtContext(ctx, stmt).QueryRowContext(ctx, args...)
+	case stmt != nil:
+		return stmt.QueryRowContext(ctx, args...)
+	default:
+		return q.db.QueryRowContext(ctx, query, args...)
+	}
+}
+
+type Queries struct {
+	db                               DBTX
+	tx                               *sql.Tx
+	createAircraftStmt               *sql.Stmt
+	createAirlineStmt                *sql.Stmt
+	createAirportStmt                *sql.Stmt
+	createFlightStmt                 *sql.Stmt
+	createSeatStmt                   *sql.Stmt
+	deleteAircraftStmt               *sql.Stmt
+	deleteAirlineStmt                *sql.Stmt
+	deleteAirportsStmt               *sql.Stmt
+	flightAvailabilityStmt           *sql.Stmt
+	getAircraftStmt                  *sql.Stmt
+	getAircraftSeatsWithIataCodeStmt *sql.Stmt
+	getAirlineStmt                   *sql.Stmt
+	getAirportStmt                   *sql.Stmt
+	getSeatsStmt                     *sql.Stmt
+	listAircraftStmt                 *sql.Stmt
+	listAirlineStmt                  *sql.Stmt
+	listAirportStmt                  *sql.Stmt
+}
+
+func (q *Queries) WithTx(tx *sql.Tx) *Queries {
 	return &Queries{
-		db: tx,
+		db:                               tx,
+		tx:                               tx,
+		createAircraftStmt:               q.createAircraftStmt,
+		createAirlineStmt:                q.createAirlineStmt,
+		createAirportStmt:                q.createAirportStmt,
+		createFlightStmt:                 q.createFlightStmt,
+		createSeatStmt:                   q.createSeatStmt,
+		deleteAircraftStmt:               q.deleteAircraftStmt,
+		deleteAirlineStmt:                q.deleteAirlineStmt,
+		deleteAirportsStmt:               q.deleteAirportsStmt,
+		flightAvailabilityStmt:           q.flightAvailabilityStmt,
+		getAircraftStmt:                  q.getAircraftStmt,
+		getAircraftSeatsWithIataCodeStmt: q.getAircraftSeatsWithIataCodeStmt,
+		getAirlineStmt:                   q.getAirlineStmt,
+		getAirportStmt:                   q.getAirportStmt,
+		getSeatsStmt:                     q.getSeatsStmt,
+		listAircraftStmt:                 q.listAircraftStmt,
+		listAirlineStmt:                  q.listAirlineStmt,
+		listAirportStmt:                  q.listAirportStmt,
 	}
 }

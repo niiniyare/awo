@@ -1,17 +1,18 @@
 package main
 
 import (
-	"context"
+	"database/sql"
 	"fmt"
 
 	"net"
 	"os"
 
-	"github.com/jackc/pgx/v4"
+	_ "github.com/jackc/pgx/v4/stdlib"
 	db "github.com/niiniyare/awo/db/sqlc"
 	"github.com/niiniyare/awo/pkg/api/v1/pb"
 	grpc_server "github.com/niiniyare/awo/pkg/grpc"
 	"github.com/rs/zerolog"
+
 	"github.com/rs/zerolog/log"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/reflection"
@@ -28,14 +29,13 @@ func main() {
 	if config.Environment == "development" {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
-	ctx := context.Background()
 
-	conn, err := pgx.Connect(ctx, config.DBSource)
+	conn, err := sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot connect to db")
 	}
 
-	defer conn.Close(ctx)
+	defer conn.Close()
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot connect to db")
 	}

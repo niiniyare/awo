@@ -2,11 +2,11 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -80,7 +80,7 @@ func TestDeleteAircraft(t *testing.T) {
 	r.NoError(err)
 
 	aircraft1, errs := testQueries.GetAircraft(context.Background(), aircraft.ID)
-	r.EqualError(errs, pgx.ErrNoRows.Error())
+	r.EqualError(errs, sql.ErrNoRows.Error())
 	r.Empty(aircraft1)
 
 }

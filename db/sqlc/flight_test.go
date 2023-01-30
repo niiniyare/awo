@@ -3,7 +3,6 @@ package db
 import (
 	"context"
 	"database/sql"
-	"log"
 	"testing"
 	"time"
 
@@ -30,29 +29,27 @@ func CreateRandomFlight(t *testing.T) Flight {
 
 	r := require.New(t)
 
-	startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
+	// startDate := time.Date(2022, time.September, 25, 72, 01, 0, 0, time.UTC)
+	// gf.DateTimer
+	arr := time.Now().Add(time.Duration(util.RandomInt(1, 5) * int64(time.Hour)))
+	dep := time.Now()
+	// log.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
 
-	dep := fk.DateRange(startDate, startDate.Add(time.Hour*time.Duration(util.RandomInt(1, 12))))
+	// log.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
 
-	arr := dep.AddDate(0, 0, int(util.RandomInt(1, 2)))
+	// log.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
 
-	log.Printf("ScheduledDeparture time: %v\n", dep.Format(time.UnixDate))
-
-	log.Printf("ScheduledArrival  time: %v\n", arr.Format(time.UnixDate))
-
-	log.Printf("Duration time: %v\n", dep.Sub(arr).Hours())
-
-	actualtime := sql.NullTime{Time: arr}
+	actualtime := sql.NullTime{Time: arr, Valid: false}
 	aclerr := actualtime.Scan(arr)
 	r.NoError(aclerr)
-	actualDeparture := sql.NullTime{Time: arr}
+	actualDeparture := sql.NullTime{Time: dep, Valid: false}
 	aclerr = actualDeparture.Scan(dep)
 	r.NoError(aclerr)
 	arg := CreateFlightParams{
 		FlightNo:           util.RandomFlightNo(airline.IataCode),
 		CompanyID:          airline.ID,
-		ScheduledDeparture: dep,
-		ScheduledArrival:   arr,
+		ScheduledDeparture: actualDeparture.Time,
+		ScheduledArrival:   actualtime.Time,
 		DepartureAirport:   airport.IataCode,
 		ArrivalAirport:     airport1.IataCode,
 		Status:             onTime,

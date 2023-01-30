@@ -81,14 +81,11 @@ func (s *GRPCServer) ListAirlines(ctx context.Context, req *pb.ListAirlinesReq) 
 	for _, airline := range airlines {
 		item := &pb.Airline{
 
-			Id:          airline.ID,
-			Name:        airline.CompanyName,
-			IataCode:    airline.IataCode,
-			IcaoCode:    airline.IcaoCode.String,
-			Callsign:    airline.Callsign.String,
-			Hub_Airport: airline.MainAirport,
-			Created_At:  timestamppb.New(airline.CreatedAt),
-			Updated_At:  timestamppb.New(airline.UpdatedAt),
+			Id:         airline.ID,
+			Name:       airline.CompanyName,
+			IataCode:   airline.IataCode,
+			Created_At: timestamppb.New(airline.CreatedAt),
+			Updated_At: timestamppb.New(airline.UpdatedAt),
 		}
 
 		res.Airlines = append(res.Airlines, item)

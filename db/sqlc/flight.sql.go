@@ -44,7 +44,7 @@ type CreateFlightParams struct {
 }
 
 func (q *Queries) CreateFlight(ctx context.Context, arg CreateFlightParams) (Flight, error) {
-	row := q.db.QueryRow(ctx, createFlight,
+	row := q.queryRow(ctx, q.createFlightStmt, createFlight,
 		arg.FlightNo,
 		arg.CompanyID,
 		arg.ScheduledDeparture,
@@ -122,7 +122,7 @@ type FlightAvailabilityParams struct {
 // AND f.company_id = $3
 // ORDER BY f.scheduled_departure LIMIT 2
 func (q *Queries) FlightAvailability(ctx context.Context, arg FlightAvailabilityParams) ([]FlightsV, error) {
-	rows, err := q.db.Query(ctx, flightAvailability,
+	rows, err := q.query(ctx, q.flightAvailabilityStmt, flightAvailability,
 		arg.DepartureAirport,
 		arg.ArrivalAirport,
 		arg.CompanyID,
@@ -161,6 +161,9 @@ func (q *Queries) FlightAvailability(ctx context.Context, arg FlightAvailability
 			return nil, err
 		}
 		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
 	}
 	if err := rows.Err(); err != nil {
 		return nil, err

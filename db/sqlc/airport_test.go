@@ -2,11 +2,12 @@ package db
 
 import (
 	"context"
+	"database/sql"
+	"fmt"
 	"strings"
 	"testing"
 
 	"github.com/jackc/pgtype"
-	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -34,8 +35,8 @@ func CreateRandomAirport(t *testing.T) Airport {
 		Country:  strings.ToUpper(util.RandomString(3)),
 		State:    strings.ToUpper(util.RandomString(4)),
 		Timezone: "Africa/Mogadishu",
-		Lat:      *lat,
-		Lon:      *lon,
+		Lat:      fmt.Sprintf("%v", lt),
+		Lon:      fmt.Sprintf("%v", ln),
 	}
 
 	airport, err := testQueries.CreateAirport(context.Background(), arg)
@@ -77,7 +78,7 @@ func TestDeleteAirport(t *testing.T) {
 
 	r.NoError(err)
 	airport2, err2 := testQueries.GetAirport(context.Background(), airport1.IataCode)
-	r.EqualError(err2, pgx.ErrNoRows.Error())
+	r.EqualError(err2, sql.ErrNoRows.Error())
 	r.Empty(airport2)
 	// r.Equal(airport1.ID, airport2.ID)
 }

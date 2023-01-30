@@ -11,8 +11,8 @@ BIN=$(abspath ~/go/bin)
 # Set to use a different compiler. For example, `GO=go1.18rc1 make test`.
 GO ?= go
 .DEFAULT_GOAL := help
-# DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
-DB_URL=postgres://wegmjdaf:khexFaRIW0eslZ6GPRY5VFyCM7w_vMVc@tyke.db.elephantsql.com/wegmjdaf?sslmode=disable
+DB_URL=postgresql://admin:admin@localhost:5432/flight?sslmode=disable
+# DB_URL=postgres://wegmjdaf:khexFaRIW0eslZ6GPRY5VFyCM7w_vMVc@tyke.db.elephantsql.com/wegmjdaf?sslmode=disable
 API_VERSION := v1
 PROTO := pkg/api/$(API_VERSION)/proto
 PB := pkg/api/$(API_VERSION)/pb

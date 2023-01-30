@@ -7,8 +7,6 @@ package db
 import (
 	"database/sql"
 	"time"
-
-	"github.com/jackc/pgtype"
 )
 
 // Aircrafts (internal data)
@@ -44,8 +42,8 @@ type Airport struct {
 	State     string         `json:"state"`
 	City      string         `json:"city"`
 	Elevation sql.NullString `json:"elevation"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lon       pgtype.Numeric `json:"lon"`
+	Lat       string         `json:"lat"`
+	Lon       string         `json:"lon"`
 	Timezone  string         `json:"timezone"`
 }
 
@@ -92,13 +90,13 @@ type FlightsV struct {
 	// Scheduled departure time
 	ScheduledDeparture time.Time `json:"scheduled_departure"`
 	// Scheduled departure time, local time at the point of departure
-	ScheduledDepartureLocal pgtype.Time `json:"scheduled_departure_local"`
+	ScheduledDepartureLocal time.Time `json:"scheduled_departure_local"`
 	// Scheduled arrival time
 	ScheduledArrival time.Time `json:"scheduled_arrival"`
 	// Scheduled arrival time, local time at the point of destination
-	ScheduledArrivalLocal pgtype.Time `json:"scheduled_arrival_local"`
+	ScheduledArrivalLocal time.Time `json:"scheduled_arrival_local"`
 	// Scheduled flight duration
-	ScheduledDuration pgtype.Interval `json:"scheduled_duration"`
+	ScheduledDuration string `json:"scheduled_duration"`
 	// Deprature airport code
 	DepartureAirport string `json:"departure_airport"`
 	// Departure airport name
@@ -118,13 +116,13 @@ type FlightsV struct {
 	// Actual departure time
 	ActualDeparture sql.NullTime `json:"actual_departure"`
 	// Actual departure time, local time at the point of departure
-	ActualDepartureLocal pgtype.Time `json:"actual_departure_local"`
+	ActualDepartureLocal string `json:"actual_departure_local"`
 	// Actual arrival time
 	ActualArrival sql.NullTime `json:"actual_arrival"`
 	// Actual arrival time, local time at the point of destination
-	ActualArrivalLocal pgtype.Time `json:"actual_arrival_local"`
+	ActualArrivalLocal time.Time `json:"actual_arrival_local"`
 	// Actual flight duration
-	ActualDuration pgtype.Interval `json:"actual_duration"`
+	ActualDuration string `json:"actual_duration"`
 }
 
 type Route struct {
@@ -148,7 +146,7 @@ type Route struct {
 	// Scheduled duration of flight
 	Duration int32 `json:"duration"`
 	// Days of week on which flights are scheduled
-	DaysOfWeek interface{} `json:"days_of_week"`
+	DaysOfWeek string `json:"days_of_week"`
 }
 
 type Seat struct {

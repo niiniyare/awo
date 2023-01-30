@@ -2,10 +2,10 @@ package db
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -90,7 +90,7 @@ func TestDeleteAirline(t *testing.T) {
 	arline1, err := testQueries.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(arline1)
-	r.EqualError(err, pgx.ErrNoRows.Error())
+	r.EqualError(err, sql.ErrNoRows.Error())
 
 }
 
