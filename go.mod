@@ -3,7 +3,6 @@ module github.com/niiniyare/awo
 go 1.19
 
 require (
-	github.com/go-faker/faker/v4 v4.0.0
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0
 	github.com/jackc/pgtype v1.11.0

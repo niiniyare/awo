@@ -60,7 +60,7 @@ CREATE VIEW flights_v AS
     timezone(dep.timezone, f.scheduled_departure)::timestamp  AS scheduled_departure_local,
     f.scheduled_arrival,
     timezone(arr.timezone, f.scheduled_arrival)::timestamp AS scheduled_arrival_local,
-    (f.scheduled_arrival - f.scheduled_departure)::TEXT AS scheduled_duration,
+    (f.scheduled_arrival - f.scheduled_departure) AS scheduled_duration,
 
 -- SELECT to_char(interval '20 hours 20 minutes', 'HH24:MI:SS');
     f.departure_airport,
@@ -72,10 +72,10 @@ CREATE VIEW flights_v AS
     f.status,
     f.aircraft_id,
     f.actual_departure,
-    timezone(dep.timezone, f.actual_departure)::TEXT AS actual_departure_local,
+    timezone(dep.timezone, f.actual_departure)::timestamp AS actual_departure_local,
     f.actual_arrival,
     timezone(arr.timezone, f.actual_arrival)::timestamp AS actual_arrival_local,
-    (f.actual_arrival - f.actual_departure)::TEXT AS actual_duration
+    (f.actual_arrival - f.actual_departure) AS actual_duration
    FROM flights f,
     airports dep, 
     airports arr

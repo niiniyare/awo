@@ -7,6 +7,8 @@ package db
 import (
 	"database/sql"
 	"time"
+
+	"github.com/jackc/pgtype"
 )
 
 // Aircrafts (internal data)
@@ -94,9 +96,9 @@ type FlightsV struct {
 	// Scheduled arrival time
 	ScheduledArrival time.Time `json:"scheduled_arrival"`
 	// Scheduled arrival time, local time at the point of destination
-	ScheduledArrivalLocal time.Time `json:"scheduled_arrival_local"`
+	ScheduledArrivalLocal pgtype.Timestamptz `json:"scheduled_arrival_local"`
 	// Scheduled flight duration
-	ScheduledDuration string `json:"scheduled_duration"`
+	ScheduledDuration int32 `json:"scheduled_duration"`
 	// Deprature airport code
 	DepartureAirport string `json:"departure_airport"`
 	// Departure airport name
@@ -116,13 +118,13 @@ type FlightsV struct {
 	// Actual departure time
 	ActualDeparture sql.NullTime `json:"actual_departure"`
 	// Actual departure time, local time at the point of departure
-	ActualDepartureLocal string `json:"actual_departure_local"`
+	ActualDepartureLocal time.Time `json:"actual_departure_local"`
 	// Actual arrival time
 	ActualArrival sql.NullTime `json:"actual_arrival"`
 	// Actual arrival time, local time at the point of destination
 	ActualArrivalLocal time.Time `json:"actual_arrival_local"`
 	// Actual flight duration
-	ActualDuration string `json:"actual_duration"`
+	ActualDuration int32 `json:"actual_duration"`
 }
 
 type Route struct {
@@ -146,7 +148,7 @@ type Route struct {
 	// Scheduled duration of flight
 	Duration int32 `json:"duration"`
 	// Days of week on which flights are scheduled
-	DaysOfWeek string `json:"days_of_week"`
+	DaysOfWeek interface{} `json:"days_of_week"`
 }
 
 type Seat struct {

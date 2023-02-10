@@ -13,11 +13,11 @@ packages:
     emit_methods_with_db_argument: false
     sql_package: "database/sql"
     overrides:
-      - column: "routes.days_of_week"
-        go_type: "slice.string"
+      # - column: "routes.days_of_week"
+      #  go_type: "slice.string"
       #
-      # - column: "flights_v.scheduled_arrival_local"
-      #   go_type: "github.com/jackc/pgtype.Time"
+      - column: "flights_v.scheduled_arrival_local"
+        go_type: "github.com/jackc/pgtype.Timestamptz"
       # - column: "flights_v.scheduled_departure_local"
       #   go_type: "github.com/jackc/pgtype.Time"
       # - column: "flights_v.actual_departure_local"

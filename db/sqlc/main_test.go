@@ -23,7 +23,11 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
 	}
+	err = testDB.Ping()
 
+	if err != nil {
+		log.Fatal("cannot Ping to postgresSQL database :", err)
+	}
 	testQueries = New(testDB)
 
 	os.Exit(m.Run())
