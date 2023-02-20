@@ -32,11 +32,11 @@ message Airport {
 message CreateAirportResponse {
   Airport airport = 1;
 }
-message ListAirportRes {
+message ListAirportResponse {
   repeated Airport airport = 1;
 }
 
-message ListAirportReq {
+message ListAirportRequest {
   int64 limit = 1;
   int64 offset = 2;
 }

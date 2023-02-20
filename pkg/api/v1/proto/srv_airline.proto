@@ -3,17 +3,38 @@ syntax = "proto3";
 package pb;
 
 import "rpc_airline.proto";
-
+import "rpc_airport.proto";
 option go_package = "github.com/niiniyare/awo/pkg/api/v1/pb";
 
 service AirlinesService {
+  /* Airlines Service RPC */
   rpc CreateAirline(CreateAirlineRequest) returns (CreateAirlineResponse) {}
 
-  rpc GetAirline(GetAirlineRequest) returns (GetAirlineResponse) {}
+  rpc ShowAirline(GetAirlineRequest) returns (GetAirlineResponse) {}
 
   rpc UpdateAirline(UpdateAirlineRequest) returns (UpdateAirlineResponse) {}
 
   rpc DeleteAirline(DeleteAirlineRequest) returns (DeleteAirlineResponse) {}
 
   rpc ListAirlines(ListAirlinesReq) returns (ListAirlineRes) {}
+
+
+  /* Airlines Service RPC */
+
+  rpc CreateAirport(CreateAirportRequest) returns (CreateAirportResponse) {}
+
+  rpc ShowAirport(GetAirportRequest) returns (GetAirportResponse) {}
+
+  rpc UpdateAirport(UpdateAirportRequest) returns (UpdateAirportResponse) {}
+
+  rpc DeleteAirport(DeleteAirportRequest) returns (DeleteAirportResponse) {}
+
+    rpc ListAirports(ListAirportRequest) returns (ListAirportResponse) {}
+
 }
+
+ /*  List(Context) */
+	/* Show(Context) */
+	/* Create(Context) */
+	/* Update(Context) */
+	/* Destroy(Context) */
