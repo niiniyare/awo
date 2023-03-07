@@ -3,6 +3,7 @@ module github.com/niiniyare/awo
 go 1.19
 
 require (
+	github.com/bufbuild/connect-go v1.5.2
 	github.com/golang/mock v1.6.0
 	github.com/grpc-ecosystem/grpc-gateway/v2 v2.15.0
 	github.com/jackc/pgtype v1.11.0

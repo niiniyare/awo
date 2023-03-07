@@ -2,7 +2,6 @@ syntax = "proto3";
 
 package pb;
 
-
 option go_package = "github.com/niiniyare/awo/pkg/api/v1/pb";
 
 message CreateAirportRequest {
@@ -14,7 +13,8 @@ message CreateAirportRequest {
   string state = 6;
   double lat = 7;
   double long = 8;
-  double elevation = 9;
+  optional string elevation = 9;
+  string timezone = 10;
 }
 
 message Airport {
@@ -26,7 +26,8 @@ message Airport {
   string state = 6;
   double lat = 7;
   double long = 8;
-  double elevation = 9;
+  optional string elevation = 9;
+  string timezone = 10;
 }
 
 message CreateAirportResponse {
@@ -61,7 +62,8 @@ message UpdateAirportRequest {
   optional string state = 7;
   optional double lat = 8;
   optional double long = 9;
-  optional double elevation = 10;
+  optional string elevation = 10;
+  optional string timezone = 11;
 }
 
 message UpdateAirportResponse {
