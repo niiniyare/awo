@@ -1,0 +1,14 @@
+h1:BTzs34LYAEEmjL8FIoUvQTICYqtXlkkixSeUryjKEqo=
+01_company.down.sql h1:Iy/ZgUyk831ylS1Ye41b82L+lw+iqDkZHl+V7Pcc6UE=
+01_company.up.sql h1:1yYTRCCpeNnLVA7dO/j+kKxZh49tqqiKOEVUwKRRTNk=
+02_aircraft.down.sql h1:jizs61YfYfVApY/ziq6F9+6Jq3f4cAVkpD/DMxc1PQM=
+02_aircraft.up.sql h1:ItLysyzYKyIWn3I4E8uOfelgWkpOo4hh/gBKD5aI3Ow=
+03_airport.down.sql h1:pt9l499nBKyGpjfKzE67nJUj3AD3MxZMGGvhKXDVuPc=
+03_airport.up.sql h1:SybTFLVIW6h30FSvm9LG4e84msZV8ZDA4H+shWAvGdk=
+04_seats.down.sql h1:hfTCmG26s/xvT77vQsSzKoTENUmjy1zMshUguer8YWA=
+04_seats.up.sql h1:qi5+EQErzGi0pTze0+to4buLzrbDg08Hxf1Bn/IZ+Es=
+05_flights.down.sql h1:hnQ89pX0qc0e94YsFJ5NWrsOfPlf5arFdQiyRffNDrg=
+05_flights.up.sql h1:7+LqUK1RG209vAbYOnlYwhiW0qjqBgbkpUp5+ci9tI0=
+06_seats-extanded.down.sql h1:LJY3Qtpaj11LpzZ1a8XW4ZC1oVyr7PrHeFv1RcovlRg=
+06_seats-extanded.up.sql h1:mtHe9O/XY09FnVXNk3rwUgrJ5ED8+dUDmfT2pqpkV6c=
+dump_flights.sql h1:9fU9FoXUeyIuzd9x/VfnmTiqUE70DZ3m9r2n9iqw34Y=
