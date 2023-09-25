@@ -57,6 +57,9 @@ migratedown:  ## brings down  last one version of thev database schema
 migratedrop: ##  drops database schema
 	@migrate -path db/migration -database "$(DB_URL)" -verbose drop
 
+migrateCreate: ## create new migration file
+	migrate create -ext sql -dir db/migration/ -digits 2 -seq $(name) -verbose
+
 
 sqlc: ## generates go files from sql Query files using config files  in ./sqlc.yaml
 	@sqlc generate
@@ -113,5 +116,4 @@ buf: ## removes files generated before re-generates grpc, grpc gatewayes and swa
 	
 buf-lint: ## lint protobuf files using buf tool
 	@buf lint --error-format=json --exclude-path=pkg/api/v1/proto/google,pkg/api/v1/proto/protoc-gen-openapiv2 | jq
-.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html redis-graph proto evans buf
-
+.PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html redis-graph proto evans buf migrateCreate

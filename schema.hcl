@@ -1,9 +1,5 @@
 -- Add new schema named "public"
 CREATE SCHEMA IF NOT EXISTS "public";
--- Create "airports" table
-CREATE TABLE "public"."airports" ("id" bigserial NOT NULL, "iata_code" text NOT NULL, "icao_code" text NOT NULL, "name" text NOT NULL, "country" character varying(50) NOT NULL, "state" character varying(50) NOT NULL, "city" text NOT NULL, "elevation" text NULL, "lat" numeric(10,2) NOT NULL, "lon" numeric(10,2) NOT NULL, "timezone" text NOT NULL, PRIMARY KEY ("id"), CONSTRAINT "airports_iata_code_check" CHECK (iata_code ~ '\A[A-Z]{3}\Z'::text), CONSTRAINT "airports_icao_code_check" CHECK (icao_code ~ '\A[A-Z0-9]{4}\Z'::text));
--- Create index "airports_iata_code_icao_code_key" to table: "airports"
-CREATE UNIQUE INDEX "airports_iata_code_icao_code_key" ON "public"."airports" ("iata_code", "icao_code");
 -- Create "cabin_class" table
 CREATE TABLE "public"."cabin_class" ("value" text NOT NULL, "description" text NOT NULL, PRIMARY KEY ("value"));
 -- Create "schema_migrations" table
