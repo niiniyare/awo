@@ -2,8 +2,7 @@ name: Generate Go code with sqlc
 
 on:
   push:
-    branches:
-      - main  # or the branch where you want this action to run
+    branches: [ main, sqlc ]
 
 jobs:
   build:
@@ -23,21 +22,121 @@ jobs:
       run: sqlc generate
 
 
-    
-    
-    - name: Commit and push
-      uses: actions/github-script@v3
-      with:
-          script: |
-           const exec = require('@actions/exec');
-           await exec.exec('git config --local user.email "action@github.com"');
-           await exec.exec('git config --local user.name "GitHub Action"');
-           await exec.exec('git add .');
-           await exec.exec('git commit -m "Generate Go code with sqlc" -a');
 
-    - name: Push changes
-      uses: ad-m/github-push-action@master
+
+
+
+name: Generate Go code with sqlc
+
+on:
+  push:
+    branches: [ main, sqlc ]
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v2
       with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          branch: ${{ github.head_ref }}
+        ref: 'sqlc'  # checkout sqlc branch
+
+    - name: Set up sqlc
+      uses: sqlc-dev/setup-sqlc@v4
+      with:
+        sqlc-version: '1.21.0'
+
+    - name: Generate Go code
+      run: sqlc generate
+
+
+
+
+# name: Generate Go code with sqlc
+
+# on:
+#   push:
+#     branches: [ main, sqlc ]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - uses: actions/checkout@v2
+#       with:
+#         ref: 'sqlc'  # checkout sqlc branch
+
+#     - name: Set up sqlc
+#       uses: sqlc-dev/setup-sqlc@v4
+#       with:
+#         sqlc-version: '1.21.0'
+
+#     - name: Generate Go code
+#       run: sqlc generate
+
+
+
+
+
+
+
+
+# name: Generate Go code with sqlc
+
+# on:
+#   push:
+#     branches: [ main, sqlc ]
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+
+#     steps:
+#     - uses: actions/checkout@v2
+#       with:
+#         ref: 'sqlc'  # checkout sqlc branch
+
+#     - name: Set up sqlc
+#       uses: sqlc-dev/setup-sqlc@v4
+#       with:
+#         sqlc-version: '1.21.0'
+
+#     - name: Generate Go code
+#       run: sqlc generate
+
+
+#     - name: commit and push
+#     - uses: actions/checkout@v3
+#        with: 
+#         ref: ${{ github.head_ref }}
+#         fetch-depth: 0
+#      - name: Commit files
+#        run: |
+#              git config --local user.email "github-actions[bot]@users.noreply.github.com"
+#               git config --local user.name "github-actions[bot]"
+#               git commit -a -m "add changes"    
+#       - name: push changes
+#         uses: ad-m/github-push-action@master
+#         with:
+#            runs-on: ubuntu-l
+#            branch: ${{ github.head_ref }}       
+#            # runs-on: ubuntu-l
+
+
+
+#     #   uses: actions/github-script@v3
+#     #   with:
+#     #       script: |
+#     #        const exec = require('@actions/exec');
+#     #        await exec.exec('git config --local user.email "action@github.com"');
+#     #        await exec.exec('git config --local user.name "GitHub Action"');
+#     #        await exec.exec('git add .');
+#     #        await exec.exec('git commit -m "Generate Go code with sqlc" -a');
+
+#     # - name: Push changes
+#     #   uses: ad-m/github-push-action@master
+#     #   with:
+#     #       github_token: ${{ secrets.GITHUB_TOKEN }}
+#     #       branch: ${{ github.head_ref }}
 
