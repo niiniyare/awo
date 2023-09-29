@@ -108,28 +108,28 @@ func normPPF(p float64) float64 {
 		return (((((a1*r+a2)*r+a3)*r+a4)*r+a5)*r + a6) * q / (((((b1*r+b2)*r+b3)*r+b4)*r+b5)*r + 1)
 	}
 }
-/*
-func main() {
-	// Test case 1
-	fares1 := []float64{100, 80, 60, 40}
-	demands1 := []float64{50, 80, 100, 120}
-	sigmas1 := []float64{10, 15, 20, 25}
-	protectionLevels1 := calcEMSRb(fares1, demands1, sigmas1)
-	fmt.Println("Test case 1 protection levels:", protectionLevels1) // Expected: [0 42 121 228]
 
-	// Test case 2
-	fares2 := []float64{200, 150, 100, 80, 50}
-	demands2 := []float64{30, 40, 50, 70, 100}
-	sigmas2 := []float64{5, 10, 15, 20, 25}
-	protectionLevels2 := calcEMSRb(fares2, demands2, sigmas2)
-	fmt.Println("Test case 2 protection levels:", protectionLevels2) // Expected: [0 35 79 156 283]
+// func main() {
+// 	// Test case 1
+// 	fares1 := []float64{100, 80, 60, 40}
+// 	demands1 := []float64{50, 80, 100, 120}
+// 	sigmas1 := []float64{10, 15, 20, 25}
+// 	protectionLevels1 := calcEMSRb(fares1, demands1, sigmas1)
+// 	fmt.Println("Test case 1 protection levels:", protectionLevels1) // Expected: [0 42 121 228]
 
-	// Test case 3 (deterministic demand)
-	fares3 := []float64{50, 40, 30, 20}
-	demands3 := []float64{100, 200, 300, 400}
-	protectionLevels3 := calcEMSRb(fares3, demands3, nil)
-	fmt.Println("Test case 3 protection levels:", protectionLevels3) // Expected: [0 100 300 600]
-}
+// 	// Test case 2
+// 	fares2 := []float64{200, 150, 100, 80, 50}
+// 	demands2 := []float64{30, 40, 50, 70, 100}
+// 	sigmas2 := []float64{5, 10, 15, 20, 25}
+// 	protectionLevels2 := calcEMSRb(fares2, demands2, sigmas2)
+// 	fmt.Println("Test case 2 protection levels:", protectionLevels2) // Expected: [0 35 79 156 283]
+
+// 	// Test case 3 (deterministic demand)
+// 	fares3 := []float64{50, 40, 30, 20}
+// 	demands3 := []float64{100, 200, 300, 400}
+// 	protectionLevels3 := calcEMSRb(fares3, demands3, nil)
+// 	fmt.Println("Test case 3 protection levels:", protectionLevels3) // Expected: [0 100 300 600]
+// }
 
 // func main() {
 // 	// Test case 1
