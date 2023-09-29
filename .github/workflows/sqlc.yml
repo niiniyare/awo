@@ -22,6 +22,7 @@ jobs:
     - name: Generate Go code
       run: sqlc generate
 
+
     
     
     - name: Commit and push
@@ -33,6 +34,10 @@ jobs:
            await exec.exec('git config --local user.name "GitHub Action"');
            await exec.exec('git add .');
            await exec.exec('git commit -m "Generate Go code with sqlc" -a');
-            await exec.exec('git push');
 
+    - name: Push changes
+      uses: ad-m/github-push-action@master
+      with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          branch: ${{ github.head_ref }}
 
