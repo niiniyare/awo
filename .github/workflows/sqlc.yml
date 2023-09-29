@@ -22,14 +22,17 @@ jobs:
     - name: Generate Go code
       run: sqlc generate
 
+    
+    
     - name: Commit and push
-      run: |
-        git config --local user.email "action@github.com"
-        git config --local user.name "GitHub Action"
-        git add .
-        git commit -m "Generate Go code with sqlc" -a
-
-    - name: Push changes
-      uses: ad-m/github-push-action@master
+      uses: actions/github-script@v3
       with:
-        branch: ${{ github.head_ref }}
+          script: |
+           const exec = require('@actions/exec');
+           await exec.exec('git config --local user.email "action@github.com"');
+           await exec.exec('git config --local user.name "GitHub Action"');
+           await exec.exec('git add .');
+           await exec.exec('git commit -m "Generate Go code with sqlc" -a');
+            await exec.exec('git push');
+
+
