@@ -21,33 +21,59 @@ jobs:
     - name: Generate Go code
       run: sqlc generate
 
+    - name: Revert pushed commit
+
+      on: 
+        workflow_dispatch:
+          inputs:
+            branch:
+              description: 'Branch name'
+              required: true
+              default: 'sqlc'
+
+        jobs:
+        revert_commit:
+          runs-on: ubuntu-latest
+          steps: 
+            - name: Checkout branch
+              uses: actions/checkout@v2
+              with:
+                 ref: ${{ github.event.inputs.branch }}
+                 fetch-depth: 0
+            - name: Revert pushed commit
+              run: | 
+                git config --global user.name 'github-actions[bot]'
+                git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+                git revert --no-edit HEAD
+                git push
+
+      
 
 
 
 
+# name: Generate Go code with sqlc
 
-name: Generate Go code with sqlc
+# on:
+#   push:
+#     branches: [ main, sqlc ]
 
-on:
-  push:
-    branches: [ main, sqlc ]
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
 
-jobs:
-  build:
-    runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@v2
+#       with:
+#         ref: 'sqlc'  # checkout sqlc branch
 
-    steps:
-    - uses: actions/checkout@v2
-      with:
-        ref: 'sqlc'  # checkout sqlc branch
+#     - name: Set up sqlc
+#       uses: sqlc-dev/setup-sqlc@v4
+#       with:
+#         sqlc-version: '1.21.0'
 
-    - name: Set up sqlc
-      uses: sqlc-dev/setup-sqlc@v4
-      with:
-        sqlc-version: '1.21.0'
-
-    - name: Generate Go code
-      run: sqlc generate
+#     - name: Generate Go code
+#       run: sqlc generate
 
 
 
