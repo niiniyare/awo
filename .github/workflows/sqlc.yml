@@ -39,7 +39,7 @@ jobs:
         git revert --no-edit HEAD
         git push
       env:
-        GITHUB_TOKEN: ${{ swcrets.GITHUB_TOKEN }}		
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}		
       
 
 
