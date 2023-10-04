@@ -3,7 +3,9 @@ name: Generate Go code with sqlc
 on:
   push:
     branches:
-      - main  # or the branch where you want this action to run
+      - sqlc  
+  pull_request:
+    branches: [main, dev]
 
 jobs:
   build:
