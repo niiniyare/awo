@@ -12,29 +12,63 @@ jobs:
     runs-on: ubuntu-latest
 
     steps:
-    - uses: actions/checkout@v2
+    - uses: actions/checkout@master
       with:
         ref: 'sqlc'  # checkout sqlc branch
 
+      # with:
+        persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+        fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
     - name: Set up sqlc
       uses: sqlc-dev/setup-sqlc@v4
       with:
         sqlc-version: '1.21.0'
 
-    - name: Generate Go code
+    - name: Generate Go code from Sql files 
       run: sqlc generate
 
-    
-    
-    - name: Commit and push
-      uses: actions/github-script@v3
+  revert:
+    runs-on: ubuntu-latest
+    needs: build
+
+    steps: 
+    - name: Checkout branch
+      uses: actions/checkout@v2
       with:
-          script: |
-           const exec = require('@actions/exec');
-           await exec.exec('git config --local user.email "action@github.com"');
-           await exec.exec('git config --local user.name "GitHub Action"');
-           await exec.exec('git add .');
-           await exec.exec('git commit -m "Generate Go code with sqlc" -a');
-            await exec.exec('git push');
+        ref: '${{ github.event.inputs.branch }}'
+        fetch-depth: 0
+
+    # - name: Revert pushed commit
+    #   run: | 
+    #     git config --global user.name 'github-actions[bot]'
+    #     git config --global user.email 'github-actions[bot]@users.noreply.github.com'
+    #     git revert --no-edit HEAD
+    #     git push
+    #   env:
+    #     GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}		
+    # - name: Create local changes
+    #   run: |
+    #     ...
+    - name: Commit & Push changes
+      uses: actions-js/push@master
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}		
+      
 
 
+
+# jobs:
+#   build:
+#     runs-on: ubuntu-latest
+#     steps:
+#     - uses: actions/checkout@master
+#       with:
+#         persist-credentials: false # otherwise, the token used is the GITHUB_TOKEN, instead of your personal token
+#         fetch-depth: 0 # otherwise, you will failed to push refs to dest repo
+#     - name: Create local changes
+#       run: |
+#         ...
+#     - name: Commit & Push changes
+#       uses: actions-js/push@master
+#       with:
+#         github_token: ${{ secrets.GITHUB_TOKEN }}		
