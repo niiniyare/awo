@@ -4,7 +4,8 @@
 // source: copyfrom.go
 
 package db
-//TODO: update sqlc command line to implement pgx copyfrom funtions. 
+
+//TODO: update sqlc command line to implement pgx copyfrom funtions.
 // import (
 // 	"context"
 // )
