@@ -3,11 +3,9 @@ package db
 import (
 	"context"
 	"database/sql"
-	"fmt"
-	"strings"
 	"testing"
 
-	"github.com/jackc/pgtype"
+	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -28,18 +26,19 @@ func CreateRandomAirport(t *testing.T) Airport {
 	r.NoError(err)
 
 	arg := CreateAirportParams{
-		IataCode: strings.ToUpper(util.RandomString(3)),
-		IcaoCode: strings.ToUpper(util.RandomString(4)),
-		Name:     strings.ToUpper(util.RandomString(10)),
-		City:     strings.ToUpper(util.RandomString(4)),
-		Country:  strings.ToUpper(util.RandomString(3)),
-		State:    strings.ToUpper(util.RandomString(4)),
-		Timezone: "Africa/Mogadishu",
-		Lat:      fmt.Sprintf("%v", lt),
-		Lon:      fmt.Sprintf("%v", ln),
+		IataCode:  "",
+		IcaoCode:  "",
+		Name:      "",
+		Elevation: pgtype.Text{},
+		City:      "",
+		Country:   "",
+		State:     "",
+		Lat:       pgtype.Numeric{},
+		Lon:       pgtype.Numeric{},
+		Timezone:  "",
 	}
 
-	airport, err := testQueries.CreateAirport(context.Background(), arg)
+	airport, err := testStore.CreateAirport(context.Background(), arg)
 	r.NoError(err)
 	r.NotEmpty(airport)
 
@@ -56,7 +55,7 @@ func TestGetAirport(t *testing.T) {
 	airport1 := CreateRandomAirport(t)
 	r.NotEmpty(airport1)
 
-	airport2, err := testQueries.GetAirport(context.Background(), airport1.IataCode)
+	airport2, err := testStore.GetAirport(context.Background(), airport1.IataCode)
 
 	r.NoError(err)
 	r.NotEmpty(airport2)
@@ -74,10 +73,10 @@ func TestDeleteAirport(t *testing.T) {
 	airport1 := CreateRandomAirport(t)
 	r.NotEmpty(airport1)
 
-	airport2, err := testQueries.DeleteAirports(context.Background(), airport1.IataCode)
+	airport2, err := testStore.DeleteAirports(context.Background(), airport1.IataCode)
 
 	r.NoError(err)
-	airport2, err2 := testQueries.GetAirport(context.Background(), airport1.IataCode)
+	airport2, err2 := testStore.GetAirport(context.Background(), airport1.IataCode)
 	r.EqualError(err2, sql.ErrNoRows.Error())
 	r.Empty(airport2)
 	// r.Equal(airport1.ID, airport2.ID)
@@ -93,7 +92,7 @@ func TestListAirportAirport(t *testing.T) {
 
 	}
 
-	airport, err := testQueries.ListAirport(context.Background(), ListAirportParams{
+	airport, err := testStore.ListAirport(context.Background(), ListAirportParams{
 		Limit:  5,
 		Offset: 5,
 	})

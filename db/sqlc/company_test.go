@@ -16,7 +16,7 @@ func CreateTestAirline(t *testing.T) *Airline {
 		IataCode:          strings.ToUpper(util.RandomString(2)),
 		RegistaredCountry: strings.ToUpper(util.RandomString(2)),
 	}
-	airline, err := testQueries.CreateAirline(context.Background(), arg)
+	airline, err := testStore.CreateAirline(context.Background(), arg)
 	r := require.New(t)
 	r.NoError(err)
 	r.NotEmpty(airline)
@@ -38,7 +38,7 @@ func TestGetAirline(t *testing.T) {
 	r := require.New(t)
 
 	r.NotEmpty(airline)
-	res, err := testQueries.GetAirline(context.Background(), airline.ID)
+	res, err := testStore.GetAirline(context.Background(), airline.ID)
 
 	r.NoError(err)
 	r.NotEmpty(res)
@@ -61,7 +61,7 @@ func TestListAirline(t *testing.T) {
 		Limit:  10,
 		Offset: 0,
 	}
-	res, err := testQueries.ListAirline(context.Background(), arg)
+	res, err := testStore.ListAirline(context.Background(), arg)
 
 	r.NoError(err)
 	r.NotEmpty(res)
@@ -81,13 +81,13 @@ func TestListAirline(t *testing.T) {
 func TestDeleteAirline(t *testing.T) {
 	airline := CreateTestAirline(t)
 	r := require.New(t)
-	err := testQueries.DeleteAirline(context.Background(), airline.ID)
+	err := testStore.DeleteAirline(context.Background(), airline.ID)
 	r.NoError(err)
-	res, err := testQueries.GetAirline(context.Background(), airline.ID)
+	res, err := testStore.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(res)
 
-	arline1, err := testQueries.GetAirline(context.Background(), airline.ID)
+	arline1, err := testStore.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(arline1)
 	r.EqualError(err, sql.ErrNoRows.Error())

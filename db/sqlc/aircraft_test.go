@@ -25,7 +25,7 @@ func createRandomAircraft(t *testing.T) Aircraft {
 		Range:     3700,
 		CompanyID: airline.ID,
 	}
-	aircraft, err := testQueries.CreateAircraft(context.Background(), args)
+	aircraft, err := testStore.CreateAircraft(context.Background(), args)
 	r.NoError(err)
 
 	r.Equal(aircraft.IataCode, args.IataCode)
@@ -53,7 +53,7 @@ func TestGetAircraft(t *testing.T) {
 	r := require.New(t)
 	r.NotEmpty(aircraft1)
 
-	aircraft2, err := testQueries.GetAircraft(context.Background(), aircraft1.ID)
+	aircraft2, err := testStore.GetAircraft(context.Background(), aircraft1.ID)
 
 	r.NoError(err)
 	r.NotEmpty(aircraft2)
@@ -75,11 +75,11 @@ func TestDeleteAircraft(t *testing.T) {
 
 	r.NotEmpty(aircraft)
 
-	err := testQueries.DeleteAircraft(context.Background(), aircraft.ID)
+	err := testStore.DeleteAircraft(context.Background(), aircraft.ID)
 
 	r.NoError(err)
 
-	aircraft1, errs := testQueries.GetAircraft(context.Background(), aircraft.ID)
+	aircraft1, errs := testStore.GetAircraft(context.Background(), aircraft.ID)
 	r.EqualError(errs, sql.ErrNoRows.Error())
 	r.Empty(aircraft1)
 
@@ -97,7 +97,7 @@ func TestListAircraft(t *testing.T) {
 		Offset: 5,
 	}
 
-	aircraft1, err := testQueries.ListAircraft(context.Background(), arg)
+	aircraft1, err := testStore.ListAircraft(context.Background(), arg)
 	r.NoError(err)
 	r.NotNil(aircraft1)
 	for _, v := range aircraft1 {

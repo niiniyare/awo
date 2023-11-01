@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -48,16 +49,32 @@ func CreateRandomFlight(t *testing.T) Flight {
 	arg := CreateFlightParams{
 		FlightNo:           util.RandomFlightNo(airline.IataCode),
 		CompanyID:          airline.ID,
-		ScheduledDeparture: actualDeparture.Time,
-		ScheduledArrival:   actualtime.Time,
+		ScheduledDeparture: pgtype.Timestamptz{
+			Time:             time.Time{},
+			InfinityModifier: 0,
+			Valid:            false,
+		},
+		ScheduledArrival:   pgtype.Timestamptz{
+			Time:             time.Time{},
+			InfinityModifier: 0,
+			Valid:            false,
+		},
 		DepartureAirport:   airport.IataCode,
 		ArrivalAirport:     airport1.IataCode,
 		Status:             onTime,
 		AircraftID:         aircraft.ID,
-		ActualDeparture:    actualDeparture,
-		ActualArrival:      actualtime,
+		ActualDeparture:    pgtype.Timestamptz{
+			Time:             time.Time{},
+			InfinityModifier: 0,
+			Valid:            false,
+		},
+		ActualArrival:      pgtype.Timestamptz{
+			Time:             time.Time{},
+			InfinityModifier: 0,
+			Valid:            false,
+		},
 	}
-	flight, err := testQueries.CreateFlight(context.Background(), arg)
+	flight, err := testStore.CreateFlight(context.Background(), arg)
 	r.NoError(err)
 	r.NotEmpty(flight)
 
@@ -80,7 +97,7 @@ func TestGetflight(t *testing.T) {
 		CompanyID:        flight.CompanyID,
 	}
 	// log.Printf("%+v\n", flight)
-	tf, err := testQueries.FlightAvailability(context.Background(), arg)
+	tf, err := testStore.FlightAvailability(context.Background(), arg)
 	// fmt.Errorf("FlightAvailability: %w", err)
 	r.NoError(err)
 
@@ -108,7 +125,7 @@ func TestGetflight(t *testing.T) {
 // 		CompanyID:        f1.CompanyID,
 // 		Limit:            2,
 // 	}
-// 	result, err := testQueries.FlightAvailability(context.Background(), args)
+// 	result, err := testStore.FlightAvailability(context.Background(), args)
 // 	r.NoError(err)
 // 	r.NotEmpty(result)
 // }

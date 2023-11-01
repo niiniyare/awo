@@ -24,7 +24,7 @@ func CreateRondomSeats(t *testing.T) Seat {
 		SeatNo:         Seat,
 		FareConditions: "Economy",
 	}
-	seat, err := testQueries.CreateSeat(context.Background(), arg)
+	seat, err := testStore.CreateSeat(context.Background(), arg)
 
 	r.NoError(err)
 	r.NotEmpty(seat)
@@ -42,7 +42,7 @@ func TestGetSeat(t *testing.T) {
 
 	r.NotEmpty(seat1)
 
-	seat, err := testQueries.GetSeats(context.Background())
+	seat, err := testStore.GetSeats(context.Background())
 
 	r.NoError(err)
 
