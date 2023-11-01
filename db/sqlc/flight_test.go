@@ -6,7 +6,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/jackc/pgx/v5"
+	// "github.com/jackc/pgx/v5"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -46,32 +46,48 @@ func CreateRandomFlight(t *testing.T) Flight {
 	actualDeparture := sql.NullTime{Time: dep, Valid: false}
 	aclerr = actualDeparture.Scan(dep)
 	r.NoError(aclerr)
+	// arg := CreateFlightParams{
+	// 	FlightNo:  util.RandomFlightNo(airline.IataCode),
+	// 	CompanyID: airline.ID,
+	// 	ScheduledDeparture:
+	//    ScheduledArrival: pgtype.Timestamptz{
+	// 		Time:             time.Time{},
+	// 		InfinityModifier: 0,
+	// 		Valid:            false,
+	// 	},
+	// 	DepartureAirport: airport.IataCode,
+	// 	ArrivalAirport:   airport1.IataCode,
+	// 	Status:           onTime,
+	// 	AircraftID:       aircraft.ID,
+	// 	ActualDeparture: pgtype.Timestamptz{
+	// 		Time:             time.Time{},
+	// 		InfinityModifier: 0,
+	// 		Valid:            false,
+	// 	},
+	// 	ActualArrival: pgtype.Timestamptz{
+	// 		Time:             time.Time{},
+	// 		InfinityModifier: 0,
+	// 		Valid:            false,
+	// 	},
+	// }
+	arrAir := airport1.IataCode
+	depAir := airport.IataCode
 	arg := CreateFlightParams{
 		FlightNo:           util.RandomFlightNo(airline.IataCode),
 		CompanyID:          airline.ID,
-		ScheduledDeparture: pgtype.Timestamptz{
-			Time:             time.Time{},
-			InfinityModifier: 0,
-			Valid:            false,
-		},
-		ScheduledArrival:   pgtype.Timestamptz{
-			Time:             time.Time{},
-			InfinityModifier: 0,
-			Valid:            false,
-		},
-		DepartureAirport:   airport.IataCode,
-		ArrivalAirport:     airport1.IataCode,
+		ScheduledDeparture: dep,
+		ScheduledArrival:   arr,
+		DepartureAirport:   arrAir,
+		ArrivalAirport:     depAir,
 		Status:             onTime,
 		AircraftID:         aircraft.ID,
-		ActualDeparture:    pgtype.Timestamptz{
-			Time:             time.Time{},
-			InfinityModifier: 0,
-			Valid:            false,
+		ActualDeparture:    sql.NullTime{
+			Time:  dep,
+			Valid: true,
 		},
-		ActualArrival:      pgtype.Timestamptz{
-			Time:             time.Time{},
-			InfinityModifier: 0,
-			Valid:            false,
+		ActualArrival: sql.NullTime{
+			Time:  arr,
+			Valid: true,
 		},
 	}
 	flight, err := testStore.CreateFlight(context.Background(), arg)

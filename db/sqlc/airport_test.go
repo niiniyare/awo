@@ -3,9 +3,11 @@ package db
 import (
 	"context"
 	"database/sql"
+	"fmt"
+	"strings"
 	"testing"
 
-	"github.com/jackc/pgx/v5"
+	// "github.com/jackc/pgx/v5/pgtype"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -14,27 +16,27 @@ func CreateRandomAirport(t *testing.T) Airport {
 
 	r := require.New(t)
 
-	lt := util.RandomFloat64(-90.0, 90.99)
-	ln := util.RandomFloat64(-180.0, 180.99)
+	lat := util.RandomFloat64(-90.0, 90.99)
+	lon := util.RandomFloat64(-180.0, 180.99)
 
-	lat := new(pgtype.Numeric)
-	err := lat.Set(lt)
-	r.NoError(err)
+	// lat := new(pgtype.Numeric)
+	// validLat := lat.Valid(lt)
+	// // r.NoError(err)
 
-	lon := new(pgtype.Numeric)
-	err = lon.Set(ln)
-	r.NoError(err)
+	// lon := new(pgtype.Numeric)
+	// err = lon.Set(ln)
+	// r.NoError(err)
 
 	arg := CreateAirportParams{
-		IataCode:  "",
-		IcaoCode:  "",
-		Name:      "",
-		Elevation: pgtype.Text{},
-		City:      "",
-		Country:   "",
-		State:     "",
-		Lat:       pgtype.Numeric{},
-		Lon:       pgtype.Numeric{},
+		IataCode:  strings.ToUpper(util.RandomString(3)),
+		IcaoCode:  strings.ToUpper(util.RandomString(4)),
+		Name:      util.RandomOwner(),
+		Elevation: sql.NullString{},
+		City:      util.RandomString(4),
+		Country:   util.RandomString(4),
+		State:     util.RandomString(4),
+		Lat:       fmt.Sprintf("%f", lat),
+		Lon:       fmt.Sprintf("%f", lon),
 		Timezone:  "",
 	}
 
