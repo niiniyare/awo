@@ -1,0 +1,521 @@
+// Coverage template
+package util
+
+import (
+	"fmt"
+	"testing"
+
+	"github.com/stretchr/testify/suite"
+)
+
+type EmsrbSuite struct {
+	suite.Suite
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb0() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb0", r)
+		}
+	}()
+
+	fares := []float64{-35.421263}
+	demands := []float64{-32.017431, -89.955570, 57.689600, 65.719251, 19.792460, -67.364716, 75.888948}
+	sigmas := []float64{73.578137, 1.118482, -80.604323}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb1() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb1", r)
+		}
+	}()
+
+	fares := []float64{-70.489119, 25.500546, -14.268633, 59.810330, 31.644299, 48.675657, 93.421793}
+	demands := []float64{79.272679, 82.893800}
+	sigmas := []float64{72.507395, -6.689211}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb2() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb2", r)
+		}
+	}()
+
+	fares := []float64{-47.344182, -58.233023, -66.244880, -33.679686, -84.077181}
+	demands := []float64{45.835645, 11.737368, -60.756496}
+	sigmas := []float64{90.275480, 92.788999, -61.892803, 14.336836, 56.407536, 47.005719, 27.579024, -73.698058}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb3() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb3", r)
+		}
+	}()
+
+	fares := []float64{57.479192, -90.065139, -0.630539}
+	demands := []float64{66.213143, 66.564453, -82.392446, -91.075299}
+	sigmas := []float64{-78.603156, 51.801375, -26.905508, 69.222788, 84.818848, -22.402498, -24.937519}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb4() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb4", r)
+		}
+	}()
+
+	fares := []float64{-51.508690, 28.636330, 14.254289, -48.530020, -7.271493, 82.441948, 5.212192}
+	demands := []float64{52.441133, 16.375075, -88.040485, -18.937169, -50.850420, -98.698151}
+	sigmas := []float64{}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb5() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb5", r)
+		}
+	}()
+
+	fares := []float64{-37.604484, 49.547339, -37.375446, 35.461450}
+	demands := []float64{}
+	sigmas := []float64{73.745581, -72.024790, 99.977606, 93.989345, 51.342601, 43.848055, 93.296409, 96.711142}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb6() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb6", r)
+		}
+	}()
+
+	fares := []float64{78.054707, -55.759751, 4.402485, -30.065699, 9.940192, -50.845633}
+	demands := []float64{-6.202971, 89.562395, 2.063555, 99.186987, 57.536728, -51.815076, 5.317587}
+	sigmas := []float64{72.415065}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb7() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb7", r)
+		}
+	}()
+
+	fares := []float64{70.094137, 95.960871, 84.376205, 38.671241, 18.909905, 6.700946, -29.368223, -6.212449, 38.981119}
+	demands := []float64{-53.966134}
+	sigmas := []float64{53.632660}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb8() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb8", r)
+		}
+	}()
+
+	fares := []float64{-41.402330, 34.740601, -30.195524, -49.549659, -82.999857, -11.817632, 25.085282}
+	demands := []float64{22.840901, 84.208403, 97.853838, 52.563675, 42.683318, -83.390387, 87.931754, -14.069826}
+	sigmas := []float64{-10.864589}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb9() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb9", r)
+		}
+	}()
+
+	fares := []float64{-26.380659, 73.281830, 64.433534, 3.442771, 59.375673}
+	demands := []float64{-26.990306, -7.852895, -2.394087, -19.199151, -80.961652, 27.026857}
+	sigmas := []float64{78.459279, 66.509862, -8.577337, 95.186437, -46.972238, 64.329655}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb10() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb10", r)
+		}
+	}()
+
+	fares := []float64{48.923952, -37.702790, -19.747087, 75.780848, -63.476065, 70.948703, -2.708864, 7.663924, -0.862441}
+	demands := []float64{-46.664195, 19.048158, -32.627655}
+	sigmas := []float64{}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb11() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb11", r)
+		}
+	}()
+
+	fares := []float64{1.235131, 61.701494, -9.536261, -35.079059, -59.923123, 18.999689, -29.814756, 60.120478}
+	demands := []float64{-43.294890, 74.795622, -52.430519, 73.140681, -59.911392, 45.181401, -57.585407, -62.342984}
+	sigmas := []float64{13.088830, 16.752889, 72.154234, 20.211057, -56.138967, -75.568904}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb12() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb12", r)
+		}
+	}()
+
+	fares := []float64{79.455181, -27.481274, 77.514932, 69.410555, 23.852313, -79.059699, -66.839338, 31.569074}
+	demands := []float64{95.168195, -86.307870, 81.330175}
+	sigmas := []float64{-12.674704, -6.752630}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb13() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb13", r)
+		}
+	}()
+
+	fares := []float64{-64.248330, -6.109069, -27.535552, -3.303905, 93.827840, -56.708805, 16.762391, 65.806646}
+	demands := []float64{}
+	sigmas := []float64{-66.139839, 45.132592}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb14() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb14", r)
+		}
+	}()
+
+	fares := []float64{-69.311018, -26.533265, -36.230271}
+	demands := []float64{}
+	sigmas := []float64{}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb15() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb15", r)
+		}
+	}()
+
+	fares := []float64{-43.903178, 88.618155}
+	demands := []float64{3.489816, -75.770242, 92.508132, 36.430362, -16.370155}
+	sigmas := []float64{-32.911884, 24.142058, -33.174495, -95.386559, 14.858335, -63.339363, -62.203092, 58.313317}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb16() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb16", r)
+		}
+	}()
+
+	fares := []float64{-87.598519, -84.459516}
+	demands := []float64{42.461431}
+	sigmas := []float64{-10.718707, 3.896718, -84.744094, -34.705068, -88.855426, 62.426674, 30.699735, 67.138124, 40.445399}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestcalcEMSRb17() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestcalcEMSRb17", r)
+		}
+	}()
+
+	fares := []float64{-42.714536, 48.228631, -23.826879, -30.710110, 4.823549}
+	demands := []float64{12.751877, -23.971742, 62.697030, -79.865758, -9.887469}
+	sigmas := []float64{-17.928883, 0.128134}
+
+	calcEMSRb(fares, demands, sigmas)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF0() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF0", r)
+		}
+	}()
+
+	p := -8.007067
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF1() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF1", r)
+		}
+	}()
+
+	p := -33.198869
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF2() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF2", r)
+		}
+	}()
+
+	p := -51.623031
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF3() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF3", r)
+		}
+	}()
+
+	p := 11.014392
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF4() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF4", r)
+		}
+	}()
+
+	p := 49.344319
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF5() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF5", r)
+		}
+	}()
+
+	p := -79.785845
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF6() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF6", r)
+		}
+	}()
+
+	p := 73.713052
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF7() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF7", r)
+		}
+	}()
+
+	p := -66.761146
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF8() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF8", r)
+		}
+	}()
+
+	p := -41.479936
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF9() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF9", r)
+		}
+	}()
+
+	p := -62.148576
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF10() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF10", r)
+		}
+	}()
+
+	p := -91.315999
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF11() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF11", r)
+		}
+	}()
+
+	p := 80.451782
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF12() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF12", r)
+		}
+	}()
+
+	p := 28.413670
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF13() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF13", r)
+		}
+	}()
+
+	p := 20.050880
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF14() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF14", r)
+		}
+	}()
+
+	p := -87.565405
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF15() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF15", r)
+		}
+	}()
+
+	p := -81.446321
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF16() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF16", r)
+		}
+	}()
+
+	p := 39.272897
+
+	normPPF(p)
+
+}
+
+func (s *EmsrbSuite) TestnormPPF17() {
+	defer func() {
+		if r := recover(); r != nil {
+			fmt.Println("Recovered in TestnormPPF17", r)
+		}
+	}()
+
+	p := 66.902407
+
+	normPPF(p)
+
+}
+
+func TestEmsrbSuite(t *testing.T) {
+	suite.Run(t, new(EmsrbSuite))
+}
