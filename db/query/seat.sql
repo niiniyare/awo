@@ -1,5 +1,6 @@
 
 
+
 -- name: CreateSeat :one
 INSERT INTO seats ( 
 aircraft_id, 
@@ -26,7 +27,7 @@ SELECT   a.iata_code,
          s.seat_no,
          s.fare_conditions
 FROM     aircrafts a
-         JOIN seats s ON a.aircraft_code = s.aircraft_code
+         JOIN seats s ON a.id = s.aircraft_id
 WHERE    a.iata_code = $1
 ORDER BY s.seat_no;
 
