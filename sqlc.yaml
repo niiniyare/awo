@@ -9,6 +9,7 @@ sql:
       out: "db/sqlc"
       sql_package: "pgx/v5"
       emit_json_tags: true
+      omit_unused_structs: true
       emit_interface: true
       emit_empty_slices: true
       overrides:
@@ -16,3 +17,26 @@ sql:
           # go_type: "time.Time"
         - db_type: "uuid"
           go_type: "github.com/google/uuid.UUID"
+  database:
+    uri: "postgresql://admin:admin@localhost:5432/flight?sslmode=disable"
+  rules:
+      - sqlc/db-prepare
+
+rules:
+  - name: no-pg
+    message: "invalid engine: postgresql"
+    rule: |
+      config.engine == "postgresql"
+  - name: no-delete
+    message: "don't use delete statements"
+    rule: |
+      query.sql.contains("DELETE")
+  - name: only-one-param
+    message: "too many parameters"
+    rule: |
+      query.params.size() > 1
+  - name: no-exec
+    message: "don't use exec"
+    rule: |
+      query.cmd == "exec"
+
