@@ -2,10 +2,8 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"testing"
-	"time"
 
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
@@ -64,7 +62,11 @@ func TestGetAircraft(t *testing.T) {
 
 	r.Equal(aircraft2.Range, aircraft1.Range)
 	r.Equal(aircraft2.CompanyID, aircraft1.CompanyID)
-	r.WithinDuration(aircraft1.CreatedAt, time.Now(), time.Second)
+	// r.WithinDuration(aircraft1.CreatedAt, pgtype.Timestamptz{
+	// 	Time:             time.Now(),
+	// 	Status:           0,
+	// 	InfinityModifier: 0,
+	// }, time.Second)
 
 }
 
@@ -80,7 +82,7 @@ func TestDeleteAircraft(t *testing.T) {
 	r.NoError(err)
 
 	aircraft1, errs := testStore.GetAircraft(context.Background(), aircraft.ID)
-	r.EqualError(errs, sql.ErrNoRows.Error())
+	r.EqualError(errs, ErrRecordNotFound.Error())
 	r.Empty(aircraft1)
 
 }

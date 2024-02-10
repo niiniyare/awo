@@ -2,12 +2,10 @@ package db
 
 import (
 	"context"
-	"database/sql"
-	"fmt"
 	"strings"
 	"testing"
 
-	// "github.com/jackc/pgx/v5/pgtype"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -19,24 +17,34 @@ func CreateRandomAirport(t *testing.T) Airport {
 	lat := util.RandomFloat64(-90.0, 90.99)
 	lon := util.RandomFloat64(-180.0, 180.99)
 
-	// lat := new(pgtype.Numeric)
-	// validLat := lat.Valid(lt)
-	// // r.NoError(err)
+	// Lat := new(pgtype.Numeric)
+	// validLat := Lat.Scan(lat)
+	// r.NoError(validLat)
 
-	// lon := new(pgtype.Numeric)
-	// err = lon.Set(ln)
-	// r.NoError(err)
+	// Lon := new(pgtype.Numeric)
+	// validLon := Lat.Scan(lon)
+	// r.NoError(validLon)
 
 	arg := CreateAirportParams{
 		IataCode:  strings.ToUpper(util.RandomString(3)),
 		IcaoCode:  strings.ToUpper(util.RandomString(4)),
 		Name:      util.RandomOwner(),
-		Elevation: sql.NullString{},
+		Elevation: pgtype.Text{
+			String: "",
+			Valid:  true,
+		},
 		City:      util.RandomString(4),
 		Country:   util.RandomString(4),
 		State:     util.RandomString(4),
-		Lat:       fmt.Sprintf("%f", lat),
-		Lon:       fmt.Sprintf("%f", lon),
+    Lon: lon,
+		// Lat:       pgtype.Numeric{
+		// 	Int:              new(),
+		// 	Exp:              0,
+		// 	NaN:              false,
+		// 	InfinityModifier: 0,
+		// 	Valid:            false,
+		// },
+    Lat: lat,
 		Timezone:  "",
 	}
 
@@ -79,7 +87,7 @@ func TestDeleteAirport(t *testing.T) {
 
 	r.NoError(err)
 	airport2, err2 := testStore.GetAirport(context.Background(), airport1.IataCode)
-	r.EqualError(err2, sql.ErrNoRows.Error())
+	r.EqualError(err2, ErrRecordNotFound.Error())
 	r.Empty(airport2)
 	// r.Equal(airport1.ID, airport2.ID)
 }

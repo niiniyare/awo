@@ -78,6 +78,7 @@ sql2dbml:
 
 
 help: ## show help message
+	@$(print "\n\n\n")
 	@awk 'BEGIN {FS = ":.*##"; printf "\nUsage:\n  make \033[36m\033[0m\n"} /^[$$()% a-zA-Z_-]+:.*?##/ { printf "  \033[36m%-15s\033[0m %s\n", $$1, $$2 } /^##@/ { printf "\n\033[1m%s\033[0m\n", substr($$0, 5) } ' $(MAKEFILE_LIST)
 
 
@@ -116,4 +117,12 @@ buf: ## removes files generated before re-generates grpc, grpc gatewayes and swa
 	
 buf-lint: ## lint protobuf files using buf tool
 	@buf lint --error-format=json --exclude-path=pkg/api/v1/proto/google,pkg/api/v1/proto/protoc-gen-openapiv2 | jq
+
+
+todo: ## Are there any todos that you have marked as todo later, but perhaps it seems you  forgot  
+	@grep -n ^[[:space:]]*_[[:space:]]*=[[:space:]][[:alnum:]] *.go || true
+	@grep -n TODO *.go || true
+	@grep -n FIXME *.go || true
+	@grep -n BUG *.go || true
+
 .PHONY: clean gen server client test testdb install  createdb  migrateup migratedown migratedrop dropdb sqlc test mock dbdocs sql2dbml migrateup-doc migratedown-doc help seed-airport seed-aircraft test/html redis-graph proto evans buf migrateCreate

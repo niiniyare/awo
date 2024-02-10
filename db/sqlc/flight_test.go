@@ -7,6 +7,7 @@ import (
 	"time"
 
 	// "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
@@ -75,17 +76,25 @@ func CreateRandomFlight(t *testing.T) Flight {
 	arg := CreateFlightParams{
 		FlightNo:           util.RandomFlightNo(airline.IataCode),
 		CompanyID:          airline.ID,
-		ScheduledDeparture: dep,
-		ScheduledArrival:   arr,
+		ScheduledDeparture: pgtype.Timestamptz{
+			Time:             dep,
+			InfinityModifier: 0,
+			Valid:            true,
+		},
+		ScheduledArrival:   pgtype.Timestamptz{
+			Time:             arr,
+			InfinityModifier: 0,
+			Valid:            true,
+		},
 		DepartureAirport:   arrAir,
 		ArrivalAirport:     depAir,
 		Status:             onTime,
 		AircraftID:         aircraft.ID,
-		ActualDeparture:    sql.NullTime{
+		ActualDeparture:    pgtype.Timestamptz{
 			Time:  dep,
 			Valid: true,
 		},
-		ActualArrival: sql.NullTime{
+		ActualArrival: pgtype.Timestamptz{
 			Time:  arr,
 			Valid: true,
 		},

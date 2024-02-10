@@ -1,12 +1,3 @@
-/*
- * Initialization script for the Inventory PostgreSQL database.
- * Uses PostGIS for geographic location data.
- *
- * Supported for:
- *   - PostgreSQL version 14 and above.
- *   - PostGIS version 3.1 and above.
- */
-
 CREATE EXTENSION IF NOT EXISTS "uuid-ossp";
 
 

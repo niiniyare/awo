@@ -1,11 +1,13 @@
 package db
 
 import (
-	"database/sql"
+	"context"
 	"log"
 	"os"
 	"testing"
-_ "github.com/jackc/pgx/v5/stdlib"
+
+	"github.com/jackc/pgx/v5/pgxpool"
+	_ "github.com/jackc/pgx/v5/stdlib"
 	"github.com/niiniyare/awo/util"
 )
 
@@ -16,7 +18,8 @@ func TestMain(m *testing.M) {
 	if err != nil {
 		log.Fatal("cannot load config:", err)
 	}
-	connPool, err := sql.Open(config.DBDriver, config.DBSource)
+	// connPool, err := sql.Open(config.DBDriver, config.DBSource)
+	connPool, err := pgxpool.New(context.Background(), config.DBSource)
 	// connPool, err := pgxpool.New(context.Background(), config.DBSource)
 	if err != nil {
 		log.Fatal("cannot connect to db:", err)
