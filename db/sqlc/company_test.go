@@ -2,7 +2,6 @@ package db
 
 import (
 	"context"
-	"database/sql"
 	"strings"
 	"testing"
 
@@ -90,7 +89,7 @@ func TestDeleteAirline(t *testing.T) {
 	arline1, err := testStore.GetAirline(context.Background(), airline.ID)
 	r.Error(err)
 	r.Empty(arline1)
-	r.EqualError(err, sql.ErrNoRows.Error())
+	r.EqualError(err, ErrRecordNotFound.Error())
 
 }
 

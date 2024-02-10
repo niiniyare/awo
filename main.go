@@ -1,13 +1,14 @@
 package main
 
 import (
-	"database/sql"
+	"context"
 	"fmt"
 
 	"net"
 	"os"
 
 	_ "github.com/jackc/pgx/v4/stdlib"
+	"github.com/jackc/pgx/v5/pgxpool"
 	db "github.com/niiniyare/awo/db/sqlc"
 	"github.com/niiniyare/awo/pkg/api/v1/pb"
 	grpc_server "github.com/niiniyare/awo/pkg/grpc"
@@ -30,7 +31,9 @@ func main() {
 		log.Logger = log.Output(zerolog.ConsoleWriter{Out: os.Stderr})
 	}
 
-	conn, err := sql.Open(config.DBDriver, config.DBSource)
+  
+	conn, err := pgxpool.New(context.Background(), config.DBSource)
+	// conn, err := sql.Open(config.DBDriver, config.DBSource)
 	if err != nil {
 		log.Fatal().Err(err).Msg("cannot connect to db")
 	}

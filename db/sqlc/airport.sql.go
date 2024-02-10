@@ -30,16 +30,16 @@ RETURNING id, iata_code, icao_code, name, country, state, city, elevation, lat, 
 `
 
 type CreateAirportParams struct {
-	IataCode  string         `json:"iata_code"`
-	IcaoCode  string         `json:"icao_code"`
-	Name      string         `json:"name"`
-	Elevation pgtype.Text    `json:"elevation"`
-	City      string         `json:"city"`
-	Country   string         `json:"country"`
-	State     string         `json:"state"`
-	Lat       pgtype.Numeric `json:"lat"`
-	Lon       pgtype.Numeric `json:"lon"`
-	Timezone  string         `json:"timezone"`
+	IataCode  string      `json:"iata_code"`
+	IcaoCode  string      `json:"icao_code"`
+	Name      string      `json:"name"`
+	Elevation pgtype.Text `json:"elevation"`
+	City      string      `json:"city"`
+	Country   string      `json:"country"`
+	State     string      `json:"state"`
+	Lat       float64     `json:"lat"`
+	Lon       float64     `json:"lon"`
+	Timezone  string      `json:"timezone"`
 }
 
 // subdivision_code
