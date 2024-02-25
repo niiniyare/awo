@@ -81,7 +81,7 @@ func CreateRandomFlight(t *testing.T) Flight {
 		ArrivalAirport:     depAir,
 		Status:             onTime,
 		AircraftID:         aircraft.ID,
-		ActualDeparture:    sql.NullTime{
+		ActualDeparture: sql.NullTime{
 			Time:  dep,
 			Valid: true,
 		},

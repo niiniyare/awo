@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	// "github.com/jackc/pgx/v5/pgtype"
 	"github.com/niiniyare/awo/util"
 	"github.com/stretchr/testify/require"
 )
