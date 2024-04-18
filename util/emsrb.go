@@ -152,10 +152,6 @@ func normPPF(p float64) float64 {
 // 	fmt.Println("Test case 3 protection levels:", protectionLevels3) // Expected: [0 100 300 600]
 // }
 
-
-
-
-
 // func main() {
 //     // Test case 1
 //     fares1 := []float64{100, 80, 60, 40}

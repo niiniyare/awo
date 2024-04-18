@@ -33,7 +33,7 @@ func RandomString(n int) string {
 	return sb.String()
 }
 
-//RandomAlphaString generates a random string and numbers of length n
+// RandomAlphaString generates a random string and numbers of length n
 func RandomAlphaString(n int) string {
 	var sb strings.Builder
 	k := len(alphaNum)

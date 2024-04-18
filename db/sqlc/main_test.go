@@ -2,11 +2,12 @@ package db
 
 import (
 	"database/sql"
-	_ "github.com/jackc/pgx/v5/stdlib"
-	"github.com/niiniyare/awo/util"
 	"log"
 	"os"
 	"testing"
+
+	_ "github.com/jackc/pgx/v5/stdlib"
+	"github.com/niiniyare/awo/util"
 )
 
 var testStore Store

@@ -136,10 +136,10 @@ import (
 
 func TestCreateAirlineRequest_Reset(t *testing.T) {
 	type fields struct {
-		Name          string
-		IataCode      string
-		IcaoCode      string
-		CountryCode   string
+		Name        string
+		IataCode    string
+		IcaoCode    string
+		CountryCode string
 	}
 	tests := []struct {
 		name   string
@@ -150,10 +150,10 @@ func TestCreateAirlineRequest_Reset(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			x := &CreateAirlineRequest{
-				Name:          tt.fields.Name,
-				IataCode:      tt.fields.IataCode,
-				IcaoCode:      tt.fields.IcaoCode,
-				CountryCode:   tt.fields.CountryCode,
+				Name:        tt.fields.Name,
+				IataCode:    tt.fields.IataCode,
+				IcaoCode:    tt.fields.IcaoCode,
+				CountryCode: tt.fields.CountryCode,
 			}
 			x.Reset()
 		})
@@ -162,10 +162,10 @@ func TestCreateAirlineRequest_Reset(t *testing.T) {
 
 func TestCreateAirlineRequest_String(t *testing.T) {
 	type fields struct {
-		Name          string
-		IataCode      string
-		IcaoCode      string
-		CountryCode   string
+		Name        string
+		IataCode    string
+		IcaoCode    string
+		CountryCode string
 	}
 	tests := []struct {
 		name   string
@@ -177,10 +177,10 @@ func TestCreateAirlineRequest_String(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			x := &CreateAirlineRequest{
-				Name:          tt.fields.Name,
-				IataCode:      tt.fields.IataCode,
-				IcaoCode:      tt.fields.IcaoCode,
-				CountryCode:   tt.fields.CountryCode,
+				Name:        tt.fields.Name,
+				IataCode:    tt.fields.IataCode,
+				IcaoCode:    tt.fields.IcaoCode,
+				CountryCode: tt.fields.CountryCode,
 			}
 			if got := x.String(); got != tt.want {
 				t.Errorf("CreateAirlineRequest.String() = %v, want %v", got, tt.want)
@@ -223,10 +223,10 @@ func TestCreateAirlineRequest_ProtoMessage(t *testing.T) {
 
 func TestCreateAirlineRequest_ProtoReflect(t *testing.T) {
 	type fields struct {
-		Name          string
-		IataCode      string
-		IcaoCode      string
-		CountryCode   string
+		Name        string
+		IataCode    string
+		IcaoCode    string
+		CountryCode string
 	}
 	tests := []struct {
 		name   string
@@ -238,10 +238,10 @@ func TestCreateAirlineRequest_ProtoReflect(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			x := &CreateAirlineRequest{
-				Name:          tt.fields.Name,
-				IataCode:      tt.fields.IataCode,
-				IcaoCode:      tt.fields.IcaoCode,
-				CountryCode:   tt.fields.CountryCode,
+				Name:        tt.fields.Name,
+				IataCode:    tt.fields.IataCode,
+				IcaoCode:    tt.fields.IcaoCode,
+				CountryCode: tt.fields.CountryCode,
 			}
 			if got := x.ProtoReflect(); !reflect.DeepEqual(got, tt.want) {
 				t.Errorf("CreateAirlineRequest.ProtoReflect() = %v, want %v", got, tt.want)
@@ -271,10 +271,10 @@ func TestCreateAirlineRequest_Descriptor(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			c := &CreateAirlineRequest{
-				Name:          tt.fields.Name,
-				IataCode:      tt.fields.IataCode,
-				IcaoCode:      tt.fields.IcaoCode,
-				CountryCode:   tt.fields.CountryCode,
+				Name:        tt.fields.Name,
+				IataCode:    tt.fields.IataCode,
+				IcaoCode:    tt.fields.IcaoCode,
+				CountryCode: tt.fields.CountryCode,
 			}
 			got, got1 := c.Descriptor()
 			if !reflect.DeepEqual(got, tt.want) {
@@ -289,10 +289,10 @@ func TestCreateAirlineRequest_Descriptor(t *testing.T) {
 
 func TestCreateAirlineRequest_GetName(t *testing.T) {
 	type fields struct {
-		Name          string
-		IataCode      string
-		IcaoCode      string
-		CountryCode   string
+		Name        string
+		IataCode    string
+		IcaoCode    string
+		CountryCode string
 	}
 	tests := []struct {
 		name   string
@@ -304,10 +304,10 @@ func TestCreateAirlineRequest_GetName(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			x := &CreateAirlineRequest{
-				Name:          tt.fields.Name,
-				IataCode:      tt.fields.IataCode,
-				IcaoCode:      tt.fields.IcaoCode,
-				CountryCode:   tt.fields.CountryCode,
+				Name:        tt.fields.Name,
+				IataCode:    tt.fields.IataCode,
+				IcaoCode:    tt.fields.IcaoCode,
+				CountryCode: tt.fields.CountryCode,
 			}
 			if got := x.GetName(); got != tt.want {
 				t.Errorf("CreateAirlineRequest.GetName() = %v, want %v", got, tt.want)
