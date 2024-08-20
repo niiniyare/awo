@@ -1,5 +1,5 @@
 CREATE TABLE Schedule (
-    id INT AUTO_INCREMENT PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY NOT NULL,
     airline_code VARCHAR(10) NOT NULL,
     flight_number INT NOT NULL,
     start_date DATE NOT NULL,
@@ -17,6 +17,5 @@ CREATE TABLE Schedule (
     class_code_list VARCHAR(255),
     fare_family_id INT,
     fratt5_curve_id INT,
-    fare_family_disutility_curve_id INT,
-    PRIMARY KEY (id)
+    fare_family_disutility_curve_id INT
 );
