@@ -1,0 +1,762 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Printable Price Tags</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jsbarcode/3.11.5/JsBarcode.all.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: Arial, sans-serif;
+            background: #f5f5f5;
+            padding: 20px;
+        }
+
+        .upload-section {
+            background: white;
+            padding: 30px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+
+        .upload-area {
+            border: 3px dashed #007bff;
+            border-radius: 8px;
+            padding: 40px;
+            background: #f8f9fa;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .upload-area:hover {
+            border-color: #0056b3;
+            background: #e3f2fd;
+        }
+
+        .upload-area.dragover {
+            border-color: #28a745;
+            background: #d4edda;
+        }
+
+        .file-input {
+            display: none;
+        }
+
+        .upload-icon {
+            font-size: 48px;
+            color: #007bff;
+            margin-bottom: 15px;
+        }
+
+        .upload-text {
+            font-size: 18px;
+            color: #333;
+            margin-bottom: 10px;
+        }
+
+        .upload-hint {
+            color: #666;
+            font-size: 14px;
+        }
+
+        .controls {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+            display: none;
+        }
+
+        .controls.show {
+            display: block;
+        }
+
+        .controls h2 {
+            margin-bottom: 15px;
+            color: #333;
+        }
+
+        .control-group {
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            flex-wrap: wrap;
+            margin-bottom: 15px;
+        }
+
+        .control-group label {
+            font-weight: bold;
+            min-width: 120px;
+        }
+
+        .control-group input, .control-group select {
+            padding: 8px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+
+        .control-group button {
+            background: #007bff;
+            color: white;
+            padding: 10px 20px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+
+        .control-group button:hover {
+            background: #0056b3;
+        }
+
+        .print-preview-btn {
+            background: #28a745 !important;
+        }
+
+        .print-preview-btn:hover {
+            background: #1e7e34 !important;
+        }
+
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin: 10px 0;
+        }
+
+        .status.success {
+            background: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+        }
+
+        .status.error {
+            background: #f8d7da;
+            color: #721c24;
+            border: 1px solid #f5c6cb;
+        }
+
+        .print-instructions {
+            background: #e7f3ff;
+            border: 1px solid #b8daff;
+            padding: 15px;
+            border-radius: 4px;
+            margin-bottom: 20px;
+            font-size: 14px;
+            line-height: 1.5;
+        }
+
+        .print-instructions h4 {
+            margin-bottom: 8px;
+            color: #004085;
+        }
+
+        .print-instructions ul {
+            margin-left: 20px;
+        }
+
+        .tags-container {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 5mm;
+            max-width: 100%;
+            background: white;
+            padding: 10mm;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        .price-tag {
+            width: 180px;
+            height: 140px;
+            border: 2px solid #000;
+            border-radius: 6px;
+            background: white;
+            padding: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            page-break-inside: avoid;
+            break-inside: avoid;
+            position: relative;
+        }
+
+        .product-name {
+            font-size: 11px;
+            font-weight: bold;
+            text-align: center;
+            line-height: 1.1;
+            height: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+            word-wrap: break-word;
+            hyphens: auto;
+        }
+
+        .price {
+            font-size: 16px;
+            font-weight: bold;
+            text-align: center;
+            color: #d63384;
+            margin: 4px 0;
+            background: #fff;
+        }
+
+        .barcode-section {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            flex: 1;
+            justify-content: center;
+        }
+
+        .barcode-container {
+            margin: 4px 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .barcode-container svg {
+            max-width: 160px !important;
+            height: 35px !important;
+        }
+
+        .code-text {
+            font-size: 8px;
+            text-align: center;
+            margin-top: 2px;
+            color: #666;
+            font-family: 'Courier New', monospace;
+        }
+
+        .pagination {
+            text-align: center;
+            margin: 20px 0;
+        }
+
+        .pagination button {
+            background: #007bff;
+            color: white;
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            margin: 0 5px;
+        }
+
+        .pagination button:hover {
+            background: #0056b3;
+        }
+
+        .pagination button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+
+        .page-info {
+            margin: 10px 0;
+            font-weight: bold;
+        }
+
+        /* Print Styles */
+        @media print {
+            * {
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+                color-adjust: exact !important;
+            }
+            
+            body {
+                background: white !important;
+                padding: 0 !important;
+                margin: 0 !important;
+                font-family: Arial, sans-serif !important;
+            }
+            
+            .upload-section, 
+            .controls, 
+            .pagination,
+            .print-instructions {
+                display: none !important;
+            }
+            
+            .tags-container {
+                display: grid !important;
+                grid-template-columns: repeat(4, 1fr) !important;
+                gap: 2mm !important;
+                margin: 0 !important;
+                padding: 5mm !important;
+                width: 100% !important;
+                background: white !important;
+                box-shadow: none !important;
+                border-radius: 0 !important;
+            }
+            
+            .price-tag {
+                width: 45mm !important;
+                height: 35mm !important;
+                border: 1.5pt solid #000 !important;
+                border-radius: 2mm !important;
+                background: white !important;
+                padding: 2mm !important;
+                display: flex !important;
+                flex-direction: column !important;
+                justify-content: space-between !important;
+                page-break-inside: avoid !important;
+                break-inside: avoid !important;
+                box-shadow: none !important;
+                margin: 0 !important;
+                position: relative !important;
+            }
+
+            .product-name {
+                font-size: 8pt !important;
+                font-weight: bold !important;
+                text-align: center !important;
+                line-height: 1.1 !important;
+                height: 7mm !important;
+                display: flex !important;
+                align-items: center !important;
+                justify-content: center !important;
+                overflow: hidden !important;
+                word-wrap: break-word !important;
+                hyphens: auto !important;
+                color: #000 !important;
+            }
+
+            .price {
+                font-size: 12pt !important;
+                font-weight: bold !important;
+                text-align: center !important;
+                color: #000 !important;
+                margin: 1mm 0 !important;
+                background: white !important;
+            }
+
+            .barcode-section {
+                display: flex !important;
+                flex-direction: column !important;
+                align-items: center !important;
+                flex: 1 !important;
+                justify-content: center !important;
+            }
+
+            .barcode-container {
+                margin: 1mm 0 !important;
+                display: flex !important;
+                justify-content: center !important;
+                align-items: center !important;
+            }
+
+            .barcode-container svg {
+                max-width: 40mm !important;
+                height: 8mm !important;
+            }
+
+            .code-text {
+                font-size: 6pt !important;
+                text-align: center !important;
+                margin-top: 0.5mm !important;
+                color: #000 !important;
+                font-family: 'Courier New', monospace !important;
+            }
+        }
+
+        @page {
+            margin: 10mm !important;
+            size: A4 portrait !important;
+        }
+
+        /* Print Preview Mode */
+        body.print-preview {
+            background: white;
+            padding: 0;
+        }
+
+        body.print-preview .upload-section,
+        body.print-preview .controls,
+        body.print-preview .pagination {
+            display: none;
+        }
+
+        body.print-preview .tags-container {
+            background: white;
+            padding: 10mm;
+            box-shadow: none;
+        }
+
+        body.print-preview .price {
+            color: #000;
+        }
+
+        body.print-preview .code-text {
+            color: #000;
+        }
+    </style>
+</head>
+<body>
+    <div class="upload-section" id="uploadSection">
+        <h2>Upload Your Price Excel File</h2>
+        <div class="upload-area" onclick="document.getElementById('fileInput').click()" 
+             ondrop="handleDrop(event)" ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)">
+            <div class="upload-icon">📁</div>
+            <div class="upload-text">Click to select your Excel file</div>
+            <div class="upload-hint">Or drag and drop your .xlsx file here<br>Expected columns: code, Name, Price</div>
+        </div>
+        <input type="file" id="fileInput" class="file-input" accept=".xlsx,.xls" onchange="handleFile(event)">
+        <div id="uploadStatus"></div>
+    </div>
+
+    <div class="controls" id="controls">
+        <h2>Price Tag Generator</h2>
+        
+        <div class="print-instructions">
+            <h4>🖨️ Printing Instructions:</h4>
+            <ul>
+                <li>Set paper size to A4</li>
+                <li>Choose "More settings" → "Margins" → "Minimum" or "None"</li>
+                <li>Enable "Background graphics" for colors and borders</li>
+                <li>Use "Print Preview" button below to check layout before printing</li>
+            </ul>
+        </div>
+        
+        <div class="control-group">
+            <label>Tags per page:</label>
+            <select id="tagsPerPage" onchange="updateTagsPerPage()">
+                <option value="8">8 tags (larger)</option>
+                <option value="12">12 tags</option>
+                <option value="16" selected>16 tags (recommended)</option>
+                <option value="20">20 tags</option>
+            </select>
+        </div>
+        <div class="control-group">
+            <label>Search products:</label>
+            <input type="text" id="searchInput" placeholder="Search by name or code..." style="width: 300px;" oninput="searchProducts()">
+        </div>
+        <div class="control-group">
+            <button onclick="togglePrintPreview()" id="previewBtn" class="print-preview-btn">👁️ Print Preview</button>
+            <button onclick="printTags()" id="printBtn">🖨️ Print Current Page</button>
+            <button onclick="printAllTags()" id="printAllBtn">📄 Print All Tags</button>
+        </div>
+    </div>
+
+    <div class="pagination" id="pagination" style="display: none;">
+        <button onclick="prevPage()" id="prevBtn">← Previous</button>
+        <span class="page-info" id="pageInfo"></span>
+        <button onclick="nextPage()" id="nextBtn">Next →</button>
+    </div>
+
+    <div class="tags-container" id="tagsContainer">
+        <!-- Tags will be generated here -->
+    </div>
+
+    <script>
+        let allProducts = [];
+        let filteredProducts = [];
+        let currentPage = 0;
+        let tagsPerPage = 16;
+        let printPreviewMode = false;
+
+        function showStatus(message, type = 'success') {
+            const status = document.getElementById('uploadStatus');
+            status.innerHTML = `<div class="status ${type}">${message}</div>`;
+        }
+
+        function handleDragOver(e) {
+            e.preventDefault();
+            e.currentTarget.classList.add('dragover');
+        }
+
+        function handleDragLeave(e) {
+            e.currentTarget.classList.remove('dragover');
+        }
+
+        function handleDrop(e) {
+            e.preventDefault();
+            e.currentTarget.classList.remove('dragover');
+            const files = e.dataTransfer.files;
+            if (files.length > 0) {
+                processFile(files[0]);
+            }
+        }
+
+        function handleFile(e) {
+            const file = e.target.files[0];
+            if (file) {
+                processFile(file);
+            }
+        }
+
+        function processFile(file) {
+            if (!file.name.match(/\.(xlsx|xls)$/i)) {
+                showStatus('Please select an Excel file (.xlsx or .xls)', 'error');
+                return;
+            }
+
+            showStatus('Processing file...', 'success');
+            
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                try {
+                    const data = new Uint8Array(e.target.result);
+                    const workbook = XLSX.read(data, { type: 'array' });
+                    const sheetName = workbook.SheetNames[0];
+                    const worksheet = workbook.Sheets[sheetName];
+                    const jsonData = XLSX.utils.sheet_to_json(worksheet);
+
+                    allProducts = jsonData.map(item => {
+                        const code = String(item.code || item.Code || item.CODE || '');
+                        const name = String(item.Name || item.name || item.NAME || item.Product || item.product || '');
+                        const price = parseFloat(item.Price || item.price || item.PRICE || 0);
+                        
+                        return { code, name, price };
+                    }).filter(item => item.name && item.price > 0);
+
+                    if (allProducts.length === 0) {
+                        showStatus('No valid products found. Please check your Excel file has columns: code, Name, Price', 'error');
+                        return;
+                    }
+
+                    filteredProducts = [...allProducts];
+                    currentPage = 0;
+
+                    showStatus(`✅ Successfully loaded ${allProducts.length} products!`, 'success');
+                    
+                    document.getElementById('controls').classList.add('show');
+                    document.getElementById('uploadSection').style.display = 'none';
+                    
+                    document.querySelector('.controls h2').textContent = 
+                        `Price Tag Generator - ${allProducts.length} products loaded`;
+
+                    renderTags();
+                    updatePagination();
+
+                } catch (error) {
+                    console.error('Error processing file:', error);
+                    showStatus('Error processing Excel file. Please check the file format.', 'error');
+                }
+            };
+            reader.readAsArrayBuffer(file);
+        }
+
+        function updateTagsPerPage() {
+            tagsPerPage = parseInt(document.getElementById('tagsPerPage').value);
+            currentPage = 0;
+            
+            // Update grid layout based on tags per page
+            const container = document.getElementById('tagsContainer');
+            let columns = 4;
+            if (tagsPerPage <= 8) columns = 2;
+            else if (tagsPerPage <= 12) columns = 3;
+            else if (tagsPerPage <= 16) columns = 4;
+            else columns = 5;
+            
+            container.style.gridTemplateColumns = `repeat(${columns}, 1fr)`;
+            
+            renderTags();
+            updatePagination();
+        }
+
+        function searchProducts() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            if (!query) {
+                filteredProducts = [...allProducts];
+            } else {
+                filteredProducts = allProducts.filter(product => 
+                    product.name.toLowerCase().includes(query) || 
+                    product.code.toLowerCase().includes(query)
+                );
+            }
+            currentPage = 0;
+            renderTags();
+            updatePagination();
+        }
+
+        function renderTags() {
+            const container = document.getElementById('tagsContainer');
+            const start = currentPage * tagsPerPage;
+            const end = start + tagsPerPage;
+            const pageProducts = filteredProducts.slice(start, end);
+
+            if (pageProducts.length === 0) {
+                container.innerHTML = '<div style="text-align: center; padding: 40px; color: #666;">No products found.</div>';
+                return;
+            }
+
+            container.innerHTML = '';
+            
+            pageProducts.forEach(product => {
+                const tag = document.createElement('div');
+                tag.className = 'price-tag';
+                
+                // Truncate long product names
+                const displayName = product.name.length > 50 ? 
+                    product.name.substring(0, 47) + '...' : product.name;
+                
+                tag.innerHTML = `
+                    <div class="product-name">${displayName}</div>
+                    <div class="price">KES ${product.price.toFixed(2)}</div>
+                    <div class="barcode-section">
+                        <div class="barcode-container">
+                            <svg class="barcode-${product.code.replace(/[^a-zA-Z0-9]/g, '')}" style="max-width: 160px; height: 35px;"></svg>
+                        </div>
+                        <div class="code-text">${product.code}</div>
+                    </div>
+                `;
+                
+                container.appendChild(tag);
+                
+                // Generate barcode
+                if (product.code) {
+                    const cleanCode = product.code.replace(/[^a-zA-Z0-9]/g, '');
+                    try {
+                        JsBarcode(`.barcode-${cleanCode}`, product.code, {
+                            format: product.code.length >= 12 && /^\d+$/.test(product.code) ? "EAN13" : "CODE128",
+                            width: 1.2,
+                            height: 35,
+                            displayValue: false,
+                            margin: 0,
+                            background: "#ffffff",
+                            lineColor: "#000000"
+                        });
+                    } catch (e) {
+                        try {
+                            JsBarcode(`.barcode-${cleanCode}`, product.code, {
+                                format: "CODE128",
+                                width: 1.2,
+                                height: 35,
+                                displayValue: false,
+                                margin: 0,
+                                background: "#ffffff",
+                                lineColor: "#000000"
+                            });
+                        } catch (e2) {
+                            console.warn('Could not generate barcode for:', product.code);
+                            // Add placeholder text if barcode fails
+                            const barcodeElement = tag.querySelector(`.barcode-${cleanCode}`);
+                            if (barcodeElement) {
+                                barcodeElement.outerHTML = '<div style="height: 35px; display: flex; align-items: center; justify-content: center; border: 1px solid #ccc; font-size: 10px;">Barcode Error</div>';
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        function updatePagination() {
+            const pagination = document.getElementById('pagination');
+            const totalPages = Math.ceil(filteredProducts.length / tagsPerPage);
+            
+            if (totalPages <= 1) {
+                pagination.style.display = 'none';
+                return;
+            }
+            
+            pagination.style.display = 'block';
+            
+            document.getElementById('prevBtn').disabled = currentPage === 0;
+            document.getElementById('nextBtn').disabled = currentPage >= totalPages - 1;
+            document.getElementById('pageInfo').textContent = 
+                `Page ${currentPage + 1} of ${totalPages} (${filteredProducts.length} products)`;
+        }
+
+        function prevPage() {
+            if (currentPage > 0) {
+                currentPage--;
+                renderTags();
+                updatePagination();
+            }
+        }
+
+        function nextPage() {
+            const totalPages = Math.ceil(filteredProducts.length / tagsPerPage);
+            if (currentPage < totalPages - 1) {
+                currentPage++;
+                renderTags();
+                updatePagination();
+            }
+        }
+
+        function togglePrintPreview() {
+            printPreviewMode = !printPreviewMode;
+            const body = document.body;
+            const previewBtn = document.getElementById('previewBtn');
+            
+            if (printPreviewMode) {
+                body.classList.add('print-preview');
+                previewBtn.textContent = '📝 Exit Preview';
+                previewBtn.style.background = '#dc3545';
+            } else {
+                body.classList.remove('print-preview');
+                previewBtn.textContent = '👁️ Print Preview';
+                previewBtn.style.background = '#28a745';
+            }
+        }
+
+        function printTags() {
+            // Force exit print preview mode before printing
+            if (printPreviewMode) {
+                togglePrintPreview();
+            }
+            
+            setTimeout(() => {
+                window.print();
+            }, 100);
+        }
+
+        function printAllTags() {
+            if (filteredProducts.length === 0) {
+                alert('No products to print!');
+                return;
+            }
+
+            // Force exit print preview mode
+            if (printPreviewMode) {
+                togglePrintPreview();
+            }
+
+            const originalPage = currentPage;
+            const originalTagsPerPage = tagsPerPage;
+            
+            // Set to show all tags for printing
+            tagsPerPage = filteredProducts.length;
+            currentPage = 0;
+            
+            renderTags();
+            
+            setTimeout(() => {
+                window.print();
+                
+                // Restore original pagination after printing
+                setTimeout(() => {
+                    tagsPerPage = originalTagsPerPage;
+                    currentPage = originalPage;
+                    renderTags();
+                    updatePagination();
+                }, 1000);
+            }, 500);
+        }
+
+        // Handle browser print dialog close
+        window.addEventListener('afterprint', function() {
+            // This ensures the page returns to normal view after printing
+            if (document.body.classList.contains('print-preview')) {
+                // Keep preview mode if it was active
+                return;
+            }
+        });
+    </script>
+</body>
+</html>
