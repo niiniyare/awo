@@ -1,0 +1,52 @@
+{
+  "body": [
+    {
+      "actions": [
+        {
+          "actionType": "submit",
+          "id": "submit",
+          "label": "Save",
+          "level": "primary",
+          "type": "button"
+        }
+      ],
+      "api": {
+        "method": "POST",
+        "url": "/api/v1/finance/invoices"
+      },
+      "body": [
+        {
+          "label": "Status",
+          "name": "status",
+          "type": "select"
+        },
+        {
+          "label": "Amount",
+          "name": "amount",
+          "precision": 2,
+          "type": "input-number"
+        },
+        {
+          "format": "YYYY-MM-DD",
+          "label": "Due Date",
+          "name": "due_date",
+          "type": "input-date"
+        },
+        {
+          "label": "Customer",
+          "name": "customer",
+          "type": "input-text"
+        },
+        {
+          "label": "Notes",
+          "name": "notes",
+          "type": "textarea"
+        }
+      ],
+      "title": "Invoice",
+      "type": "form"
+    }
+  ],
+  "title": "Invoice",
+  "type": "page"
+}

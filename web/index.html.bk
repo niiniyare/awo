@@ -1,0 +1,748 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AWO ERP</title>
+  <link rel="stylesheet" href="https://unpkg.com/amis@6.7.0/sdk/sdk.css">
+  <link rel="stylesheet" href="https://unpkg.com/amis@6.7.0/sdk/helper.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/amis@6.7.0/sdk/iconfont.css">
+  <style>
+    :root {
+      --sidebar-w: 240px;
+      --topbar-h: 52px;
+      --brand: #1e40af;
+      --brand-dark: #1e3a8a;
+      --sidebar-bg: #0f172a;
+      --sidebar-text: #cbd5e1;
+      --sidebar-hover: #1e293b;
+      --sidebar-active-bg: #1e40af;
+      --sidebar-active-text: #fff;
+      --sidebar-group: #64748b;
+      --topbar-bg: #fff;
+      --topbar-border: #e2e8f0;
+      --content-bg: #f8fafc;
+      --footer-text: #94a3b8;
+    }
+
+    [data-theme="dark"] {
+      --topbar-bg: #1e293b;
+      --topbar-border: #334155;
+      --content-bg: #0f172a;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width .2s ease, min-width .2s ease;
+      z-index: 50;
+    }
+
+    #sidebar.collapsed { width: 56px; min-width: 56px; }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      height: var(--topbar-h);
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+
+    .brand-content { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+    .brand-text { font-weight: 700; font-size: 15px; color: #f1f5f9; white-space: nowrap; overflow: hidden; }
+    #sidebar.collapsed .brand-text { display: none; }
+
+    .sidebar-toggle {
+      background: none; border: none; color: var(--sidebar-group);
+      cursor: pointer; padding: 6px; border-radius: 6px; flex-shrink: 0;
+      font-size: 14px;
+    }
+    .sidebar-toggle:hover { background: var(--sidebar-hover); color: #fff; }
+
+    .sidebar-menu {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0;
+    }
+    .sidebar-menu::-webkit-scrollbar { width: 4px; }
+    .sidebar-menu::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    .nav-group-label {
+      padding: 12px 16px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--sidebar-group);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #sidebar.collapsed .nav-group-label { visibility: hidden; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      border-radius: 0;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 13.5px;
+      transition: background .15s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .nav-item:hover { background: var(--sidebar-hover); color: #f1f5f9; }
+    .nav-item.active { background: var(--sidebar-active-bg); color: var(--sidebar-active-text); }
+    .nav-item i { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
+    .nav-item span { overflow: hidden; text-overflow: ellipsis; }
+    #sidebar.collapsed .nav-item span { display: none; }
+
+    /* ── Main ────────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--content-bg);
+    }
+
+    #topbar {
+      height: var(--topbar-h);
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--topbar-border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 40;
+    }
+
+    .topbar-toggle {
+      display: none;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: #64748b; padding: 6px;
+    }
+
+    .breadcrumb { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 6px; }
+    .bc-sep { color: #cbd5e1; }
+    .bc-current { color: #1e293b; font-weight: 500; }
+
+    .topbar-spacer { flex: 1; }
+
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    .user-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: 20px;
+      background: #f1f5f9; font-size: 13px; color: #475569;
+    }
+    .user-badge i { color: #94a3b8; }
+
+    .theme-btn {
+      background: none; border: 1px solid #e2e8f0;
+      border-radius: 6px; padding: 5px 10px;
+      cursor: pointer; font-size: 12px; color: #64748b;
+      display: flex; align-items: center; gap: 6px;
+    }
+    .theme-btn:hover { background: #f1f5f9; }
+
+    #content {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+      isolation: isolate;
+    }
+
+    .page-loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 100%; color: #94a3b8; font-size: 14px; gap: 10px;
+    }
+
+    .page-error {
+      margin: 40px auto; max-width: 480px; padding: 24px;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; color: #b91c1c; font-size: 14px;
+    }
+    .page-error h3 { margin-bottom: 8px; }
+
+    #footer {
+      padding: 8px 20px;
+      font-size: 12px;
+      color: var(--footer-text);
+      border-top: 1px solid var(--topbar-border);
+      background: var(--topbar-bg);
+      flex-shrink: 0;
+    }
+
+    /* ── Login overlay ───────────────────────────────────────────────── */
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-overlay.hidden { display: none; }
+
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 40px;
+      width: 100%; max-width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,.4);
+    }
+    .login-logo {
+      display: flex; align-items: center; gap: 12px; margin-bottom: 32px;
+    }
+    .login-logo-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px;
+    }
+    .login-logo-text { font-size: 20px; font-weight: 700; color: #0f172a; }
+    .login-logo-sub { font-size: 12px; color: #94a3b8; }
+
+    .login-field { margin-bottom: 18px; }
+    .login-field label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: #374151; margin-bottom: 6px;
+    }
+    .login-field input {
+      width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
+      border-radius: 8px; font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .login-field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30,64,175,.1); }
+
+    .login-btn {
+      width: 100%; padding: 11px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .login-btn:hover { background: var(--brand-dark); }
+    .login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .login-error {
+      margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; color: #b91c1c; font-size: 13px;
+      display: none;
+    }
+    .login-error.visible { display: block; }
+
+    /* ── Mobile ──────────────────────────────────────────────────────── */
+    #sidebar-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 190;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        transform: translateX(-100%); transition: transform .25s ease;
+        z-index: 200;
+      }
+      #sidebar.mobile-open { transform: translateX(0); width: var(--sidebar-w) !important; min-width: var(--sidebar-w) !important; }
+      #sidebar-backdrop.visible { display: block; }
+      .topbar-toggle { display: flex; }
+      #main { width: 100%; }
+      .brand-text { display: block !important; }
+      .nav-item span { display: inline !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Login overlay — shown until session confirmed -->
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">A</div>
+        <div>
+          <div class="login-logo-text">AWO ERP</div>
+          <div class="login-logo-sub">Sign in to your workspace</div>
+        </div>
+      </div>
+      <!-- Tab switcher -->
+      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #e5e7eb;">
+        <button id="tab-login" onclick="switchTab('login')"
+          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;">Sign in</button>
+        <button id="tab-register" onclick="switchTab('register')"
+          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;">Create workspace</button>
+      </div>
+
+      <!-- Login form -->
+      <form id="login-form" onsubmit="submitLogin(event)">
+        <div class="login-field">
+          <label for="login-tenant">Workspace</label>
+          <input id="login-tenant" type="text" placeholder="your-workspace" autocomplete="organization" required>
+        </div>
+        <div class="login-field">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="login-field">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button class="login-btn" type="submit" id="login-submit">Sign in</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+
+      <!-- Register form -->
+      <form id="register-form" onsubmit="submitRegister(event)" style="display:none;">
+        <div class="login-field">
+          <label for="reg-workspace">Workspace name</label>
+          <input id="reg-workspace" type="text" placeholder="Acme Corp" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-name">Your name</label>
+          <input id="reg-name" type="text" placeholder="Jane Doe" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" placeholder="you@example.com" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-password">Password <small style="color:#94a3b8;">(min 8 chars)</small></label>
+          <input id="reg-password" type="password" placeholder="••••••••" minlength="8" required>
+        </div>
+        <button class="login-btn" type="submit" id="reg-submit">Create workspace</button>
+        <div class="login-error" id="reg-error"></div>
+      </form>
+    </div>
+  </div>
+
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-content">
+          <div class="brand-icon">A</div>
+          <span class="brand-text">AWO ERP</span>
+        </div>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+          <i class="fa fa-bars"></i>
+        </button>
+      </div>
+      <nav class="sidebar-menu" id="sidebarMenu"></nav>
+    </aside>
+
+    <div id="sidebar-backdrop" onclick="closeMobile()"></div>
+
+    <div id="main">
+      <div id="topbar">
+        <button class="topbar-toggle" onclick="openMobile()"><i class="fa fa-bars"></i></button>
+        <div class="breadcrumb">
+          <span id="bc-module"></span>
+          <span class="bc-sep" id="bc-sep" style="display:none">›</span>
+          <span class="bc-current" id="bc-page">Dashboard</span>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-right">
+          <div class="user-badge" id="userBadge">
+            <i class="fa fa-circle-user"></i>
+            <span id="userName">—</span>
+          </div>
+          <button class="theme-btn" onclick="cycleTheme()">
+            <i class="fa fa-circle-half-stroke" id="themeIcon"></i>
+            <span id="themeLabel">System</span>
+          </button>
+          <button class="theme-btn" onclick="doLogout()" title="Sign out">
+            <i class="fa fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="content">
+        <div class="page-loading"><i class="fa fa-spinner fa-spin"></i> Loading...</div>
+      </div>
+
+      <div id="footer">&copy; 2026 AWO ERP</div>
+    </div>
+  </div>
+
+  <script src="https://unpkg.com/amis@6.7.0/sdk/sdk.js"></script>
+  <script src="https://unpkg.com/amis@6.7.0/sdk/charts.js"></script>
+  <script src="https://unpkg.com/amis@6.7.0/sdk/rest.js"></script>
+  <script>
+  // Simple schema loader with in-memory cache
+  function SchemaLoader(base) {
+    this.base = base.replace(/\/$/, '');
+    this.cache = {};
+  }
+  SchemaLoader.prototype.load = function (path) {
+    var url = this.base + '/' + path.replace(/^\//, '');
+    if (this.cache[url]) return Promise.resolve(this.cache[url]);
+    var self = this;
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status);
+      return r.json();
+    }).then(function (schema) {
+      self.cache[url] = schema;
+      return schema;
+    });
+  };
+  </script>
+  <script>
+  (function () {
+    /* ── Config ─────────────────────────────────────────────────── */
+    var SCHEMA_BASE = '/schemas/pages/';
+    var DEFAULT_ROUTE = 'dashboard';
+
+    /* ── Navigation tree ────────────────────────────────────────── */
+    var NAV = [
+      { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', hash: 'dashboard' },
+      { group: 'Finance' },
+      { id: 'accounts',       label: 'Chart of Accounts', icon: 'fa-book',         hash: 'finance/accounts',       module: 'Finance' },
+      { id: 'journal',        label: 'Journal Entries',   icon: 'fa-file-invoice', hash: 'finance/journal-entries', module: 'Finance' },
+      { id: 'fiscal-years',   label: 'Fiscal Years',      icon: 'fa-calendar-alt', hash: 'finance/fiscal-years',    module: 'Finance' },
+      { group: 'Inventory' },
+      { id: 'items',         label: 'Items',         icon: 'fa-box',        hash: 'inventory/items',         module: 'Inventory' },
+      { id: 'warehouses',    label: 'Warehouses',    icon: 'fa-warehouse',  hash: 'inventory/warehouses',    module: 'Inventory' },
+      { id: 'stock-entries', label: 'Stock Entries', icon: 'fa-right-left', hash: 'inventory/stock-entries', module: 'Inventory' },
+      { group: 'Human Resources' },
+      { id: 'employees',      label: 'Employees',      icon: 'fa-users',       hash: 'hr/employees',       module: 'HR' },
+      { id: 'leave-requests', label: 'Leave Requests', icon: 'fa-calendar-xmark', hash: 'hr/leave-requests', module: 'HR' },
+      { id: 'payroll',        label: 'Payroll Runs',   icon: 'fa-money-check', hash: 'hr/payroll-runs',    module: 'HR' },
+      { group: 'CRM' },
+      { id: 'customers',    label: 'Customers',    icon: 'fa-building',  hash: 'crm/customers', module: 'CRM' },
+      { id: 'contacts',     label: 'Contacts',     icon: 'fa-address-book', hash: 'crm/contacts', module: 'CRM' },
+      { id: 'leads',        label: 'Leads',        icon: 'fa-bullseye',  hash: 'crm/leads',     module: 'CRM' },
+      { id: 'opportunities',label: 'Opportunities',icon: 'fa-handshake', hash: 'crm/opportunities', module: 'CRM' },
+      { group: 'Forecourt' },
+      { id: 'sites',       label: 'Sites',         icon: 'fa-gas-pump',    hash: 'forecourt/sites',  module: 'Forecourt' },
+      { id: 'tanks',       label: 'Tanks',         icon: 'fa-database',    hash: 'forecourt/tanks',  module: 'Forecourt' },
+      { id: 'shift-close', label: 'Shift Close',   icon: 'fa-clock',       hash: 'forecourt/shifts', module: 'Forecourt' },
+      { group: 'Platform' },
+      { id: 'iam-users',   label: 'Users',    icon: 'fa-user-gear', hash: 'platform/users',   module: 'Platform' },
+      { id: 'iam-roles',   label: 'Roles',    icon: 'fa-shield',    hash: 'platform/roles',   module: 'Platform' },
+      { id: 'tenants',     label: 'Tenants',  icon: 'fa-building-columns', hash: 'platform/tenants', module: 'Platform' },
+    ];
+
+    /* ── Render nav ─────────────────────────────────────────────── */
+    var menu = document.getElementById('sidebarMenu');
+    NAV.forEach(function (n) {
+      if (n.group) {
+        var el = document.createElement('div');
+        el.className = 'nav-group-label';
+        el.textContent = n.group;
+        menu.appendChild(el);
+        return;
+      }
+      var a = document.createElement('a');
+      a.className = 'nav-item';
+      a.id = 'nav-' + n.id;
+      a.href = '#' + n.hash;
+      a.innerHTML = '<i class="fa ' + n.icon + '"></i><span>' + n.label + '</span>';
+      a.addEventListener('click', function () { closeMobile(); });
+      menu.appendChild(a);
+    });
+
+    /* ── Theme ──────────────────────────────────────────────────── */
+    var themes = ['system', 'light', 'dark'];
+    var themeIdx = themes.indexOf(localStorage.getItem('awo-theme') || 'system');
+    function applyTheme() {
+      var t = themes[themeIdx];
+      document.documentElement.setAttribute('data-theme', t);
+      document.getElementById('themeLabel').textContent = t.charAt(0).toUpperCase() + t.slice(1);
+      localStorage.setItem('awo-theme', t);
+    }
+    window.cycleTheme = function () { themeIdx = (themeIdx + 1) % themes.length; applyTheme(); };
+    applyTheme();
+
+    /* ── Sidebar collapse ────────────────────────────────────────── */
+    var sidebar = document.getElementById('sidebar');
+    var sidebarCollapsed = localStorage.getItem('awo-sidebar') === 'collapsed';
+    if (sidebarCollapsed) sidebar.classList.add('collapsed');
+    window.toggleSidebar = function () {
+      sidebarCollapsed = !sidebarCollapsed;
+      sidebar.classList.toggle('collapsed', sidebarCollapsed);
+      localStorage.setItem('awo-sidebar', sidebarCollapsed ? 'collapsed' : '');
+    };
+    var backdrop = document.getElementById('sidebar-backdrop');
+    window.openMobile = function () { sidebar.classList.add('mobile-open'); backdrop.classList.add('visible'); };
+    window.closeMobile = function () { sidebar.classList.remove('mobile-open'); backdrop.classList.remove('visible'); };
+
+    /* ── AMIS setup ─────────────────────────────────────────────── */
+    var amis = amisRequire('amis/embed');
+    var loader = new SchemaLoader(SCHEMA_BASE);
+    var currentInstance = null;
+
+    var amisEnv = {
+      locale: 'en-US',
+      fetcher: function (api) {
+        var url = api.url || '';
+        var method = (api.method || 'get').toLowerCase();
+
+        // Convert AMIS page/perPage (or $page/$perPage) → offset/limit for our backend
+        var urlObj = new URL(url, window.location.origin);
+        var page = urlObj.searchParams.get('page') || urlObj.searchParams.get('$page');
+        var perPage = urlObj.searchParams.get('perPage') || urlObj.searchParams.get('$perPage');
+        if (page !== null) {
+          var limit = perPage ? parseInt(perPage, 10) : 20;
+          var offset = (parseInt(page, 10) - 1) * limit;
+          urlObj.searchParams.delete('page');
+          urlObj.searchParams.delete('$page');
+          urlObj.searchParams.set('offset', String(offset));
+        }
+        if (perPage !== null) {
+          urlObj.searchParams.delete('perPage');
+          urlObj.searchParams.delete('$perPage');
+          urlObj.searchParams.set('limit', perPage);
+        }
+        url = urlObj.toString();
+
+        var headers = Object.assign({ 'Content-Type': 'application/json', 'X-Awo-Tenant': currentTenant }, api.headers || {});
+        var opts = { method: method, headers: headers, credentials: 'include' };
+        if (method !== 'get' && method !== 'head' && api.data) {
+          opts.body = JSON.stringify(api.data);
+        }
+
+        return fetch(url, opts)
+          .then(function (res) {
+            if (res.status === 401) { showLogin('Session expired — please sign in again.'); return { status: 401, msg: 'Unauthorized' }; }
+            if (res.status === 204) return { status: 0, msg: '' };
+            return res.json().then(function (body) {
+              // Our backend already returns {status, msg, data} — pass through.
+              // For non-2xx that don't have status field, normalise.
+              if (body.status === undefined) {
+                if (!res.ok) return { status: res.status, msg: body.error || body.msg || res.statusText };
+                return { status: 0, msg: '', data: body };
+              }
+              return body;
+            });
+          })
+          .catch(function (err) {
+            return { status: 1, msg: 'Network error: ' + err.message };
+          });
+      },
+      isCancel: function () { return false; },
+      notify: function (type, msg) {
+        console.log('[amis:' + type + ']', msg);
+      },
+      alert: window.alert.bind(window),
+      copy: function (text) {
+        if (navigator.clipboard) navigator.clipboard.writeText(text);
+      }
+    };
+
+    /* ── Active nav ──────────────────────────────────────────────── */
+    function setActive(hash) {
+      document.querySelectorAll('.nav-item').forEach(function (el) {
+        el.classList.remove('active');
+      });
+      var node = NAV.find(function (n) { return n.hash === hash; });
+      if (node) {
+        var el = document.getElementById('nav-' + node.id);
+        if (el) el.classList.add('active');
+        // Breadcrumb
+        document.getElementById('bc-page').textContent = node.label;
+        if (node.module) {
+          document.getElementById('bc-module').textContent = node.module;
+          document.getElementById('bc-sep').style.display = '';
+        } else {
+          document.getElementById('bc-module').textContent = '';
+          document.getElementById('bc-sep').style.display = 'none';
+        }
+      }
+    }
+
+    /* ── Auth gate ───────────────────────────────────────────────── */
+    var currentTenant = localStorage.getItem('awo-tenant') || '';
+
+    window.switchTab = function (tab) {
+      var isLogin = tab === 'login';
+      document.getElementById('login-form').style.display = isLogin ? '' : 'none';
+      document.getElementById('register-form').style.display = isLogin ? 'none' : '';
+      document.getElementById('tab-login').style.cssText = isLogin
+        ? 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;'
+        : 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;';
+      document.getElementById('tab-register').style.cssText = isLogin
+        ? 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;'
+        : 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;';
+    };
+
+    function showLogin(msg) {
+      document.getElementById('login-overlay').classList.remove('hidden');
+      if (currentTenant) document.getElementById('login-tenant').value = currentTenant;
+      if (msg) {
+        var el = document.getElementById('login-error');
+        el.textContent = msg;
+        el.classList.add('visible');
+      }
+    }
+
+    function hideLogin() {
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('login-error').classList.remove('visible');
+    }
+
+    window.submitLogin = function (e) {
+      e.preventDefault();
+      var tenant = document.getElementById('login-tenant').value.trim();
+      var email  = document.getElementById('login-email').value.trim();
+      var pass   = document.getElementById('login-password').value;
+      var btn    = document.getElementById('login-submit');
+      var errEl  = document.getElementById('login-error');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      errEl.classList.remove('visible');
+
+      fetch('/auth/login', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json', 'X-Awo-Tenant': tenant },
+        body: JSON.stringify({ email: email, password: pass })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if (body.status === 0 && !body.data.mfa_required) {
+          currentTenant = tenant;
+          localStorage.setItem('awo-tenant', tenant);
+          document.getElementById('userName').textContent = body.data.display_name || email;
+          hideLogin();
+          navigate();
+        } else if (body.data && body.data.mfa_required) {
+          errEl.textContent = 'MFA not yet supported in this build.';
+          errEl.classList.add('visible');
+        } else {
+          errEl.textContent = body.msg || body.error || 'Login failed';
+          errEl.classList.add('visible');
+        }
+      })
+      .catch(function (err) {
+        errEl.textContent = 'Network error: ' + err.message;
+        errEl.classList.add('visible');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Sign in';
+      });
+    };
+
+    window.submitRegister = function (e) {
+      e.preventDefault();
+      var workspace = document.getElementById('reg-workspace').value.trim();
+      var name      = document.getElementById('reg-name').value.trim();
+      var email     = document.getElementById('reg-email').value.trim();
+      var pass      = document.getElementById('reg-password').value;
+      var btn       = document.getElementById('reg-submit');
+      var errEl     = document.getElementById('reg-error');
+
+      btn.disabled = true;
+      btn.textContent = 'Creating…';
+      errEl.classList.remove('visible');
+
+      fetch('/auth/register', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ workspace_name: workspace, admin_name: name, admin_email: email, password: pass })
+      })
+      .then(function (r) { return r.json(); })
+      .then(function (body) {
+        if ((body.status === 0 || body.status === 201) && body.data) {
+          currentTenant = body.data.tenant_slug;
+          localStorage.setItem('awo-tenant', currentTenant);
+          document.getElementById('userName').textContent = body.data.display_name || email;
+          hideLogin();
+          navigate();
+        } else {
+          errEl.textContent = body.msg || body.error || 'Registration failed';
+          errEl.classList.add('visible');
+        }
+      })
+      .catch(function (err) {
+        errEl.textContent = 'Network error: ' + err.message;
+        errEl.classList.add('visible');
+      })
+      .finally(function () {
+        btn.disabled = false;
+        btn.textContent = 'Create workspace';
+      });
+    };
+
+    window.doLogout = function () {
+      fetch('/auth/logout', {
+        method: 'POST', credentials: 'include',
+        headers: { 'X-Awo-Tenant': currentTenant }
+      }).finally(function () { showLogin(); });
+    };
+
+    function checkSession() {
+      if (!currentTenant) { showLogin(); return; }
+      fetch('/auth/me', {
+        credentials: 'include',
+        headers: { 'X-Awo-Tenant': currentTenant }
+      })
+      .then(function (r) { return r.ok ? r.json() : null; })
+      .then(function (body) {
+        if (body && body.status === 0 && body.data) {
+          document.getElementById('userName').textContent = body.data.display_name || body.data.user_id;
+          hideLogin();
+          navigate();
+        } else {
+          showLogin();
+        }
+      })
+      .catch(function () { showLogin(); });
+    }
+
+    checkSession();
+
+    /* ── Router ──────────────────────────────────────────────────── */
+    var content = document.getElementById('content');
+
+    function navigate() {
+      var hash = window.location.hash.slice(1) || DEFAULT_ROUTE;
+      setActive(hash);
+
+      if (currentInstance) {
+        try { currentInstance.unmount(); } catch (e) {}
+        currentInstance = null;
+      }
+      content.innerHTML = '<div class="page-loading"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
+
+      loader.load(hash + '.json')
+        .then(function (schema) {
+          content.innerHTML = '';
+          currentInstance = amis.embed('#content', schema, { locale: 'en-US' }, amisEnv);
+        })
+        .catch(function (err) {
+          content.innerHTML = '<div class="page-error"><h3>Page not found</h3><p>' +
+            hash + '.json — ' + err.message + '</p></div>';
+        });
+    }
+
+    window.addEventListener('hashchange', function () {
+      // Only navigate when authenticated
+      if (document.getElementById('login-overlay').classList.contains('hidden')) {
+        navigate();
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

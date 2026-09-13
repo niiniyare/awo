@@ -1,0 +1,112 @@
+{
+  "type": "page",
+  "title": "Customers",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/customer",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "name", "label": "Name", "type": "text" },
+      { "name": "email", "label": "Email", "type": "text" },
+      { "name": "phone", "label": "Phone", "type": "text" },
+      {
+        "name": "customer_type",
+        "label": "Type",
+        "type": "mapping",
+        "map": {
+          "individual": "Individual",
+          "company": "Company"
+        }
+      },
+      { "name": "industry", "label": "Industry", "type": "text" },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Customer",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/customer/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/customer/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "name", "label": "Name", "required": true },
+                  { "type": "input-email", "name": "email", "label": "Email" },
+                  { "type": "input-text", "name": "phone", "label": "Phone" },
+                  {
+                    "type": "select",
+                    "name": "customer_type",
+                    "label": "Customer Type",
+                    "options": [
+                      { "label": "Individual", "value": "individual" },
+                      { "label": "Company", "value": "company" }
+                    ]
+                  },
+                  { "type": "input-text", "name": "industry", "label": "Industry" },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this customer?",
+            "api": { "method": "DELETE", "url": "/api/v1/customer/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Customer",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Customer",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/customer" },
+            "body": [
+              { "type": "input-text", "name": "name", "label": "Name", "required": true },
+              { "type": "input-email", "name": "email", "label": "Email" },
+              { "type": "input-text", "name": "phone", "label": "Phone" },
+              {
+                "type": "select",
+                "name": "customer_type",
+                "label": "Customer Type",
+                "options": [
+                  { "label": "Individual", "value": "individual" },
+                  { "label": "Company", "value": "company" }
+                ]
+              },
+              { "type": "input-text", "name": "industry", "label": "Industry" },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

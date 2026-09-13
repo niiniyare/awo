@@ -1,0 +1,150 @@
+{
+  "type": "page",
+  "title": "Leads",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/lead",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "title", "label": "Title", "type": "text" },
+      { "name": "contact_name", "label": "Contact", "type": "text" },
+      { "name": "email", "label": "Email", "type": "text" },
+      { "name": "phone", "label": "Phone", "type": "text" },
+      {
+        "name": "source",
+        "label": "Source",
+        "type": "mapping",
+        "map": {
+          "web": "Web",
+          "referral": "Referral",
+          "cold_call": "Cold Call",
+          "event": "Event",
+          "other": "Other"
+        }
+      },
+      {
+        "name": "status",
+        "label": "Status",
+        "type": "mapping",
+        "map": {
+          "new": "New",
+          "contacted": "Contacted",
+          "qualified": "Qualified",
+          "lost": "Lost"
+        }
+      },
+      { "name": "estimated_value", "label": "Est. Value", "type": "number" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Lead",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/lead/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/lead/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "title", "label": "Title", "required": true },
+                  { "type": "input-text", "name": "contact_name", "label": "Contact Name" },
+                  { "type": "input-email", "name": "email", "label": "Email" },
+                  { "type": "input-text", "name": "phone", "label": "Phone" },
+                  {
+                    "type": "select",
+                    "name": "source",
+                    "label": "Source",
+                    "options": [
+                      { "label": "Web", "value": "web" },
+                      { "label": "Referral", "value": "referral" },
+                      { "label": "Cold Call", "value": "cold_call" },
+                      { "label": "Event", "value": "event" },
+                      { "label": "Other", "value": "other" }
+                    ]
+                  },
+                  {
+                    "type": "select",
+                    "name": "status",
+                    "label": "Status",
+                    "options": [
+                      { "label": "New", "value": "new" },
+                      { "label": "Contacted", "value": "contacted" },
+                      { "label": "Qualified", "value": "qualified" },
+                      { "label": "Lost", "value": "lost" }
+                    ]
+                  },
+                  { "type": "input-number", "name": "estimated_value", "label": "Estimated Value", "min": 0 }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this lead?",
+            "api": { "method": "DELETE", "url": "/api/v1/lead/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Lead",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Lead",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/lead" },
+            "body": [
+              { "type": "input-text", "name": "title", "label": "Title", "required": true },
+              { "type": "input-text", "name": "contact_name", "label": "Contact Name" },
+              { "type": "input-email", "name": "email", "label": "Email" },
+              { "type": "input-text", "name": "phone", "label": "Phone" },
+              {
+                "type": "select",
+                "name": "source",
+                "label": "Source",
+                "options": [
+                  { "label": "Web", "value": "web" },
+                  { "label": "Referral", "value": "referral" },
+                  { "label": "Cold Call", "value": "cold_call" },
+                  { "label": "Event", "value": "event" },
+                  { "label": "Other", "value": "other" }
+                ]
+              },
+              {
+                "type": "select",
+                "name": "status",
+                "label": "Status",
+                "value": "new",
+                "options": [
+                  { "label": "New", "value": "new" },
+                  { "label": "Contacted", "value": "contacted" },
+                  { "label": "Qualified", "value": "qualified" },
+                  { "label": "Lost", "value": "lost" }
+                ]
+              },
+              { "type": "input-number", "name": "estimated_value", "label": "Estimated Value", "min": 0 }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

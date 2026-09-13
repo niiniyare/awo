@@ -1,0 +1,54 @@
+{
+  "type": "page",
+  "title": "Payroll Runs",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/payroll_run",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "period_start", "label": "Period Start", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "period_end", "label": "Period End", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "run_date", "label": "Run Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "doc_status", "label": "Status", "type": "text" },
+      { "name": "total_gross", "label": "Total Gross", "type": "number" },
+      { "name": "total_net", "label": "Total Net", "type": "number" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "View",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Payroll Run Detail",
+              "body": {
+                "type": "form",
+                "initApi": { "method": "GET", "url": "/api/v1/payroll_run/${id}" },
+                "mode": "horizontal",
+                "body": [
+                  { "type": "static", "name": "period_start", "label": "Period Start" },
+                  { "type": "static", "name": "period_end", "label": "Period End" },
+                  { "type": "static", "name": "run_date", "label": "Run Date" },
+                  { "type": "static", "name": "doc_status", "label": "Status" },
+                  { "type": "static", "name": "total_gross", "label": "Total Gross" },
+                  { "type": "static", "name": "total_net", "label": "Total Net" }
+                ],
+                "actions": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "toolbar": []
+  }
+}

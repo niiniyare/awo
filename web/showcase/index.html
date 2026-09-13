@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awo ERP — Developer Showcase</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; background: #0f172a; color: #e2e8f0; min-height: 100vh; }
+
+    header {
+      background: #1e293b; border-bottom: 1px solid #334155;
+      padding: 16px 32px; display: flex; align-items: center; gap: 16px;
+    }
+    .logo { width: 36px; height: 36px; border-radius: 8px; background: #1e40af; color: #fff; display: flex; align-items: center; justify-content: center; font-weight: 700; font-size: 18px; flex-shrink: 0; }
+    header h1 { font-size: 18px; font-weight: 700; color: #f1f5f9; }
+    header p { font-size: 13px; color: #64748b; margin-top: 2px; }
+    .back-link { margin-left: auto; color: #60a5fa; font-size: 13px; text-decoration: none; }
+    .back-link:hover { text-decoration: underline; }
+
+    main { max-width: 960px; margin: 0 auto; padding: 32px 24px; }
+
+    .section-title {
+      font-size: 11px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase;
+      color: #475569; margin-bottom: 12px; padding-bottom: 8px; border-bottom: 1px solid #1e293b;
+    }
+
+    .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 16px; margin-bottom: 32px; }
+
+    .card {
+      background: #1e293b; border: 1px solid #334155; border-radius: 10px; padding: 20px;
+    }
+    .card h3 { font-size: 14px; font-weight: 600; color: #f1f5f9; margin-bottom: 4px; }
+    .card p  { font-size: 13px; color: #64748b; line-height: 1.5; }
+
+    .stat { font-size: 28px; font-weight: 700; color: #60a5fa; margin: 8px 0 4px; }
+
+    .entity-table { width: 100%; border-collapse: collapse; margin-bottom: 32px; }
+    .entity-table th, .entity-table td { text-align: left; padding: 10px 12px; border-bottom: 1px solid #1e293b; font-size: 13px; }
+    .entity-table th { color: #64748b; font-weight: 600; font-size: 11px; text-transform: uppercase; letter-spacing: .06em; }
+    .entity-table td { color: #cbd5e1; }
+    .entity-table tr:hover td { background: #1e293b; }
+    .entity-table a { color: #60a5fa; text-decoration: none; }
+    .entity-table a:hover { text-decoration: underline; }
+
+    .badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 11px; font-weight: 600; background: #1e40af22; color: #60a5fa; border: 1px solid #1e40af44; }
+
+    .endpoint-list { list-style: none; margin-bottom: 32px; }
+    .endpoint-list li { background: #1e293b; border: 1px solid #334155; border-radius: 6px; padding: 10px 14px; margin-bottom: 8px; display: flex; align-items: center; gap: 10px; font-size: 13px; }
+    .method { font-weight: 700; font-size: 11px; color: #34d399; width: 40px; flex-shrink: 0; }
+    .path { color: #94a3b8; font-family: monospace; }
+    .desc { color: #64748b; margin-left: auto; font-size: 12px; }
+
+    #error { background: #7f1d1d; border: 1px solid #b91c1c; border-radius: 8px; padding: 16px; color: #fca5a5; font-size: 13px; display: none; margin-bottom: 24px; }
+
+    #loading { color: #64748b; font-size: 14px; text-align: center; padding: 48px; display: none; }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">A</div>
+    <div>
+      <h1>Awo ERP — Developer Showcase</h1>
+      <p>Framework metadata portal · Unauthenticated diagnostic view</p>
+    </div>
+    <a class="back-link" href="/ui/">← Back to App</a>
+  </header>
+
+  <main>
+    <div id="loading">Loading framework data…</div>
+    <div id="error"></div>
+
+    <div id="stats-section" style="display:none">
+      <div class="section-title">Framework Summary</div>
+      <div class="card-grid" id="stats-grid"></div>
+    </div>
+
+    <div id="entities-section" style="display:none">
+      <div class="section-title">Registered Entities</div>
+      <table class="entity-table">
+        <thead>
+          <tr>
+            <th>Entity</th>
+            <th>Module</th>
+            <th>Label</th>
+            <th>Fields</th>
+            <th>UI</th>
+          </tr>
+        </thead>
+        <tbody id="entity-rows"></tbody>
+      </table>
+    </div>
+
+    <div id="api-section" style="display:none">
+      <div class="section-title">SDUI API Endpoints</div>
+      <ul class="endpoint-list" id="api-list"></ul>
+    </div>
+  </main>
+
+  <script>
+  (function () {
+    var loadingEl = document.getElementById('loading');
+    var errorEl   = document.getElementById('error');
+
+    function showError(msg) {
+      errorEl.textContent = msg;
+      errorEl.style.display = '';
+      loadingEl.style.display = 'none';
+    }
+
+    function esc(s) {
+      return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function card(title, value, desc) {
+      return '<div class="card"><p>' + esc(title) + '</p><div class="stat">' + esc(value) + '</div><p>' + esc(desc) + '</p></div>';
+    }
+
+    loadingEl.style.display = '';
+
+    Promise.all([
+      fetch('/api/v1/showcase/info').then(function (r) { if (!r.ok) throw new Error('info HTTP ' + r.status); return r.json(); }),
+      fetch('/api/v1/showcase/entities').then(function (r) { if (!r.ok) throw new Error('entities HTTP ' + r.status); return r.json(); }),
+    ])
+    .then(function (results) {
+      var info     = results[0];
+      var entities = results[1];
+
+      loadingEl.style.display = 'none';
+
+      // Stats
+      var statsGrid = document.getElementById('stats-grid');
+      statsGrid.innerHTML =
+        card('Registered Entities', info.entityCount, 'EntityDefinition registrations') +
+        card('API Routes', info.routeCount, 'Auto-generated CRUD routes') +
+        card('Modules', info.modules ? info.modules.join(', ') : '—', 'Active business modules') +
+        card('Renderers', info.rendererIds ? info.rendererIds.join(', ') : '—', 'Available SDUI renderers');
+      document.getElementById('stats-section').style.display = '';
+
+      // Entity table
+      var tbody = document.getElementById('entity-rows');
+      var html  = '';
+      (entities || []).forEach(function (e) {
+        html += '<tr>' +
+          '<td><strong>' + esc(e.qualifiedName) + '</strong></td>' +
+          '<td><span class="badge">' + esc(e.module) + '</span></td>' +
+          '<td>' + esc(e.labelPlural || e.label) + '</td>' +
+          '<td>' + esc(e.fieldCount) + '</td>' +
+          '<td><a href="/ui/' + esc(e.module) + '/' + esc(e.qualifiedName.replace(e.module + '_', '')) + 's" target="_blank">→ List</a></td>' +
+          '</tr>';
+      });
+      tbody.innerHTML = html || '<tr><td colspan="5" style="color:#475569;padding:24px">No entities registered</td></tr>';
+      document.getElementById('entities-section').style.display = '';
+
+      // API endpoint reference
+      var apiList  = document.getElementById('api-list');
+      var apiHtml  = '';
+      var endpoints = [
+        { method: 'GET', path: '/api/v1/ui/nav',                        desc: 'Sidebar navigation' },
+        { method: 'GET', path: '/api/v1/ui/{module}/{resource}',         desc: 'List view (AMIS schema)' },
+        { method: 'GET', path: '/api/v1/ui/{module}/{resource}/create',  desc: 'Create form' },
+        { method: 'GET', path: '/api/v1/ui/{module}/{resource}/{id}',    desc: 'Detail view' },
+        { method: 'GET', path: '/api/v1/ui/{module}/{resource}/{id}/edit', desc: 'Edit form' },
+        { method: 'GET', path: '/api/v1/showcase/info',     desc: 'Framework summary (this page)' },
+        { method: 'GET', path: '/api/v1/showcase/entities', desc: 'Entity list' },
+        { method: 'GET', path: '/api/v1/showcase/renderers', desc: 'Renderer IDs' },
+        { method: 'GET', path: '/api/openapi.json',         desc: 'OpenAPI schema' },
+      ];
+      endpoints.forEach(function (ep) {
+        apiHtml += '<li><span class="method">' + esc(ep.method) + '</span><code class="path">' + esc(ep.path) + '</code><span class="desc">' + esc(ep.desc) + '</span></li>';
+      });
+      apiList.innerHTML = apiHtml;
+      document.getElementById('api-section').style.display = '';
+    })
+    .catch(function (err) {
+      showError('Failed to load showcase data: ' + err.message + '. Is the server running?');
+    });
+  })();
+  </script>
+</body>
+</html>

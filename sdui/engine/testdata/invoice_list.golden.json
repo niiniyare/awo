@@ -1,0 +1,121 @@
+{
+  "body": [
+    {
+      "api": {
+        "method": "GET",
+        "url": "/api/v1/finance/invoices"
+      },
+      "bulkActions": [
+        {
+          "actionType": "ajax",
+          "api": "DELETE:/api/v1/finance/invoices",
+          "confirmText": "Delete all selected records? This cannot be undone.",
+          "icon": "fa fa-trash",
+          "id": "bulk-delete",
+          "label": "Delete selected",
+          "level": "danger",
+          "type": "button"
+        }
+      ],
+      "columns": [
+        {
+          "label": "Invoice #",
+          "name": "number",
+          "sortable": true,
+          "type": "text"
+        },
+        {
+          "label": "Status",
+          "name": "status",
+          "sortable": true,
+          "type": "text"
+        },
+        {
+          "label": "Amount",
+          "name": "amount",
+          "sortable": true,
+          "type": "number"
+        },
+        {
+          "format": "YYYY-MM-DD",
+          "label": "Due Date",
+          "name": "due_date",
+          "sortable": true,
+          "type": "date"
+        },
+        {
+          "label": "Customer",
+          "name": "customer",
+          "sortable": true,
+          "type": "text"
+        },
+        {
+          "buttons": [
+            {
+              "actionType": "link",
+              "icon": "fa fa-eye",
+              "label": "View",
+              "level": "link",
+              "link": "/ui/finance/invoices/${id}",
+              "size": "sm",
+              "type": "button"
+            },
+            {
+              "actionType": "link",
+              "icon": "fa fa-edit",
+              "label": "Edit",
+              "level": "link",
+              "link": "/ui/finance/invoices/${id}/edit",
+              "size": "sm",
+              "type": "button"
+            },
+            {
+              "actionType": "ajax",
+              "api": "DELETE:/api/v1/finance/invoices/${id}",
+              "className": "text-danger",
+              "confirmText": "Delete this Invoice?",
+              "icon": "fa fa-trash",
+              "label": "Delete",
+              "level": "link",
+              "size": "sm",
+              "type": "button"
+            }
+          ],
+          "label": "Actions",
+          "type": "operation",
+          "width": 195
+        }
+      ],
+      "footerToolbar": [
+        "statistics",
+        "pagination"
+      ],
+      "headerToolbar": [
+        {
+          "actionType": "link",
+          "icon": "fa fa-plus",
+          "id": "create",
+          "label": "New Invoice",
+          "level": "primary",
+          "link": "/ui/finance/invoices/create",
+          "type": "button"
+        },
+        "reload"
+      ],
+      "itemsKey": "items",
+      "perPage": 20,
+      "perPageAvailable": [
+        10,
+        20,
+        50,
+        100
+      ],
+      "placeholder": "No records found.",
+      "syncLocation": false,
+      "title": "Invoices",
+      "type": "crud"
+    }
+  ],
+  "title": "Invoices",
+  "type": "page"
+}

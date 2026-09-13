@@ -1,0 +1,97 @@
+{
+  "type": "page",
+  "title": "Leave Requests",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/leave_request",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "employee_id", "label": "Employee", "type": "text" },
+      {
+        "name": "leave_type",
+        "label": "Leave Type",
+        "type": "mapping",
+        "map": {
+          "annual": "Annual",
+          "sick": "Sick",
+          "unpaid": "Unpaid",
+          "maternity": "Maternity",
+          "paternity": "Paternity"
+        }
+      },
+      { "name": "start_date", "label": "Start Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "end_date", "label": "End Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "doc_status", "label": "Status", "type": "text" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "View",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Leave Request Detail",
+              "body": {
+                "type": "form",
+                "initApi": { "method": "GET", "url": "/api/v1/leave_request/${id}" },
+                "mode": "horizontal",
+                "body": [
+                  { "type": "static", "name": "employee_id", "label": "Employee" },
+                  { "type": "static", "name": "leave_type", "label": "Leave Type" },
+                  { "type": "static", "name": "start_date", "label": "Start Date" },
+                  { "type": "static", "name": "end_date", "label": "End Date" },
+                  { "type": "static", "name": "reason", "label": "Reason" },
+                  { "type": "static", "name": "doc_status", "label": "Status" }
+                ],
+                "actions": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Leave Request",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Submit Leave Request",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/leave_request" },
+            "body": [
+              { "type": "input-text", "name": "employee_id", "label": "Employee ID", "required": true },
+              {
+                "type": "select",
+                "name": "leave_type",
+                "label": "Leave Type",
+                "required": true,
+                "options": [
+                  { "label": "Annual", "value": "annual" },
+                  { "label": "Sick", "value": "sick" },
+                  { "label": "Unpaid", "value": "unpaid" },
+                  { "label": "Maternity", "value": "maternity" },
+                  { "label": "Paternity", "value": "paternity" }
+                ]
+              },
+              { "type": "input-date", "name": "start_date", "label": "Start Date", "required": true },
+              { "type": "input-date", "name": "end_date", "label": "End Date", "required": true },
+              { "type": "textarea", "name": "reason", "label": "Reason" }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

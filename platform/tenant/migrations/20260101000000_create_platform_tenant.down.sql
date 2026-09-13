@@ -1,0 +1,3 @@
+DROP TABLE IF EXISTS platform_branch CASCADE;
+DROP TABLE IF EXISTS platform_org_unit CASCADE;
+DROP TABLE IF EXISTS platform_tenant CASCADE;

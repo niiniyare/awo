@@ -1,0 +1,1271 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awo Framework — Developer Showcase</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/sdk.css" />
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/iconfont.css" />
+
+  <style>
+    /* ── CSS Custom Property Tokens ─────────────────────────────────────────── */
+    :root {
+      --brand:          #1677ff;
+      --brand-dark:     #0958d9;
+      --bg:             #f5f7fa;
+      --surface:        #ffffff;
+      --surface-2:      #f0f2f5;
+      --border:         #e8eaed;
+      --text:           #1a1a2e;
+      --text-secondary: #6b7280;
+      --text-muted:     #9ca3af;
+      --success:        #52c41a;
+      --warning:        #faad14;
+      --danger:         #ff4d4f;
+      --radius:         8px;
+      --shadow:         0 1px 4px rgba(0,0,0,0.08), 0 4px 16px rgba(0,0,0,0.05);
+      --shadow-sm:      0 1px 3px rgba(0,0,0,0.08);
+      --font:           -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+
+      /* AMIS token overrides */
+      --colors-brand-primary:   #1677ff;
+      --background:             #f5f7fa;
+      --body-bg:                #f5f7fa;
+      --Page-main-bg:           #f5f7fa;
+      --Panel-bg-color:         #ffffff;
+      --Table-bg:               #ffffff;
+    }
+
+    html.dark {
+      --bg:             #0d0d14;
+      --surface:        #1a1a2e;
+      --surface-2:      #16213e;
+      --border:         #2a2a3e;
+      --text:           #e8eaf0;
+      --text-secondary: #9ca3af;
+      --text-muted:     #6b7280;
+      --shadow:         0 1px 4px rgba(0,0,0,0.3), 0 4px 16px rgba(0,0,0,0.2);
+
+      --colors-neutral-fill-11:  #0d0d14;
+      --colors-neutral-fill-10:  #141421;
+      --colors-neutral-fill-9:   #1a1a2e;
+      --colors-neutral-fill-8:   #24243a;
+      --colors-neutral-text-2:   #c8cad6;
+      --colors-neutral-line-8:   #2a2a3e;
+      --background:              #0d0d14;
+      --body-bg:                 #0d0d14;
+      --Page-main-bg:            #141421;
+      --Panel-bg-color:          #1a1a2e;
+      --Table-bg:                #1a1a2e;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.5;
+    }
+
+    /* ── Top bar ─────────────────────────────────────────────────────────── */
+    .topbar {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--surface);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 0;
+      height: 56px;
+      padding: 0 24px;
+      box-shadow: var(--shadow-sm);
+    }
+
+    .topbar-logo {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--brand);
+      margin-right: 32px;
+      text-decoration: none;
+      flex-shrink: 0;
+    }
+
+    .topbar-logo-icon {
+      width: 32px;
+      height: 32px;
+      background: var(--brand);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      color: #fff;
+      font-size: 16px;
+      font-weight: 700;
+    }
+
+    .topbar-tabs {
+      display: flex;
+      align-items: center;
+      gap: 2px;
+      flex: 1;
+    }
+
+    .tab-btn {
+      padding: 6px 16px;
+      border: none;
+      background: none;
+      border-radius: var(--radius);
+      cursor: pointer;
+      font-size: 14px;
+      font-family: var(--font);
+      color: var(--text-secondary);
+      transition: background 0.15s, color 0.15s;
+      font-weight: 500;
+    }
+
+    .tab-btn:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .tab-btn.active {
+      background: rgba(22, 119, 255, 0.1);
+      color: var(--brand);
+    }
+
+    .topbar-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .theme-toggle {
+      width: 36px;
+      height: 36px;
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      background: var(--surface);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      color: var(--text-secondary);
+      transition: background 0.15s;
+    }
+
+    .theme-toggle:hover {
+      background: var(--surface-2);
+    }
+
+    /* ── Main layout ─────────────────────────────────────────────────────── */
+    .main {
+      max-width: 1400px;
+      margin: 0 auto;
+      padding: 32px 24px;
+    }
+
+    /* ── Tab panels ──────────────────────────────────────────────────────── */
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ── Cards ───────────────────────────────────────────────────────────── */
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .card-header {
+      padding: 16px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+    }
+
+    .card-title {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .card-subtitle {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .card-body {
+      padding: 20px;
+    }
+
+    /* ── Grid ────────────────────────────────────────────────────────────── */
+    .grid-2 {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+
+    .grid-3 {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .grid-4 {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 20px;
+    }
+
+    @media (max-width: 900px) {
+      .grid-2, .grid-3, .grid-4 { grid-template-columns: 1fr; }
+    }
+
+    /* ── Entity Explorer ─────────────────────────────────────────────────── */
+    .explorer-layout {
+      display: grid;
+      grid-template-columns: 260px 1fr;
+      gap: 20px;
+      min-height: 600px;
+    }
+
+    .entity-sidebar {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow-y: auto;
+    }
+
+    .entity-sidebar-header {
+      padding: 14px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .entity-group-label {
+      padding: 10px 16px 4px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-muted);
+    }
+
+    .entity-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 16px;
+      font-size: 14px;
+      cursor: pointer;
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+      user-select: none;
+    }
+
+    .entity-item:hover {
+      background: var(--surface-2);
+    }
+
+    .entity-item.active {
+      border-left-color: var(--brand);
+      color: var(--brand);
+      background: rgba(22, 119, 255, 0.06);
+    }
+
+    .entity-item-icon {
+      width: 20px;
+      height: 20px;
+      border-radius: 4px;
+      background: var(--brand);
+      opacity: 0.15;
+      flex-shrink: 0;
+    }
+
+    .entity-item.active .entity-item-icon {
+      opacity: 1;
+      background: var(--brand);
+    }
+
+    .entity-view-area {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      box-shadow: var(--shadow-sm);
+      overflow: hidden;
+    }
+
+    .entity-view-toolbar {
+      padding: 12px 20px;
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      background: var(--surface-2);
+    }
+
+    .view-mode-btn {
+      padding: 4px 12px;
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      background: var(--surface);
+      cursor: pointer;
+      font-size: 13px;
+      font-family: var(--font);
+      color: var(--text-secondary);
+      transition: all 0.12s;
+    }
+
+    .view-mode-btn:hover {
+      background: var(--surface-2);
+      color: var(--text);
+    }
+
+    .view-mode-btn.active {
+      background: var(--brand);
+      color: #fff;
+      border-color: var(--brand);
+    }
+
+    .entity-content {
+      padding: 0;
+      min-height: 400px;
+    }
+
+    .entity-placeholder {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: 400px;
+      color: var(--text-muted);
+      gap: 12px;
+    }
+
+    .entity-placeholder-icon {
+      font-size: 48px;
+      opacity: 0.3;
+    }
+
+    /* ── Widget Gallery ──────────────────────────────────────────────────── */
+    .gallery-section {
+      margin-bottom: 32px;
+    }
+
+    .gallery-section-title {
+      font-size: 16px;
+      font-weight: 600;
+      margin-bottom: 16px;
+      padding-bottom: 8px;
+      border-bottom: 2px solid var(--brand);
+      color: var(--text);
+    }
+
+    .widget-demo {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      margin-bottom: 16px;
+    }
+
+    .widget-demo-label {
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.1em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      margin-bottom: 12px;
+    }
+
+    /* ── Framework Info ──────────────────────────────────────────────────── */
+    .info-stat {
+      text-align: center;
+      padding: 24px 16px;
+    }
+
+    .info-stat-value {
+      font-size: 42px;
+      font-weight: 700;
+      color: var(--brand);
+      line-height: 1;
+      margin-bottom: 8px;
+    }
+
+    .info-stat-label {
+      font-size: 13px;
+      color: var(--text-secondary);
+      font-weight: 500;
+    }
+
+    .entity-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 14px;
+    }
+
+    .entity-table th {
+      text-align: left;
+      padding: 10px 16px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.05em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .entity-table td {
+      padding: 10px 16px;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .entity-table tr:last-child td {
+      border-bottom: none;
+    }
+
+    .entity-table tr:hover td {
+      background: var(--surface-2);
+    }
+
+    .badge {
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 100px;
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    .badge-blue  { background: rgba(22,119,255,0.12); color: var(--brand); }
+    .badge-green { background: rgba(82,196,26,0.12);  color: var(--success); }
+    .badge-gray  { background: var(--surface-2);      color: var(--text-secondary); }
+
+    /* ── Theme Switcher ──────────────────────────────────────────────────── */
+    .theme-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 16px;
+      margin-bottom: 24px;
+    }
+
+    .theme-card {
+      border: 2px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px;
+      cursor: pointer;
+      transition: border-color 0.15s, box-shadow 0.15s;
+      background: var(--surface);
+      text-align: center;
+    }
+
+    .theme-card:hover {
+      border-color: var(--brand);
+      box-shadow: 0 0 0 3px rgba(22,119,255,0.1);
+    }
+
+    .theme-card.selected {
+      border-color: var(--brand);
+      background: rgba(22,119,255,0.04);
+    }
+
+    .theme-swatch {
+      height: 60px;
+      border-radius: 6px;
+      margin-bottom: 12px;
+      border: 1px solid var(--border);
+    }
+
+    .theme-card-name {
+      font-weight: 600;
+      font-size: 15px;
+      margin-bottom: 4px;
+    }
+
+    .theme-card-desc {
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    /* ── Loading / error states ──────────────────────────────────────────── */
+    .loading {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      color: var(--text-muted);
+      gap: 10px;
+      font-size: 14px;
+    }
+
+    .loading-spinner {
+      width: 20px;
+      height: 20px;
+      border: 2px solid var(--border);
+      border-top-color: var(--brand);
+      border-radius: 50%;
+      animation: spin 0.7s linear infinite;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    .error-box {
+      background: rgba(255,77,79,0.08);
+      border: 1px solid rgba(255,77,79,0.3);
+      border-radius: var(--radius);
+      padding: 16px 20px;
+      color: var(--danger);
+      font-size: 14px;
+    }
+
+    /* ── Util ────────────────────────────────────────────────────────────── */
+    .mb-20 { margin-bottom: 20px; }
+    .mb-32 { margin-bottom: 32px; }
+    .text-sm { font-size: 13px; }
+    .text-muted { color: var(--text-secondary); }
+    .fw-600 { font-weight: 600; }
+    .gap-12 { gap: 12px; }
+    .flex { display: flex; }
+    .flex-col { flex-direction: column; }
+    .items-center { align-items: center; }
+
+    /* ── Renderer badge display ──────────────────────────────────────────── */
+    .renderer-info {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+      color: var(--text-secondary);
+    }
+
+    .renderer-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: rgba(22,119,255,0.1);
+      color: var(--brand);
+      border-radius: 100px;
+      padding: 2px 10px;
+      font-size: 12px;
+      font-weight: 600;
+    }
+  </style>
+</head>
+<body>
+
+<!-- ── Top Bar ───────────────────────────────────────────────────────────── -->
+<div class="topbar">
+  <a class="topbar-logo" href="/showcase">
+    <div class="topbar-logo-icon">A</div>
+    <span>Awo Framework</span>
+  </a>
+
+  <div class="topbar-tabs">
+    <button class="tab-btn active" onclick="showTab('explorer', this)">Entity Explorer</button>
+    <button class="tab-btn" onclick="showTab('gallery', this)">Widget Gallery</button>
+    <button class="tab-btn" onclick="showTab('themes', this)">Theme Switcher</button>
+    <button class="tab-btn" onclick="showTab('info', this)">Framework Info</button>
+  </div>
+
+  <div class="topbar-actions">
+    <div class="renderer-info">
+      Renderer: <span class="renderer-chip" id="active-renderer">amis</span>
+    </div>
+    <button class="theme-toggle" onclick="toggleDark()" title="Toggle dark mode">&#9680;</button>
+    <a href="/ui" style="padding:6px 14px;background:var(--brand);color:#fff;border-radius:var(--radius);font-size:13px;font-weight:600;text-decoration:none;">Open ERP</a>
+  </div>
+</div>
+
+<!-- ── Main Content ──────────────────────────────────────────────────────── -->
+<div class="main">
+
+  <!-- ── Entity Explorer ─────────────────────────────────────────────────── -->
+  <div id="tab-explorer" class="tab-panel active">
+    <div class="explorer-layout">
+      <!-- Entity sidebar -->
+      <div class="entity-sidebar">
+        <div class="entity-sidebar-header">Entities</div>
+        <div id="entity-list">
+          <div class="loading"><div class="loading-spinner"></div> Loading...</div>
+        </div>
+      </div>
+
+      <!-- Entity view area -->
+      <div class="entity-view-area">
+        <div class="entity-view-toolbar">
+          <span id="entity-view-title" style="font-weight:600;font-size:14px;flex:1;">Select an entity</span>
+          <button class="view-mode-btn active" id="btn-list"   onclick="setViewMode('list', this)">List</button>
+          <button class="view-mode-btn"        id="btn-create" onclick="setViewMode('create', this)">Create</button>
+        </div>
+        <div id="entity-content" class="entity-content">
+          <div class="entity-placeholder">
+            <div class="entity-placeholder-icon">&#9674;</div>
+            <div style="font-size:16px;font-weight:500;">Select an entity</div>
+            <div style="font-size:14px;">Choose an entity from the sidebar to view its SDUI schema</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Widget Gallery ──────────────────────────────────────────────────── -->
+  <div id="tab-gallery" class="tab-panel">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Widget Gallery</h2>
+      <p class="text-muted text-sm">All SDUI widget types rendered via the AMIS renderer. Each section demonstrates a NodeKind from the widget IR.</p>
+    </div>
+
+    <div id="gallery-content">
+      <div class="loading"><div class="loading-spinner"></div> Loading widget gallery...</div>
+    </div>
+  </div>
+
+  <!-- ── Theme Switcher ──────────────────────────────────────────────────── -->
+  <div id="tab-themes" class="tab-panel">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Theme Switcher</h2>
+      <p class="text-muted text-sm">Switch between renderers and themes. The renderer is selected via the <code>Accept-SDUI-Renderer</code> header.</p>
+    </div>
+
+    <div class="theme-cards mb-32">
+      <div class="theme-card selected" onclick="selectRenderer('amis', this)">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #1677ff 0%, #0958d9 100%);"></div>
+        <div class="theme-card-name">AMIS (Default)</div>
+        <div class="theme-card-desc">Baidu AMIS JSON schema renderer. Production-ready with full widget set.</div>
+      </div>
+      <div class="theme-card" onclick="selectRenderer('amis-dark', this)">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #141421 0%, #0d0d14 100%); border-color: #2a2a3e;"></div>
+        <div class="theme-card-name">Dark Mode</div>
+        <div class="theme-card-desc">CSS custom property token override — no AMIS dark theme, pure CSS inversion.</div>
+      </div>
+      <div class="theme-card" onclick="selectRenderer('future', this)">
+        <div class="theme-swatch" style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);"></div>
+        <div class="theme-card-name">Future Renderer</div>
+        <div class="theme-card-desc">Plug in a custom renderer by returning a different ID in Accept-SDUI-Renderer.</div>
+      </div>
+    </div>
+
+    <div class="card mb-20">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Active Renderer</div>
+          <div class="card-subtitle" id="renderer-detail">Using: amis — AMIS JSON schema renderer</div>
+        </div>
+      </div>
+      <div class="card-body">
+        <div style="margin-bottom:16px;">
+          <div style="font-size:13px;color:var(--text-secondary);margin-bottom:8px;">HTTP Header:</div>
+          <code style="background:var(--surface-2);padding:8px 12px;border-radius:6px;font-size:13px;display:block;">Accept-SDUI-Renderer: <span id="renderer-header-value">amis</span></code>
+        </div>
+        <div style="font-size:13px;color:var(--text-secondary);">
+          All SDUI endpoint responses will use this renderer. Entity Explorer above reflects the selected renderer.
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header"><div class="card-title">Dark Mode Implementation</div></div>
+      <div class="card-body">
+        <p style="font-size:14px;margin-bottom:12px;">Awo does not use the AMIS built-in <code>theme("dark")</code> — it produces a <code>dark-</code> CSS prefix with zero rules defined, breaking all styling.</p>
+        <p style="font-size:14px;margin-bottom:12px;">Instead, all dark mode is achieved by overriding CSS custom property tokens on <code>html.dark</code>:</p>
+        <pre style="background:var(--surface-2);padding:16px;border-radius:6px;font-size:12px;overflow:auto;color:var(--text);">html.dark {
+  --colors-neutral-fill-11:  #141414;
+  --colors-neutral-fill-10:  #1d1d1d;
+  --colors-neutral-fill-9:   #2a2a2a;
+  --colors-neutral-text-2:   #e0e0e0;
+  --background:              #141414;
+  --Panel-bg-color:          #1d1d1d;
+  --Table-bg:                #1d1d1d;
+}</pre>
+        <p style="font-size:13px;color:var(--text-secondary);margin-top:12px;">Never override individual <code>.cxd-*</code> backgrounds with <code>!important</code> — that approach is whack-a-mole and breaks with AMIS updates.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Framework Info ──────────────────────────────────────────────────── -->
+  <div id="tab-info" class="tab-panel">
+    <div style="margin-bottom:24px;">
+      <h2 style="font-size:22px;font-weight:700;margin-bottom:6px;">Framework Info</h2>
+      <p class="text-muted text-sm">Live metadata from the compiled schema. Source: <code>GET /api/v1/showcase/info</code></p>
+    </div>
+
+    <div id="info-content">
+      <div class="loading"><div class="loading-spinner"></div> Loading framework info...</div>
+    </div>
+  </div>
+
+</div>
+
+<script src="https://unpkg.com/amis@3.6.6/sdk/sdk.js"></script>
+<script>
+// Resolve amis.embed across AMIS v2/v3 SDK variants.
+(function () {
+  var amisType = typeof amis;
+  var reqType  = typeof amisRequire;
+  var embedFn  = null;
+  var unmountFn = function (el) {
+    if (typeof amisRequire === 'function') {
+      try { var m = amisRequire('amis/embed'); if (m && m.unmount) { m.unmount(el); return; } } catch(e){}
+    }
+    if (typeof amis !== 'undefined' && typeof amis.unmount === 'function') amis.unmount(el);
+  };
+
+  if (amisType !== 'undefined' && typeof amis.embed === 'function') {
+    embedFn = function (el, s, p, e) { return amis.embed(el, s, p, e); };
+  } else if (amisType === 'function') {
+    embedFn = function (el, s, p, e) { return amis(el, s, p, e); };
+  } else if (reqType === 'function') {
+    try {
+      var em = amisRequire('amis/embed');
+      if (em && typeof em.embed === 'function') embedFn = function (el, s, p, e) { return em.embed(el, s, p, e); };
+      else if (typeof em === 'function') embedFn = function (el, s, p, e) { return em(el, s, p, e); };
+    } catch(e) {}
+    if (!embedFn) {
+      try {
+        var am = amisRequire('amis');
+        if (am && typeof am.embed === 'function') embedFn = function (el, s, p, e) { return am.embed(el, s, p, e); };
+      } catch(e2) {}
+    }
+  }
+  window._amisEmbed   = embedFn;
+  window._amisUnmount = unmountFn;
+  console.log('[showcase] SDK: amis=' + amisType + ' amisRequire=' + reqType + ' embed=' + (embedFn ? 'ok' : 'MISSING'));
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  /* ── State ─────────────────────────────────────────────────────────────── */
+  var state = {
+    dark:         false,
+    renderer:     'amis',
+    activeEntity: null,
+    viewMode:     'list',
+    amisApps:     {},
+    navModules:   [],
+  };
+
+  /* ── Dark mode ─────────────────────────────────────────────────────────── */
+  function initDark() {
+    state.dark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyDark();
+  }
+  function applyDark() {
+    document.documentElement.classList.toggle('dark', state.dark);
+  }
+  window.toggleDark = function () {
+    state.dark = !state.dark;
+    applyDark();
+  };
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function (e) {
+      state.dark = e.matches;
+      applyDark();
+    });
+  }
+  initDark();
+
+  /* ── Tab switching ─────────────────────────────────────────────────────── */
+  window.showTab = function (id, btn) {
+    document.querySelectorAll('.tab-panel').forEach(function (p) { p.classList.remove('active'); });
+    document.querySelectorAll('.tab-btn').forEach(function (b)  { b.classList.remove('active'); });
+    document.getElementById('tab-' + id).classList.add('active');
+    btn.classList.add('active');
+
+    // Lazy-load tab content on first activation.
+    if (id === 'gallery'  && !state.galleryLoaded)  { loadGallery(); state.galleryLoaded = true; }
+    if (id === 'info'     && !state.infoLoaded)     { loadInfo();    state.infoLoaded    = true; }
+    if (id === 'explorer' && !state.explorerLoaded) { loadExplorer();state.explorerLoaded= true; }
+  };
+
+  /* ── Renderer selection ────────────────────────────────────────────────── */
+  window.selectRenderer = function (id, card) {
+    document.querySelectorAll('.theme-card').forEach(function (c) { c.classList.remove('selected'); });
+    card.classList.add('selected');
+
+    var displayId = id === 'amis-dark' ? 'amis' : id;
+    state.renderer = displayId;
+    document.getElementById('active-renderer').textContent     = displayId;
+    document.getElementById('renderer-header-value').textContent = displayId;
+    document.getElementById('renderer-detail').textContent =
+      'Using: ' + displayId + (id === 'amis-dark' ? ' (dark CSS tokens applied)' : '');
+
+    if (id === 'amis-dark') {
+      state.dark = true;
+      applyDark();
+    }
+  };
+
+  /* ── Entity Explorer ───────────────────────────────────────────────────── */
+  state.explorerLoaded = true; // loaded on page load
+
+  function loadExplorer() {
+    fetch('/api/v1/ui/nav', { credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (modules) {
+        state.navModules = modules || [];
+        renderEntitySidebar(modules);
+      })
+      .catch(function (err) {
+        document.getElementById('entity-list').innerHTML =
+          '<div style="padding:16px;color:var(--text-muted);font-size:13px;">Failed to load entities: ' + err.message + '</div>';
+      });
+  }
+  loadExplorer();
+
+  function renderEntitySidebar(modules) {
+    var el = document.getElementById('entity-list');
+    if (!modules || modules.length === 0) {
+      el.innerHTML = '<div style="padding:16px;color:var(--text-muted);font-size:13px;">No entities registered</div>';
+      return;
+    }
+    var html = '';
+    for (var i = 0; i < modules.length; i++) {
+      var mod = modules[i];
+      html += '<div class="entity-group-label">' + esc(mod.label) + '</div>';
+      for (var j = 0; j < (mod.entries || []).length; j++) {
+        var entry = mod.entries[j];
+        html += '<div class="entity-item" data-url="' + esc(entry.listUrl) + '" data-label="' + esc(entry.label) + '" onclick="selectEntity(this)">'
+              + '<div class="entity-item-icon"></div>'
+              + esc(entry.label)
+              + '</div>';
+      }
+    }
+    el.innerHTML = html;
+  }
+
+  window.selectEntity = function (el) {
+    document.querySelectorAll('.entity-item').forEach(function (i) { i.classList.remove('active'); });
+    el.classList.add('active');
+    var url = el.getAttribute('data-url');
+    var label = el.getAttribute('data-label');
+    state.activeEntityUrl  = url;
+    state.activeEntityLabel = label;
+    state.viewMode = 'list';
+    document.getElementById('entity-view-title').textContent = label;
+    resetViewModeBtns('btn-list');
+    loadEntitySDUI();
+  };
+
+  window.setViewMode = function (mode, btn) {
+    state.viewMode = mode;
+    resetViewModeBtns(btn.id);
+    loadEntitySDUI();
+  };
+
+  function resetViewModeBtns(activeId) {
+    document.querySelectorAll('.view-mode-btn').forEach(function (b) { b.classList.remove('active'); });
+    document.getElementById(activeId).classList.add('active');
+  }
+
+  function loadEntitySDUI() {
+    if (!state.activeEntityUrl) return;
+    var base = '/api/v1' + state.activeEntityUrl.replace('/ui', '/ui');
+    // Convert /ui/{module}/{resource} → /api/v1/ui/{module}/{resource}
+    var apiUrl = state.activeEntityUrl.replace(/^\/ui\//, '/api/v1/ui/');
+    if (state.viewMode === 'create') {
+      apiUrl = apiUrl + '/create';
+    }
+
+    var content = document.getElementById('entity-content');
+    content.innerHTML = '<div class="loading"><div class="loading-spinner"></div> Loading ' + esc(state.viewMode) + ' view...</div>';
+
+    fetch(apiUrl, {
+      credentials: 'include',
+      headers: { 'Accept-SDUI-Renderer': state.renderer },
+    })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (schema) {
+        content.innerHTML = '';
+        var key = apiUrl;
+        if (state.amisApps[key]) { window._amisUnmount(content); }
+        state.amisApps[key] = window._amisEmbed && window._amisEmbed(content, schema, {}, { fetcher: amisFetcher });
+      })
+      .catch(function (err) {
+        content.innerHTML = '<div style="padding:20px;"><div class="error-box">Failed to load: ' + esc(err.message) + '</div></div>';
+      });
+  }
+
+  /* ── Widget Gallery ────────────────────────────────────────────────────── */
+  function loadGallery() {
+    var container = document.getElementById('gallery-content');
+
+    // Build a comprehensive AMIS schema showcasing every NodeKind.
+    var gallerySchema = buildGallerySchema();
+
+    container.innerHTML = '';
+    if (window._amisEmbed) window._amisEmbed(container, gallerySchema, {}, { fetcher: amisFetcher });
+  }
+
+  function buildGallerySchema() {
+    return {
+      type: 'page',
+      body: [
+        // ── Input fields ─────────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Text Inputs — NodeText, NodeTextArea, NodeRichText',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              { type: 'input-text',     name: 'single_line', label: 'Single Line (NodeText)',   placeholder: 'Enter text...', description: 'FieldTypeData → NodeText' },
+              { type: 'textarea',       name: 'multi_line',  label: 'Multi-line (NodeTextArea)', placeholder: 'Enter longer text...', description: 'FieldTypeSmallText / LongText → NodeTextArea' },
+              { type: 'input-rich-text', name: 'rich',       label: 'Rich Text (NodeRichText)', description: 'FieldTypeLongText (rich) → NodeRichText' },
+            ]
+          }
+        },
+        // ── Number / Money ───────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Numeric Inputs — NodeNumber, NodeMoney',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              { type: 'input-number', name: 'qty',    label: 'Integer (NodeNumber)',  min: 0, step: 1, description: 'FieldTypeInt → NodeNumber' },
+              { type: 'input-number', name: 'rate',   label: 'Float (NodeNumber)',    step: 0.01, description: 'FieldTypeFloat → NodeNumber' },
+              { type: 'input-number', name: 'amount', label: 'Currency (NodeMoney)',  precision: 4, step: 0.0001, prefix: 'KES', description: 'FieldTypeCurrency → NodeMoney' },
+            ]
+          }
+        },
+        // ── Select / Multi-select ────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Selection — NodeSelect, NodeMultiSelect, NodeLookup, NodeTreeSelect',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              {
+                type: 'select', name: 'status', label: 'Dropdown (NodeSelect)',
+                options: [{ label: 'Active', value: 'active' }, { label: 'Inactive', value: 'inactive' }, { label: 'Prospect', value: 'prospect' }],
+                description: 'FieldTypeSelect → NodeSelect'
+              },
+              {
+                type: 'select', name: 'categories', label: 'Multi-select (NodeMultiSelect)', multiple: true,
+                options: [
+                  { label: 'Electronics', value: 'electronics' },
+                  { label: 'Clothing',    value: 'clothing' },
+                  { label: 'Software',    value: 'software' },
+                  { label: 'Services',    value: 'services' },
+                ],
+                description: 'FieldTypeMultiSelect → NodeMultiSelect'
+              },
+              {
+                type: 'select', name: 'lookup_demo', label: 'Lookup (NodeLookup)',
+                searchable: true,
+                options: [{ label: 'Customer A', value: '1' }, { label: 'Customer B', value: '2' }],
+                description: 'FieldTypeLink → NodeLookup (FK autocomplete)'
+              },
+              {
+                type: 'tree-select', name: 'org_unit', label: 'Tree Select (NodeTreeSelect)',
+                options: [
+                  { label: 'CEO', value: '1', children: [
+                    { label: 'Engineering', value: '2', children: [{ label: 'Frontend', value: '3' }, { label: 'Backend', value: '4' }] },
+                    { label: 'Finance',     value: '5' },
+                    { label: 'Sales',       value: '6' },
+                  ]}
+                ],
+                description: 'ltree hierarchy → NodeTreeSelect'
+              },
+            ]
+          }
+        },
+        // ── Date / Time ──────────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Date & Time — NodeDate, NodeDateTime, NodeDuration',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              { type: 'input-date',     name: 'date',     label: 'Date (NodeDate)',     format: 'YYYY-MM-DD', description: 'FieldTypeDate → NodeDate' },
+              { type: 'input-datetime', name: 'datetime', label: 'Datetime (NodeDateTime)', format: 'YYYY-MM-DD HH:mm', description: 'FieldTypeDateTime → NodeDateTime' },
+              { type: 'input-date-range', name: 'range',  label: 'Date Range', description: 'Dashboard filter range' },
+            ]
+          }
+        },
+        // ── Boolean / Color ──────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Boolean & Color — NodeSwitch, NodeColor',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              { type: 'switch', name: 'newsletter', label: 'Switch (NodeSwitch)', onText: 'Yes', offText: 'No', description: 'FieldTypeBool → NodeSwitch' },
+              { type: 'switch', name: 'urgent',     label: 'Urgent flag',  onText: 'Yes', offText: 'No' },
+              { type: 'input-color', name: 'color', label: 'Color Picker (NodeColor)', description: 'color picker → NodeColor' },
+            ]
+          }
+        },
+        // ── File / Signature ─────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'File & Signature — NodeFileUpload, NodeSignature',
+          body: {
+            type: 'form',
+            mode: 'horizontal',
+            labelWidth: 160,
+            wrapWithPanel: false,
+            controls: [
+              { type: 'input-file',  name: 'attachment', label: 'File Upload (NodeFileUpload)', description: 'FieldTypeFile → NodeFileUpload', accept: '*' },
+              { type: 'input-image', name: 'image',      label: 'Image Upload', description: 'Image variant of NodeFileUpload' },
+            ]
+          }
+        },
+        // ── Display (non-input) ──────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Display Nodes — NodeStaticText, NodeBadge, NodeSummaryCard',
+          body: [
+            { type: 'static', label: 'Static Text (NodeStaticText)', value: 'This is read-only display text. Not an input field.' },
+            {
+              type: 'tpl',
+              tpl: '<div style="margin:8px 0;display:flex;gap:8px;flex-wrap:wrap;">'
+                 + '<span style="display:inline-block;padding:2px 10px;border-radius:100px;background:rgba(82,196,26,.12);color:#52c41a;font-size:12px;font-weight:600;">Active (NodeBadge success)</span>'
+                 + '<span style="display:inline-block;padding:2px 10px;border-radius:100px;background:rgba(250,173,20,.12);color:#faad14;font-size:12px;font-weight:600;">Pending (NodeBadge warning)</span>'
+                 + '<span style="display:inline-block;padding:2px 10px;border-radius:100px;background:rgba(255,77,79,.12);color:#ff4d4f;font-size:12px;font-weight:600;">Cancelled (NodeBadge danger)</span>'
+                 + '<span style="display:inline-block;padding:2px 10px;border-radius:100px;background:rgba(22,119,255,.12);color:#1677ff;font-size:12px;font-weight:600;">Review (NodeBadge info)</span>'
+                 + '</div>'
+            },
+          ]
+        },
+        // ── Structural ───────────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'Structural — NodeForm with sections (NodeSection) and tabs (NodeTabs)',
+          body: {
+            type: 'tabs',
+            tabs: [
+              {
+                title: 'Basic Info (NodeTabPane)',
+                body: {
+                  type: 'form',
+                  wrapWithPanel: false,
+                  mode: 'horizontal',
+                  labelWidth: 140,
+                  controls: [
+                    { type: 'input-text', name: 'tab_name',  label: 'Name' },
+                    { type: 'input-text', name: 'tab_email', label: 'Email' },
+                    { type: 'select',     name: 'tab_dept',  label: 'Department',
+                      options: [{ label: 'Engineering', value: 'eng' }, { label: 'Finance', value: 'fin' }] },
+                  ]
+                }
+              },
+              {
+                title: 'Financial (NodeTabPane)',
+                body: {
+                  type: 'form',
+                  wrapWithPanel: false,
+                  mode: 'horizontal',
+                  labelWidth: 140,
+                  controls: [
+                    { type: 'input-number', name: 'salary', label: 'Salary', prefix: 'KES', precision: 2 },
+                    { type: 'input-date',   name: 'pay_date', label: 'Pay Date' },
+                  ]
+                }
+              },
+              {
+                title: 'Notes (NodeTabPane)',
+                body: { type: 'textarea', name: 'notes_tab', label: '', placeholder: 'Additional notes...', wrapWithPanel: false }
+              }
+            ]
+          }
+        },
+        // ── Dashboard: KPI, Chart, Table, FilterBar ──────────────────────────
+        {
+          type: 'panel',
+          title: 'Dashboard — NodeKPICard, NodeChartPanel, NodeTablePanel, NodeFilterBar',
+          body: [
+            {
+              type: 'grid',
+              columns: [
+                { body: { type: 'tpl', tpl: '<div style="text-align:center;padding:20px;background:var(--Panel-bg-color);border:1px solid var(--colors-neutral-line-8,#f0f0f0);border-radius:8px;"><div style="font-size:32px;font-weight:700;color:#1677ff;">KES 4.2M</div><div style="color:#8c8c8c;font-size:13px;margin-top:4px;">Revenue (NodeKPICard)</div></div>' } },
+                { body: { type: 'tpl', tpl: '<div style="text-align:center;padding:20px;background:var(--Panel-bg-color);border:1px solid var(--colors-neutral-line-8,#f0f0f0);border-radius:8px;"><div style="font-size:32px;font-weight:700;color:#52c41a;">2,847</div><div style="color:#8c8c8c;font-size:13px;margin-top:4px;">Orders (NodeKPICard)</div></div>' } },
+                { body: { type: 'tpl', tpl: '<div style="text-align:center;padding:20px;background:var(--Panel-bg-color);border:1px solid var(--colors-neutral-line-8,#f0f0f0);border-radius:8px;"><div style="font-size:32px;font-weight:700;color:#faad14;">94.2%</div><div style="color:#8c8c8c;font-size:13px;margin-top:4px;">Satisfaction (NodeKPICard)</div></div>' } },
+                { body: { type: 'tpl', tpl: '<div style="text-align:center;padding:20px;background:var(--Panel-bg-color);border:1px solid var(--colors-neutral-line-8,#f0f0f0);border-radius:8px;"><div style="font-size:32px;font-weight:700;color:#722ed1;">183</div><div style="color:#8c8c8c;font-size:13px;margin-top:4px;">Customers (NodeKPICard)</div></div>' } },
+              ]
+            },
+            {
+              type: 'tpl',
+              tpl: '<div style="padding:16px;margin-top:12px;background:var(--Panel-bg-color);border:1px solid var(--colors-neutral-line-8,#f0f0f0);border-radius:8px;">'
+                 + '<div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#8c8c8c;">NodeChartPanel (bar chart placeholder)</div>'
+                 + '<div style="height:120px;background:linear-gradient(to right,rgba(22,119,255,.08),rgba(22,119,255,.02));border:1px dashed rgba(22,119,255,.3);border-radius:6px;display:flex;align-items:flex-end;padding:12px;gap:8px;">'
+                 + '<div style="flex:1;background:#1677ff;opacity:.7;border-radius:3px 3px 0 0;height:60%;"></div>'
+                 + '<div style="flex:1;background:#1677ff;opacity:.5;border-radius:3px 3px 0 0;height:80%;"></div>'
+                 + '<div style="flex:1;background:#1677ff;opacity:.9;border-radius:3px 3px 0 0;height:45%;"></div>'
+                 + '<div style="flex:1;background:#1677ff;opacity:.6;border-radius:3px 3px 0 0;height:100%;"></div>'
+                 + '<div style="flex:1;background:#1677ff;opacity:.4;border-radius:3px 3px 0 0;height:70%;"></div>'
+                 + '<div style="flex:1;background:#1677ff;opacity:.8;border-radius:3px 3px 0 0;height:55%;"></div>'
+                 + '</div></div>'
+            },
+          ]
+        },
+        // ── JSON Editor ──────────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'JSON Editor — NodeEditor',
+          body: {
+            type: 'form',
+            wrapWithPanel: false,
+            controls: [
+              { type: 'json-editor', name: 'json_data', label: 'JSON (NodeEditor)', value: '{"example": true, "type": "FieldTypeJSON"}', description: 'FieldTypeJSON → NodeEditor (code editor with syntax highlighting)' }
+            ]
+          }
+        },
+        // ── CRUD List ────────────────────────────────────────────────────────
+        {
+          type: 'panel',
+          title: 'List View — NodeList (CRUD table)',
+          body: {
+            type: 'crud',
+            data: {
+              items: [
+                { id: '1', name: 'Acme Corp',    status: 'active',   joined_at: '2024-01-15', company: 'Acme Corp' },
+                { id: '2', name: 'TechStart Ltd', status: 'prospect', joined_at: '2024-03-22', company: 'TechStart' },
+                { id: '3', name: 'Global Traders',status: 'inactive', joined_at: '2023-11-01', company: 'Global Traders' },
+              ],
+              total: 3,
+            },
+            columns: [
+              { name: 'name',      label: 'Name',      sortable: true },
+              { name: 'status',    label: 'Status',    type: 'mapping', map: { active: '<span style="color:#52c41a;font-weight:600;">Active</span>', inactive: 'Inactive', prospect: '<span style="color:#faad14;font-weight:600;">Prospect</span>' } },
+              { name: 'company',   label: 'Company' },
+              { name: 'joined_at', label: 'Joined', type: 'date', format: 'YYYY-MM-DD' },
+            ],
+            description: 'FieldTypeList / entity list → NodeList (CRUD component)'
+          }
+        },
+      ]
+    };
+  }
+
+  /* ── Framework Info ────────────────────────────────────────────────────── */
+  function loadInfo() {
+    fetch('/api/v1/showcase/info', { credentials: 'include' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (info) {
+        renderInfo(info);
+      })
+      .catch(function (err) {
+        document.getElementById('info-content').innerHTML =
+          '<div class="error-box">Failed to load: ' + esc(err.message) + '. Is the server running?</div>';
+      });
+  }
+
+  function renderInfo(info) {
+    var el = document.getElementById('info-content');
+
+    var moduleBadges = (info.modules || []).map(function (m) {
+      return '<span class="badge badge-blue">' + esc(m) + '</span>';
+    }).join(' ');
+
+    var rendererBadges = (info.rendererIds || []).map(function (r) {
+      return '<span class="badge badge-green">' + esc(r) + '</span>';
+    }).join(' ');
+
+    el.innerHTML = ''
+      + '<div class="grid-4 mb-20">'
+      + '  <div class="card"><div class="info-stat"><div class="info-stat-value">' + info.entityCount + '</div><div class="info-stat-label">Entities</div></div></div>'
+      + '  <div class="card"><div class="info-stat"><div class="info-stat-value">' + info.routeCount  + '</div><div class="info-stat-label">HTTP Routes</div></div></div>'
+      + '  <div class="card"><div class="info-stat"><div class="info-stat-value">' + (info.modules || []).length + '</div><div class="info-stat-label">Modules</div></div></div>'
+      + '  <div class="card"><div class="info-stat"><div class="info-stat-value">' + esc(info.version) + '</div><div class="info-stat-label">Version</div></div></div>'
+      + '</div>'
+      + '<div class="grid-2 mb-20">'
+      + '  <div class="card"><div class="card-header"><div class="card-title">Modules</div></div><div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px;">' + moduleBadges + '</div></div>'
+      + '  <div class="card"><div class="card-header"><div class="card-title">Renderers</div></div><div class="card-body" style="display:flex;flex-wrap:wrap;gap:8px;">' + rendererBadges + '</div></div>'
+      + '</div>';
+
+    // Load entity table
+    fetch('/api/v1/showcase/entities', { credentials: 'include' })
+      .then(function (r) { return r.json(); })
+      .then(function (entities) {
+        renderEntityTable(entities, el);
+      })
+      .catch(function () {});
+  }
+
+  function renderEntityTable(entities, container) {
+    var rows = (entities || []).map(function (e) {
+      return '<tr>'
+           + '<td><strong>' + esc(e.qualifiedName) + '</strong></td>'
+           + '<td><span class="badge badge-blue">' + esc(e.module) + '</span></td>'
+           + '<td>' + esc(e.label) + '</td>'
+           + '<td>' + esc(e.labelPlural) + '</td>'
+           + '<td style="text-align:right;">' + e.fieldCount + '</td>'
+           + '<td><code style="font-size:11px;color:var(--text-secondary);">' + esc(e.routePrefix) + '</code></td>'
+           + '</tr>';
+    }).join('');
+
+    var div = document.createElement('div');
+    div.className = 'card';
+    div.innerHTML = ''
+      + '<div class="card-header"><div class="card-title">All Entities (' + entities.length + ')</div></div>'
+      + '<div style="overflow:auto;">'
+      + '<table class="entity-table">'
+      + '<thead><tr><th>Qualified Name</th><th>Module</th><th>Label</th><th>Label Plural</th><th style="text-align:right;">Fields</th><th>Route Prefix</th></tr></thead>'
+      + '<tbody>' + rows + '</tbody>'
+      + '</table>'
+      + '</div>';
+    container.appendChild(div);
+  }
+
+  /* ── AMIS fetcher ──────────────────────────────────────────────────────── */
+  function amisFetcher(opts) {
+    return fetch(opts.url, {
+      method: opts.method || 'GET',
+      headers: Object.assign(
+        { 'Content-Type': 'application/json', 'Accept-SDUI-Renderer': state.renderer },
+        opts.headers
+      ),
+      body: opts.data ? JSON.stringify(opts.data) : undefined,
+      credentials: 'include',
+    }).then(function (r) { return r.json(); });
+  }
+
+  /* ── Util ──────────────────────────────────────────────────────────────── */
+  function esc(str) {
+    return String(str || '')
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+})();
+</script>
+</body>
+</html>

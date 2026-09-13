@@ -1,0 +1,80 @@
+{
+  "type": "page",
+  "title": "Contacts",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/contact",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "full_name", "label": "Full Name", "type": "text" },
+      { "name": "email", "label": "Email", "type": "text" },
+      { "name": "phone", "label": "Phone", "type": "text" },
+      { "name": "company", "label": "Company", "type": "text" },
+      { "name": "position", "label": "Position", "type": "text" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Contact",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/contact/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/contact/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "full_name", "label": "Full Name", "required": true },
+                  { "type": "input-email", "name": "email", "label": "Email" },
+                  { "type": "input-text", "name": "phone", "label": "Phone" },
+                  { "type": "input-text", "name": "company", "label": "Company" },
+                  { "type": "input-text", "name": "position", "label": "Position" }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this contact?",
+            "api": { "method": "DELETE", "url": "/api/v1/contact/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Contact",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Contact",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/contact" },
+            "body": [
+              { "type": "input-text", "name": "full_name", "label": "Full Name", "required": true },
+              { "type": "input-email", "name": "email", "label": "Email" },
+              { "type": "input-text", "name": "phone", "label": "Phone" },
+              { "type": "input-text", "name": "company", "label": "Company" },
+              { "type": "input-text", "name": "position", "label": "Position" }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

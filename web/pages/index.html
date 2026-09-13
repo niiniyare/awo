@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport"
+    content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>Awo ERP</title>
+  <!-- AMIS v3.6.6 — stay on v3; backend renderer tuned to v3 semantics -->
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/sdk.css">
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/helper.css">
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/iconfont.css">
+  <!-- FontAwesome for shell chrome (sidebar icons, topbar buttons) -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  <style>
+    /* ── Design tokens ──────────────────────────────────────────────── */
+    :root {
+      /* Sidebar — always dark navy regardless of theme */
+      --sidebar-w: 240px;
+      --sidebar-bg: #0f172a;
+      --sidebar-text: #cbd5e1;
+      --sidebar-hover: #1e293b;
+      --sidebar-active-bg: #1e40af;
+      --sidebar-active-text: #fff;
+      --sidebar-group: #64748b;
+
+      /* Topbar / content — light defaults */
+      --topbar-h: 52px;
+      --brand: #1e40af;
+      --brand-dark: #1e3a8a;
+      --topbar-bg: #fff;
+      --topbar-border: #e2e8f0;
+      --content-bg: #f8fafc;
+      --footer-text: #94a3b8;
+
+      /* AMIS CSS token overrides — light mode */
+      --colors-brand-primary: #1677ff;
+      --background: #f5f5f5;
+      --body-bg: #f5f5f5;
+      --Page-main-bg: #f5f5f5;
+      --Panel-bg-color: #ffffff;
+      --Table-bg: #ffffff;
+    }
+
+    /* Dark mode — content area tokens only; sidebar is always dark */
+    html.dark {
+      --topbar-bg: #1e293b;
+      --topbar-border: #334155;
+      --content-bg: #0f172a;
+
+      /* AMIS token overrides for dark content area */
+      --background: #141414;
+      --body-bg: #1a1a1a;
+      --Page-main-bg: #1a1a1a;
+      --Panel-bg-color: #262626;
+      --Table-bg: #262626;
+      --colors-neutral-line-8: #434343;
+      --colors-neutral-fill-11: #1f1f1f;
+      --colors-neutral-text-2: #d9d9d9;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    html, body { height: 100%; font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; }
+
+    #app { display: flex; height: 100vh; overflow: hidden; }
+
+    /* ── Sidebar ─────────────────────────────────────────────────────── */
+    #sidebar {
+      width: var(--sidebar-w);
+      min-width: var(--sidebar-w);
+      background: var(--sidebar-bg);
+      color: var(--sidebar-text);
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      transition: width .2s ease, min-width .2s ease;
+      z-index: 50;
+    }
+
+    #sidebar.collapsed { width: 56px; min-width: 56px; }
+
+    .sidebar-brand {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 12px;
+      height: var(--topbar-h);
+      border-bottom: 1px solid #1e293b;
+      flex-shrink: 0;
+    }
+
+    .brand-content { display: flex; align-items: center; gap: 10px; overflow: hidden; }
+
+    .brand-icon {
+      width: 32px; height: 32px; border-radius: 8px;
+      background: var(--brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 16px; flex-shrink: 0;
+    }
+
+    .brand-text {
+      font-weight: 700; font-size: 15px; color: #f1f5f9;
+      white-space: nowrap; overflow: hidden;
+    }
+    #sidebar.collapsed .brand-text { display: none; }
+
+    .sidebar-toggle {
+      background: none; border: none; color: var(--sidebar-group);
+      cursor: pointer; padding: 6px; border-radius: 6px; flex-shrink: 0;
+      font-size: 14px;
+    }
+    .sidebar-toggle:hover { background: var(--sidebar-hover); color: #fff; }
+
+    .sidebar-menu {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 0;
+    }
+    .sidebar-menu::-webkit-scrollbar { width: 4px; }
+    .sidebar-menu::-webkit-scrollbar-thumb { background: #334155; border-radius: 2px; }
+
+    .nav-group-label {
+      padding: 12px 16px 4px;
+      font-size: 10px;
+      font-weight: 600;
+      letter-spacing: .08em;
+      text-transform: uppercase;
+      color: var(--sidebar-group);
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    #sidebar.collapsed .nav-group-label { visibility: hidden; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 8px 16px;
+      cursor: pointer;
+      color: var(--sidebar-text);
+      text-decoration: none;
+      font-size: 13.5px;
+      transition: background .15s;
+      white-space: nowrap;
+      overflow: hidden;
+    }
+    .nav-item:hover { background: var(--sidebar-hover); color: #f1f5f9; }
+    .nav-item.active { background: var(--sidebar-active-bg); color: var(--sidebar-active-text); }
+    .nav-item i { width: 18px; text-align: center; font-size: 13px; flex-shrink: 0; }
+    .nav-item span { overflow: hidden; text-overflow: ellipsis; }
+    #sidebar.collapsed .nav-item span { display: none; }
+
+    /* ── Main ────────────────────────────────────────────────────────── */
+    #main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      background: var(--content-bg);
+    }
+
+    #topbar {
+      height: var(--topbar-h);
+      background: var(--topbar-bg);
+      border-bottom: 1px solid var(--topbar-border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      flex-shrink: 0;
+      z-index: 40;
+    }
+
+    .topbar-toggle {
+      display: none;
+      background: none; border: none; cursor: pointer;
+      font-size: 16px; color: #64748b; padding: 6px;
+    }
+
+    .breadcrumb { font-size: 13px; color: #64748b; display: flex; align-items: center; gap: 6px; }
+    .bc-sep { color: #cbd5e1; }
+    .bc-current { color: #1e293b; font-weight: 500; }
+
+    html.dark .bc-current { color: #e2e8f0; }
+
+    .topbar-spacer { flex: 1; }
+
+    .topbar-right { display: flex; align-items: center; gap: 8px; }
+
+    .user-badge {
+      display: flex; align-items: center; gap: 8px;
+      padding: 4px 10px; border-radius: 20px;
+      background: #f1f5f9; font-size: 13px; color: #475569;
+    }
+    html.dark .user-badge { background: #334155; color: #cbd5e1; }
+    .user-badge i { color: #94a3b8; }
+
+    .topbar-btn {
+      background: none; border: 1px solid #e2e8f0;
+      border-radius: 6px; padding: 5px 10px;
+      cursor: pointer; font-size: 12px; color: #64748b;
+      display: flex; align-items: center; gap: 6px;
+    }
+    html.dark .topbar-btn { border-color: #334155; color: #94a3b8; }
+    .topbar-btn:hover { background: #f1f5f9; }
+    html.dark .topbar-btn:hover { background: #1e293b; }
+
+    #content {
+      flex: 1;
+      overflow: auto;
+      padding: 20px;
+      isolation: isolate;
+    }
+
+    .page-loading {
+      display: flex; align-items: center; justify-content: center;
+      height: 200px; color: #94a3b8; font-size: 14px; gap: 10px;
+    }
+
+    .page-error {
+      margin: 40px auto; max-width: 480px; padding: 24px;
+      background: #fef2f2; border: 1px solid #fecaca;
+      border-radius: 8px; color: #b91c1c; font-size: 14px;
+    }
+    .page-error h3 { margin-bottom: 8px; }
+
+    .page-welcome {
+      display: flex; flex-direction: column; align-items: center; justify-content: center;
+      height: 100%; min-height: 300px; color: #94a3b8; text-align: center; gap: 12px;
+    }
+    .page-welcome .welcome-icon { font-size: 48px; color: #cbd5e1; }
+    .page-welcome h2 { font-size: 20px; font-weight: 600; color: #64748b; }
+    .page-welcome p { font-size: 14px; }
+
+    #footer {
+      padding: 8px 20px;
+      font-size: 12px;
+      color: var(--footer-text);
+      border-top: 1px solid var(--topbar-border);
+      background: var(--topbar-bg);
+      flex-shrink: 0;
+    }
+
+    /* ── Login overlay ─────────────────────────────────────────────── */
+    /*
+    #login-overlay {
+      position: fixed; inset: 0; z-index: 1000;
+      background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
+      display: flex; align-items: center; justify-content: center;
+    }
+    #login-overlay.hidden { display: none; }
+
+    .login-card {
+      background: #fff; border-radius: 16px; padding: 40px;
+      width: 100%; max-width: 400px; box-shadow: 0 25px 50px rgba(0,0,0,.4);
+    }
+    .login-logo { display: flex; align-items: center; gap: 12px; margin-bottom: 32px; }
+    .login-logo-icon {
+      width: 44px; height: 44px; border-radius: 10px;
+      background: var(--brand); color: #fff;
+      display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: 20px;
+    }
+    .login-logo-text { font-size: 20px; font-weight: 700; color: #0f172a; }
+    .login-logo-sub  { font-size: 12px; color: #94a3b8; }
+
+    .login-field { margin-bottom: 18px; }
+    .login-field label {
+      display: block; font-size: 13px; font-weight: 500;
+      color: #374151; margin-bottom: 6px;
+    }
+    .login-field input {
+      width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
+      border-radius: 8px; font-size: 14px; outline: none;
+      transition: border-color .15s;
+    }
+    .login-field input:focus { border-color: var(--brand); box-shadow: 0 0 0 3px rgba(30,64,175,.1); }
+
+    .login-btn {
+      width: 100%; padding: 11px; background: var(--brand); color: #fff;
+      border: none; border-radius: 8px; font-size: 15px; font-weight: 600;
+      cursor: pointer; transition: background .15s;
+    }
+    .login-btn:hover { background: var(--brand-dark); }
+    .login-btn:disabled { opacity: .6; cursor: not-allowed; }
+
+    .login-error {
+      margin-top: 14px; padding: 10px 12px; border-radius: 8px;
+      background: #fef2f2; color: #b91c1c; font-size: 13px; display: none;
+    }
+    .login-error.visible { display: block; }
+    */
+
+    /* ── Mobile ──────────────────────────────────────────────────────── */
+    #sidebar-backdrop {
+      display: none; position: fixed; inset: 0;
+      background: rgba(0,0,0,.5); z-index: 190;
+    }
+
+    @media (max-width: 768px) {
+      #sidebar {
+        position: fixed; top: 0; left: 0; bottom: 0;
+        transform: translateX(-100%); transition: transform .25s ease;
+        z-index: 200;
+      }
+      #sidebar.mobile-open {
+        transform: translateX(0);
+        width: var(--sidebar-w) !important;
+        min-width: var(--sidebar-w) !important;
+      }
+      #sidebar-backdrop.visible { display: block; }
+      .topbar-toggle { display: flex; }
+      #main { width: 100%; }
+      /* Force labels visible on mobile even when sidebar would be collapsed */
+      .brand-text { display: block !important; }
+      .nav-item span { display: inline !important; }
+    }
+  </style>
+</head>
+
+<body>
+  <!-- Login overlay — uncomment when auth gating is enabled -->
+  <!--
+  <div id="login-overlay">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="login-logo-icon">A</div>
+        <div>
+          <div class="login-logo-text">Awo ERP</div>
+          <div class="login-logo-sub">Sign in to your workspace</div>
+        </div>
+      </div>
+      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #e5e7eb;">
+        <button id="tab-login" onclick="switchTab('login')"
+          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;">Sign in</button>
+        <button id="tab-register" onclick="switchTab('register')"
+          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;">Create workspace</button>
+      </div>
+      <form id="login-form" onsubmit="submitLogin(event)">
+        <div class="login-field">
+          <label for="login-tenant">Workspace</label>
+          <input id="login-tenant" type="text" placeholder="your-workspace" autocomplete="organization" required>
+        </div>
+        <div class="login-field">
+          <label for="login-email">Email</label>
+          <input id="login-email" type="email" placeholder="you@example.com" autocomplete="email" required>
+        </div>
+        <div class="login-field">
+          <label for="login-password">Password</label>
+          <input id="login-password" type="password" placeholder="••••••••" autocomplete="current-password" required>
+        </div>
+        <button class="login-btn" type="submit" id="login-submit">Sign in</button>
+        <div class="login-error" id="login-error"></div>
+      </form>
+      <form id="register-form" onsubmit="submitRegister(event)" style="display:none;">
+        <div class="login-field">
+          <label for="reg-workspace">Workspace name</label>
+          <input id="reg-workspace" type="text" placeholder="Acme Corp" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-name">Your name</label>
+          <input id="reg-name" type="text" placeholder="Jane Doe" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-email">Email</label>
+          <input id="reg-email" type="email" placeholder="you@example.com" required>
+        </div>
+        <div class="login-field">
+          <label for="reg-password">Password <small style="color:#94a3b8;">(min 8 chars)</small></label>
+          <input id="reg-password" type="password" placeholder="••••••••" minlength="8" required>
+        </div>
+        <button class="login-btn" type="submit" id="reg-submit">Create workspace</button>
+        <div class="login-error" id="reg-error"></div>
+      </form>
+    </div>
+  </div>
+  -->
+
+  <div id="app">
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-content">
+          <div class="brand-icon">A</div>
+          <span class="brand-text">Awo ERP</span>
+        </div>
+        <button class="sidebar-toggle" onclick="toggleSidebar()" title="Toggle sidebar">
+          <i class="fa fa-bars"></i>
+        </button>
+      </div>
+      <nav class="sidebar-menu" id="nav">
+        <!-- Populated by renderNav() from GET /api/v1/ui/nav -->
+      </nav>
+    </aside>
+
+    <div id="sidebar-backdrop" onclick="closeMobile()"></div>
+
+    <div id="main">
+      <div id="topbar">
+        <button class="topbar-toggle" onclick="openMobile()"><i class="fa fa-bars"></i></button>
+        <div class="breadcrumb">
+          <span id="bc-module"></span>
+          <span class="bc-sep" id="bc-sep" style="display:none">›</span>
+          <span class="bc-current" id="bc-page">Awo ERP</span>
+        </div>
+        <div class="topbar-spacer"></div>
+        <div class="topbar-right">
+          <div class="user-badge">
+            <i class="fa fa-circle-user"></i>
+            <span id="userName">—</span>
+          </div>
+          <button class="topbar-btn" onclick="cycleTheme()" title="Toggle theme">
+            <i class="fa fa-circle-half-stroke"></i>
+            <span id="themeLabel">System</span>
+          </button>
+          <button class="topbar-btn" onclick="doLogout()" title="Sign out">
+            <i class="fa fa-arrow-right-from-bracket"></i>
+          </button>
+        </div>
+      </div>
+
+      <div id="content">
+        <div class="page-loading"><i class="fa fa-spinner fa-spin"></i> Loading…</div>
+      </div>
+
+      <div id="footer">&copy; 2026 Awo ERP</div>
+    </div>
+  </div>
+
+  <!-- AMIS v3.6.6 SDK — do NOT upgrade to v6; backend renderer uses v3 semantics -->
+  <script src="https://unpkg.com/amis@3.6.6/sdk/sdk.js"></script>
+  <script>
+  /* ── Block 1: AMIS bootstrap ───────────────────────────────────────
+     Multi-version AMD resolver + locale overrides + amisEnv skeleton.
+     Must run before any amisRequire() call.                           */
+  (function () {
+    // Multi-version AMD resolver: try v3 path, fall back to v2, then v1.
+    var _amisRequire = (typeof amisRequire === 'function') ? amisRequire
+      : (typeof window.amis !== 'undefined' && window.amis.require) ? window.amis.require
+      : (typeof require === 'function') ? require
+      : null;
+
+    if (!_amisRequire) {
+      console.error('[awo] AMIS SDK did not register amisRequire — check CDN load.');
+      _amisRequire = function () { return {}; };
+    }
+    window._amisRequire = _amisRequire;
+
+    // Locale overrides — flatten common Chinese strings that bleed through
+    // even when locale is set to 'en-US'.
+    try {
+      var amis = _amisRequire('amis');
+      if (amis && amis.extendDefaultLocale) {
+        amis.extendDefaultLocale('en-US', {
+          '确认': 'Confirm',
+          '取消': 'Cancel',
+          '删除': 'Delete',
+          '新增': 'Add',
+          '编辑': 'Edit',
+          '查询': 'Query',
+          '重置': 'Reset',
+          '提交': 'Submit',
+          '保存': 'Save',
+          '关闭': 'Close',
+          '操作': 'Actions',
+          '加载中...': 'Loading…',
+          '没有更多了': 'No more data',
+          '共 ${total} 条': '${total} records',
+          '每页显示': 'Per page',
+          '请输入': 'Enter value',
+          '请选择': 'Select',
+          '暂无数据': 'No data',
+        });
+      }
+    } catch (e) {
+      console.warn('[awo] locale override failed:', e);
+    }
+
+    // Expose amisEnv globally so Block 3 can extend it.
+    window.amisEnv = {
+      theme: 'cxd',   // always cxd; dark mode handled via html.dark CSS overrides
+      locale: 'en-US',
+    };
+  })();
+  </script>
+
+  <script>
+  /* ── Block 2: SchemaLoader ─────────────────────────────────────────
+     Lightweight schema fetcher with in-memory cache.
+     Used by the showcase and for any static schema paths.             */
+  function SchemaLoader(base) {
+    this.base = (base || '').replace(/\/$/, '');
+    this.cache = {};
+  }
+  SchemaLoader.prototype.load = function (path) {
+    var url = this.base + '/' + path.replace(/^\//, '');
+    if (this.cache[url]) return Promise.resolve(this.cache[url]);
+    var self = this;
+    return fetch(url).then(function (r) {
+      if (!r.ok) throw new Error('HTTP ' + r.status + ' — ' + url);
+      return r.json();
+    }).then(function (schema) {
+      self.cache[url] = schema;
+      return schema;
+    });
+  };
+  </script>
+
+  <script>
+  /* ── Block 3: App ───────────────────────────────────────────────────
+     Theme · Sidebar collapse · Mobile · Breadcrumb · Routing ·
+     AMIS fetcher + adaptResponse · renderAmis · loadPage ·
+     Nav (GET /api/v1/ui/nav) · Auth stubs · Bootstrap              */
+  (function () {
+    /* ── Tenant ─────────────────────────────────────────────────── */
+    var currentTenant = localStorage.getItem('awo-tenant') || '';
+
+    /* ── Theme (3-state: system / light / dark) ─────────────────── */
+    var themes = ['system', 'light', 'dark'];
+    var themeLabels = { system: 'System', light: 'Light', dark: 'Dark' };
+    var themeIdx = Math.max(0, themes.indexOf(localStorage.getItem('awo-theme') || 'system'));
+
+    function effectiveDark() {
+      var t = themes[themeIdx];
+      if (t === 'dark') return true;
+      if (t === 'light') return false;
+      return window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    }
+
+    function applyTheme(rerender) {
+      var t = themes[themeIdx];
+      var dark = effectiveDark();
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.classList.toggle('dark', dark);
+      localStorage.setItem('awo-theme', t);
+      var label = document.getElementById('themeLabel');
+      if (label) label.textContent = themeLabels[t];
+      if (rerender && currentRoute.module && currentRoute.resource) {
+        loadPage(currentRoute);
+      }
+    }
+
+    window.cycleTheme = function () {
+      themeIdx = (themeIdx + 1) % themes.length;
+      applyTheme(true);
+    };
+
+    // Re-apply when OS preference changes (relevant only in 'system' mode).
+    if (window.matchMedia) {
+      window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+        if (themes[themeIdx] === 'system') applyTheme(true);
+      });
+    }
+
+    applyTheme(false);
+
+    /* ── Sidebar collapse ────────────────────────────────────────── */
+    var sidebar = document.getElementById('sidebar');
+    var sidebarCollapsed = localStorage.getItem('awo-sidebar') === 'collapsed';
+    if (sidebarCollapsed) sidebar.classList.add('collapsed');
+
+    window.toggleSidebar = function () {
+      sidebarCollapsed = !sidebarCollapsed;
+      sidebar.classList.toggle('collapsed', sidebarCollapsed);
+      localStorage.setItem('awo-sidebar', sidebarCollapsed ? 'collapsed' : '');
+    };
+
+    /* ── Mobile sidebar ─────────────────────────────────────────── */
+    var backdrop = document.getElementById('sidebar-backdrop');
+    window.openMobile = function () {
+      sidebar.classList.add('mobile-open');
+      backdrop.classList.add('visible');
+    };
+    window.closeMobile = function () {
+      sidebar.classList.remove('mobile-open');
+      backdrop.classList.remove('visible');
+    };
+
+    /* ── Routing (history/pushState) ────────────────────────────── */
+    // URL formats:
+    //   /ui/{module}/{resource}            → list view
+    //   /ui/{module}/{resource}/create     → create form
+    //   /ui/{module}/{resource}/{id}       → detail view
+    //   /ui/{module}/{resource}/{id}/edit  → edit form
+    var currentRoute = {};
+
+    function parseRoute() {
+      var parts = window.location.pathname.replace(/^\/ui\/?/, '').split('/').filter(Boolean);
+      if (!parts[0] || !parts[1]) return {};
+      var last = parts[parts.length - 1];
+      return {
+        module:   parts[0],
+        resource: parts[1],
+        id:       parts[2] && parts[2] !== 'create' ? parts[2] : null,
+        view:     last === 'edit'   ? 'edit'
+                : last === 'create' ? 'create'
+                : parts[2]          ? 'detail'
+                :                     'list',
+      };
+    }
+
+    function sduiURL(route) {
+      var base = '/api/v1/ui/' + route.module + '/' + route.resource;
+      switch (route.view) {
+        case 'create': return base + '/create';
+        case 'detail': return base + '/' + route.id;
+        case 'edit':   return base + '/' + route.id + '/edit';
+        default:       return base;
+      }
+    }
+
+    /* ── Breadcrumb ─────────────────────────────────────────────── */
+    // navIndex maps listUrl → { moduleLabel, entryLabel }
+    // Built in renderNav() after nav data arrives.
+    var navIndex = {};
+
+    function updateBreadcrumb(route) {
+      var bcMod = document.getElementById('bc-module');
+      var bcSep = document.getElementById('bc-sep');
+      var bcPage = document.getElementById('bc-page');
+      if (!route || !route.module) {
+        bcMod.textContent = '';
+        bcSep.style.display = 'none';
+        bcPage.textContent = 'Awo ERP';
+        return;
+      }
+      var listUrl = '/ui/' + route.module + '/' + route.resource;
+      var info = navIndex[listUrl] || {};
+      if (info.moduleLabel) {
+        bcMod.textContent = info.moduleLabel;
+        bcSep.style.display = '';
+        bcPage.textContent = info.entryLabel || route.resource;
+      } else {
+        bcMod.textContent = route.module.charAt(0).toUpperCase() + route.module.slice(1);
+        bcSep.style.display = '';
+        bcPage.textContent = route.resource;
+      }
+    }
+
+    /* ── Nav active state ────────────────────────────────────────── */
+    function updateNavActive(route) {
+      document.querySelectorAll('.nav-item').forEach(function (el) {
+        el.classList.remove('active');
+      });
+      if (!route || !route.module) return;
+      var listUrl = '/ui/' + route.module + '/' + route.resource;
+      var el = document.querySelector('.nav-item[data-list-url="' + listUrl + '"]');
+      if (el) el.classList.add('active');
+      updateBreadcrumb(route);
+    }
+
+    /* ── AMIS response normaliser ────────────────────────────────── */
+    // Backend returns: { data: [], meta: { total: N } }
+    // AMIS crud2 expects: { status: 0, data: { items: [], count: N } }
+    function adaptResponse(body, res) {
+      if (!body) return { status: res ? res.status : 1, msg: 'Empty response' };
+
+      // Already in AMIS envelope format.
+      if (body.status !== undefined) return body;
+
+      // Flat list response — wrap it.
+      if (Array.isArray(body.data)) {
+        var total = (body.meta && body.meta.total != null) ? body.meta.total : body.data.length;
+        return { status: 0, msg: '', data: { items: body.data, count: total } };
+      }
+
+      // Non-envelope success from a non-list endpoint.
+      if (res && res.ok) return { status: 0, msg: '', data: body.data !== undefined ? body.data : body };
+
+      return { status: res ? res.status : 1, msg: body.error || body.msg || 'Unknown error' };
+    }
+
+    /* ── AMIS fetcher ────────────────────────────────────────────── */
+    var amisEnvFull = Object.assign(window.amisEnv, {
+      fetcher: function (api) {
+        var url   = api.url || '';
+        var method = (api.method || 'get').toLowerCase();
+
+        // Normalise AMIS pagination params → Awo backend format.
+        // AMIS sends: page (1-based), perPage or $perPage.
+        // Backend expects: page (1-based), page_size.
+        try {
+          var urlObj = new URL(url, window.location.origin);
+          var perPage = urlObj.searchParams.get('perPage') || urlObj.searchParams.get('$perPage');
+          // Normalise $page → page (AMIS sometimes prefixes with $).
+          var dollarPage = urlObj.searchParams.get('$page');
+          if (dollarPage !== null) {
+            urlObj.searchParams.delete('$page');
+            urlObj.searchParams.set('page', dollarPage);
+          }
+          // Rename perPage / $perPage → page_size.
+          if (perPage !== null) {
+            urlObj.searchParams.delete('perPage');
+            urlObj.searchParams.delete('$perPage');
+            urlObj.searchParams.set('page_size', perPage);
+          }
+          url = urlObj.toString();
+        } catch (e) {
+          // URL parse failed — use raw url as-is.
+        }
+
+        var headers = Object.assign(
+          { 'Content-Type': 'application/json', 'X-Awo-Tenant': currentTenant },
+          api.headers || {}
+        );
+        var opts = { method: method, headers: headers, credentials: 'include' };
+        if (method !== 'get' && method !== 'head' && api.data) {
+          opts.body = JSON.stringify(api.data);
+        }
+
+        return fetch(url, opts)
+          .then(function (res) {
+            if (res.status === 401) {
+              // Session expired or not authenticated — redirect to login.
+              var next = encodeURIComponent(window.location.pathname + window.location.search);
+              window.location.href = '/auth/login?next=' + next;
+              // Return a pending promise so AMIS does not process a response.
+              return new Promise(function () {});
+            }
+            if (res.status === 403) {
+              // Authenticated but not authorized — show a clear error.
+              return { status: 403, msg: 'You do not have permission to perform this action.' };
+            }
+            if (res.status === 204) return { status: 0, msg: '' };
+            return res.json().then(function (body) {
+              return adaptResponse(body, res);
+            });
+          })
+          .catch(function (err) {
+            return { status: 1, msg: 'Network error: ' + err.message };
+          });
+      },
+      isCancel: function () { return false; },
+      notify: function (type, msg) {
+        console.log('[amis:' + type + ']', msg);
+      },
+      alert: window.alert.bind(window),
+      copy: function (text) {
+        if (navigator.clipboard) navigator.clipboard.writeText(text);
+      },
+    });
+
+    /* ── AMIS render ─────────────────────────────────────────────── */
+    var content = document.getElementById('content');
+    var currentAmisInstance = null;
+
+    function renderAmis(schema) {
+      if (currentAmisInstance) {
+        try { currentAmisInstance.unmount(); } catch (e) {}
+        currentAmisInstance = null;
+      }
+      content.innerHTML = '';
+
+      var embedFn;
+      try {
+        embedFn = window._amisRequire('amis/embed');
+      } catch (e) {
+        console.error('[awo] amis/embed not available:', e);
+        content.innerHTML = '<div class="page-error"><h3>AMIS SDK error</h3><p>' + e.message + '</p></div>';
+        return;
+      }
+      if (!embedFn || typeof embedFn.embed !== 'function') {
+        content.innerHTML = '<div class="page-error"><h3>AMIS SDK not loaded</h3><p>amisRequire(\'amis/embed\') returned no embed function.</p></div>';
+        return;
+      }
+
+      // Pass record id in props.data so AMIS can resolve ${id} template
+      // variables in initApi/api URLs for detail and edit views.
+      var embedProps = { locale: 'en-US' };
+      if (currentRoute && currentRoute.id) {
+        embedProps.data = { id: currentRoute.id };
+      }
+      currentAmisInstance = embedFn.embed('#content', schema, embedProps, amisEnvFull);
+    }
+
+    /* ── Load a page from SDUI ───────────────────────────────────── */
+    function loadPage(route) {
+      content.innerHTML = '<div class="page-loading"><i class="fa fa-spinner fa-spin"></i> Loading…</div>';
+
+      var url = sduiURL(route);
+      var headers = { 'X-Awo-Tenant': currentTenant, 'Accept-Language': 'en-US' };
+      if (effectiveDark()) headers['Accept-SDUI-Theme'] = 'dark';
+
+      fetch(url, { credentials: 'include', headers: headers })
+        .then(function (res) {
+          if (res.status === 401) {
+            // Session expired — redirect to login preserving return URL.
+            var next = encodeURIComponent(window.location.pathname + window.location.search);
+            window.location.href = '/auth/login?next=' + next;
+            return null;
+          }
+          if (res.status === 403) {
+            content.innerHTML = '<div class="page-error"><h3>Access denied</h3><p>You do not have permission to view this page.</p></div>';
+            return null;
+          }
+          if (!res.ok) throw new Error('HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (body) {
+          if (!body) return;
+          // SDUI handler returns the raw AMIS schema map directly (no {status,data} envelope).
+          // If the response has status:0 with a nested data field, unwrap it.
+          // Otherwise use the body directly as the schema.
+          var schema = (body && body.status === 0 && body.data) ? body.data : body;
+          renderAmis(schema);
+        })
+        .catch(function (err) {
+          content.innerHTML = '<div class="page-error"><h3>Failed to load page</h3><p>' + err.message + '</p></div>';
+        });
+    }
+
+    /* ── Navigate ────────────────────────────────────────────────── */
+    function navigate() {
+      currentRoute = parseRoute();
+      updateNavActive(currentRoute);
+
+      if (!currentRoute.module) {
+        // No route — show welcome screen.
+        if (currentAmisInstance) {
+          try { currentAmisInstance.unmount(); } catch (e) {}
+          currentAmisInstance = null;
+        }
+        content.innerHTML = '<div class="page-welcome">' +
+          '<div class="welcome-icon"><i class="fa fa-chart-line"></i></div>' +
+          '<h2>Welcome to Awo ERP</h2>' +
+          '<p>Select a module from the sidebar to get started.</p>' +
+          '</div>';
+        return;
+      }
+
+      loadPage(currentRoute);
+    }
+
+    // Intercept link clicks inside the nav to use pushState.
+    document.getElementById('nav').addEventListener('click', function (e) {
+      var a = e.target.closest('.nav-item');
+      if (a && a.dataset.listUrl) {
+        e.preventDefault();
+        history.pushState(null, '', a.dataset.listUrl);
+        closeMobile();
+        navigate();
+      }
+    });
+
+    window.addEventListener('popstate', navigate);
+
+    /* ── Nav from API ────────────────────────────────────────────── */
+    // GET /api/v1/ui/nav returns:
+    // { status:0, data: { modules: [ { label, entries: [ { label, icon, listUrl, module } ] } ] } }
+    function renderNav(navData) {
+      var navEl = document.getElementById('nav');
+      navEl.innerHTML = '';
+      navIndex = {};
+
+      // Backend returns a bare []NavModule array (no {status, data} envelope).
+      // Support both shapes: bare array (current backend) and {modules:[...]} (future).
+      var modules = Array.isArray(navData) ? navData
+                  : (navData && Array.isArray(navData.modules)) ? navData.modules
+                  : [];
+
+      if (modules.length === 0) {
+        // Fallback: no nav data — show a placeholder.
+        var p = document.createElement('div');
+        p.className = 'nav-group-label';
+        p.style.padding = '20px 16px';
+        p.textContent = 'No modules registered';
+        navEl.appendChild(p);
+        return;
+      }
+
+      modules.forEach(function (mod) {
+        // Module group label
+        var label = document.createElement('div');
+        label.className = 'nav-group-label';
+        label.textContent = mod.label || '';
+        navEl.appendChild(label);
+
+        var entries = mod.entries || [];
+        entries.forEach(function (entry) {
+          var listUrl = entry.listUrl || ('/ui/' + (entry.module || '') + '/' + (entry.resource || ''));
+          // Build navIndex for breadcrumb.
+          navIndex[listUrl] = { moduleLabel: mod.label, entryLabel: entry.label };
+
+          var a = document.createElement('a');
+          a.className = 'nav-item';
+          a.href = listUrl;
+          a.dataset.listUrl = listUrl;
+
+          // Icon: entry.icon is a FontAwesome icon name without 'fa-' prefix.
+          var iconClass = entry.icon ? ('fa fa-' + entry.icon) : 'fa fa-table-list';
+          a.innerHTML = '<i class="' + iconClass + '"></i><span>' + (entry.label || '') + '</span>';
+
+          navEl.appendChild(a);
+        });
+      });
+
+      // After rendering nav, re-apply active state for current route.
+      updateNavActive(currentRoute);
+    }
+
+    function loadNav() {
+      fetch('/api/v1/ui/nav', {
+        credentials: 'include',
+        headers: { 'X-Awo-Tenant': currentTenant },
+      })
+        .then(function (res) {
+          if (!res.ok) throw new Error('nav HTTP ' + res.status);
+          return res.json();
+        })
+        .then(function (body) {
+          var data = (body.status === 0 && body.data) ? body.data : body;
+          renderNav(data);
+        })
+        .catch(function (err) {
+          console.warn('[awo] nav load failed:', err.message);
+          // Render empty nav — app is still usable if URL is known.
+          renderNav(null);
+        });
+    }
+
+    /* ── Auth stubs ──────────────────────────────────────────────── */
+    // Login gating is disabled; doLogout is a no-op stub.
+    // When auth is enabled, uncomment the login overlay HTML and
+    // replace these stubs with real implementations.
+    window.doLogout = function () {
+      fetch('/auth/logout', {
+        method: 'POST', credentials: 'include',
+        headers: { 'X-Awo-Tenant': currentTenant },
+      }).catch(function () {}).finally(function () {
+        console.log('[auth] logout — login gating is currently disabled');
+      });
+    };
+
+    /* ── Bootstrap ───────────────────────────────────────────────── */
+    // 1. Load nav from API.
+    // 2. Navigate to current URL path.
+    loadNav();
+    navigate();
+
+  })();
+  </script>
+</body>
+</html>

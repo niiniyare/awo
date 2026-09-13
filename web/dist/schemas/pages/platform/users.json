@@ -1,0 +1,62 @@
+{
+  "type": "page",
+  "title": "Platform Users",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/iam/users",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "email", "label": "Email", "type": "text" },
+      { "name": "full_name", "label": "Full Name", "type": "text" },
+      {
+        "name": "user_type",
+        "label": "User Type",
+        "type": "mapping",
+        "map": {
+          "INTERNAL": "Internal",
+          "EXTERNAL": "External",
+          "API": "API"
+        }
+      },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "name": "is_suspended",
+        "label": "Suspended",
+        "type": "status",
+        "map": { "true": "danger", "false": "success" }
+      },
+      { "name": "last_login_at", "label": "Last Login", "type": "datetime", "format": "YYYY-MM-DD HH:mm" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Deactivate",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Deactivate (delete) this user account?",
+            "api": {
+              "method": "DELETE",
+              "url": "/iam/users/${id}"
+            },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": []
+  }
+}

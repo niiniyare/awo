@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="system">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+  <title>AWO</title>
+
+  <!--
+    AMIS SDK — UMD bundle loaded synchronously so amisRequire() is set
+    before main.js (ES module) executes.
+
+    Dev:  Vite plugin serves erp/web/sdk/ at /sdk/* (no CDN needed).
+    Prod: copy erp/web/sdk/ → awo/web/public/sdk/ before npm run build.
+          FontAwesome: copy erp/web/sdk/iconfont.css or use local font files.
+  -->
+  <link rel="stylesheet" href="/sdk/sdk.css">
+  <link rel="stylesheet" href="/sdk/iconfont.css">
+  <!-- FontAwesome: load async so it never blocks render; icons degrade to blank if offline -->
+  <link rel="preload" as="style"
+        href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css"
+        onload="this.onload=null;this.rel='stylesheet'">
+  <noscript>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@fortawesome/fontawesome-free@6.4.0/css/all.min.css">
+  </noscript>
+
+</head>
+<body>
+  <div id="app">
+
+    <!-- Sidebar -->
+    <aside id="sidebar">
+      <div class="sidebar-brand">
+        <div class="brand-content">
+          <div class="brand-icon">A</div>
+          <span class="brand-text">AWO</span>
+        </div>
+        <button class="sidebar-toggle" aria-label="Toggle sidebar" onclick="toggleSidebar()">
+          <i class="fa fa-bars"></i>
+        </button>
+      </div>
+
+      <div class="sidebar-search">
+        <div class="search-box">
+          <i class="fa fa-search"></i>
+          <input type="search" id="sidebarSearch" placeholder="Search" autocomplete="off">
+        </div>
+      </div>
+
+      <nav class="sidebar-menu" id="sidebarMenu">
+        <!-- Populated dynamically by loadNav() from GET /api/v1/ui/nav -->
+      </nav>
+    </aside>
+
+    <!-- Mobile backdrop -->
+    <div id="sidebar-backdrop" onclick="closeMobileSidebar()"></div>
+
+    <!-- Main area -->
+    <div id="main">
+      <div id="topbar">
+        <button class="topbar-toggle" aria-label="Open menu" onclick="openMobileSidebar()">
+          <i class="fa fa-bars"></i>
+        </button>
+        <div class="topbar-brand">
+          <div class="brand-icon">A</div>
+          <span>AWO</span>
+        </div>
+        <div class="breadcrumb" id="breadcrumb">
+          <span class="bc-current">Loading…</span>
+        </div>
+        <div class="topbar-spacer"></div>
+        <button class="theme-toggle" aria-label="Toggle theme" onclick="cycleTheme()">
+          <i class="fa fa-circle-half-stroke" id="themeIcon"></i>
+          <span class="theme-label" id="themeLabel">System</span>
+        </button>
+      </div>
+
+      <div id="content">
+        <div class="loading">
+          <i class="fa fa-spinner fa-spin"></i>&nbsp; Loading…
+        </div>
+      </div>
+
+      <div id="footer">
+        <span>&copy; 2026 AWO ERP</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- SDK served locally by Vite plugin (dev) or from public/sdk/ (prod) -->
+  <script src="/sdk/sdk.js"></script>
+
+  <!-- English locale — must load after sdk.js, before amis.embed() calls -->
+  <!-- Dev: Vite plugin serves erp/web/utils/locale-en.js at /locales/en.js -->
+  <!-- Prod: copy erp/web/utils/locale-en.js → awo/web/public/locales/en.js -->
+  <script src="/locales/en.js"></script>
+
+  <!-- Application entry point (processed by Vite) -->
+  <script type="module" src="/src/main.js"></script>
+</body>
+</html>

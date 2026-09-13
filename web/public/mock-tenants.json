@@ -1,0 +1,68 @@
+{
+  "success": true,
+  "data": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "object": "tenant",
+      "slug": "acme-corp",
+      "name": "Acme Corporation",
+      "email": "admin@acme.com",
+      "status": "ACTIVE",
+      "preferences": {"timezone": "America/New_York", "currency_code": "USD"},
+      "timestamps": {"created_at": "2025-01-15T10:30:00Z", "updated_at": "2025-02-01T14:22:00Z"},
+      "links": {"self": "/api/v1/tenants/550e8400-e29b-41d4-a716-446655440001"}
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "object": "tenant",
+      "slug": "globex-inc",
+      "name": "Globex Industries",
+      "email": "ops@globex.io",
+      "status": "ACTIVE",
+      "preferences": {"timezone": "Europe/London", "currency_code": "GBP"},
+      "timestamps": {"created_at": "2025-02-10T08:00:00Z", "updated_at": "2025-02-12T11:45:00Z"},
+      "links": {"self": "/api/v1/tenants/550e8400-e29b-41d4-a716-446655440002"}
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440003",
+      "object": "tenant",
+      "slug": "sahara-tech",
+      "name": "Sahara Technologies",
+      "email": "info@saharatech.so",
+      "status": "SUSPENDED",
+      "preferences": {"timezone": "Africa/Mogadishu", "currency_code": "USD"},
+      "timestamps": {"created_at": "2025-03-01T06:15:00Z", "updated_at": "2025-03-20T09:30:00Z"},
+      "links": {"self": "/api/v1/tenants/550e8400-e29b-41d4-a716-446655440003"}
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440004",
+      "object": "tenant",
+      "slug": "nairobi-logistics",
+      "name": "Nairobi Logistics Ltd",
+      "email": "admin@nairobilog.ke",
+      "status": "PENDING",
+      "preferences": {"timezone": "Africa/Nairobi", "currency_code": "KES"},
+      "timestamps": {"created_at": "2025-04-05T12:00:00Z", "updated_at": "2025-04-05T12:00:00Z"},
+      "links": {"self": "/api/v1/tenants/550e8400-e29b-41d4-a716-446655440004"}
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440005",
+      "object": "tenant",
+      "slug": "djibouti-port",
+      "name": "Djibouti Port Services",
+      "email": "contact@djport.dj",
+      "status": "ARCHIVED",
+      "preferences": {"timezone": "Africa/Djibouti", "currency_code": "DJF"},
+      "timestamps": {"created_at": "2024-06-20T07:45:00Z", "updated_at": "2025-01-10T16:00:00Z"},
+      "links": {"self": "/api/v1/tenants/550e8400-e29b-41d4-a716-446655440005"}
+    }
+  ],
+  "meta": {
+    "pagination": {
+      "offset": 0,
+      "limit": 20,
+      "count": 5,
+      "total_records": 5
+    }
+  }
+}

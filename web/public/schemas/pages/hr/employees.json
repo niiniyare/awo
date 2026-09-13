@@ -1,0 +1,121 @@
+{
+  "type": "page",
+  "title": "Employees",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/employee",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "employee_number", "label": "Employee #", "type": "text" },
+      { "name": "full_name", "label": "Full Name", "type": "text" },
+      { "name": "email", "label": "Email", "type": "text" },
+      { "name": "department", "label": "Department", "type": "text" },
+      { "name": "designation", "label": "Designation", "type": "text" },
+      { "name": "date_of_joining", "label": "Joined", "type": "date", "format": "YYYY-MM-DD" },
+      {
+        "name": "employment_type",
+        "label": "Type",
+        "type": "mapping",
+        "map": {
+          "full_time": "Full Time",
+          "part_time": "Part Time",
+          "contract": "Contract"
+        }
+      },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Employee",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/employee/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/employee/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "employee_number", "label": "Employee Number", "required": true },
+                  { "type": "input-text", "name": "full_name", "label": "Full Name", "required": true },
+                  { "type": "input-email", "name": "email", "label": "Email", "required": true },
+                  { "type": "input-text", "name": "department", "label": "Department" },
+                  { "type": "input-text", "name": "designation", "label": "Designation" },
+                  { "type": "input-date", "name": "date_of_joining", "label": "Date of Joining" },
+                  {
+                    "type": "select",
+                    "name": "employment_type",
+                    "label": "Employment Type",
+                    "options": [
+                      { "label": "Full Time", "value": "full_time" },
+                      { "label": "Part Time", "value": "part_time" },
+                      { "label": "Contract", "value": "contract" }
+                    ]
+                  },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this employee record?",
+            "api": { "method": "DELETE", "url": "/api/v1/employee/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Employee",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Employee",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/employee" },
+            "body": [
+              { "type": "input-text", "name": "employee_number", "label": "Employee Number", "required": true },
+              { "type": "input-text", "name": "full_name", "label": "Full Name", "required": true },
+              { "type": "input-email", "name": "email", "label": "Email", "required": true },
+              { "type": "input-text", "name": "department", "label": "Department" },
+              { "type": "input-text", "name": "designation", "label": "Designation" },
+              { "type": "input-date", "name": "date_of_joining", "label": "Date of Joining" },
+              {
+                "type": "select",
+                "name": "employment_type",
+                "label": "Employment Type",
+                "options": [
+                  { "label": "Full Time", "value": "full_time" },
+                  { "label": "Part Time", "value": "part_time" },
+                  { "label": "Contract", "value": "contract" }
+                ]
+              },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

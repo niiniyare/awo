@@ -1,0 +1,120 @@
+{
+  "type": "page",
+  "title": "Tanks",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/tank",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "tank_number", "label": "Tank #", "type": "text" },
+      { "name": "site_id", "label": "Site", "type": "text" },
+      {
+        "name": "fuel_type",
+        "label": "Fuel Type",
+        "type": "mapping",
+        "map": {
+          "petrol": "Petrol",
+          "diesel": "Diesel",
+          "lpg": "LPG",
+          "kerosene": "Kerosene"
+        }
+      },
+      { "name": "capacity_litres", "label": "Capacity (L)", "type": "number" },
+      { "name": "current_volume", "label": "Current Volume (L)", "type": "number" },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Tank",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/tank/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/tank/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "tank_number", "label": "Tank Number", "required": true },
+                  { "type": "input-text", "name": "site_id", "label": "Site ID", "required": true },
+                  {
+                    "type": "select",
+                    "name": "fuel_type",
+                    "label": "Fuel Type",
+                    "required": true,
+                    "options": [
+                      { "label": "Petrol", "value": "petrol" },
+                      { "label": "Diesel", "value": "diesel" },
+                      { "label": "LPG", "value": "lpg" },
+                      { "label": "Kerosene", "value": "kerosene" }
+                    ]
+                  },
+                  { "type": "input-number", "name": "capacity_litres", "label": "Capacity (Litres)", "min": 0 },
+                  { "type": "input-number", "name": "current_volume", "label": "Current Volume (Litres)", "min": 0 },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this tank?",
+            "api": { "method": "DELETE", "url": "/api/v1/tank/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Tank",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Tank",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/tank" },
+            "body": [
+              { "type": "input-text", "name": "tank_number", "label": "Tank Number", "required": true },
+              { "type": "input-text", "name": "site_id", "label": "Site ID", "required": true },
+              {
+                "type": "select",
+                "name": "fuel_type",
+                "label": "Fuel Type",
+                "required": true,
+                "options": [
+                  { "label": "Petrol", "value": "petrol" },
+                  { "label": "Diesel", "value": "diesel" },
+                  { "label": "LPG", "value": "lpg" },
+                  { "label": "Kerosene", "value": "kerosene" }
+                ]
+              },
+              { "type": "input-number", "name": "capacity_litres", "label": "Capacity (Litres)", "min": 0 },
+              { "type": "input-number", "name": "current_volume", "label": "Current Volume (Litres)", "min": 0 },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

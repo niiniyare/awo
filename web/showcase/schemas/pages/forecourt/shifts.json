@@ -1,0 +1,93 @@
+{
+  "type": "page",
+  "title": "Shifts",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/shift",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "site_id", "label": "Site", "type": "text" },
+      { "name": "shift_date", "label": "Shift Date", "type": "date", "format": "YYYY-MM-DD" },
+      {
+        "name": "shift_number",
+        "label": "Shift",
+        "type": "mapping",
+        "map": { "1": "Shift 1", "2": "Shift 2", "3": "Shift 3" }
+      },
+      { "name": "attendant_id", "label": "Attendant", "type": "text" },
+      { "name": "opening_reading", "label": "Opening Reading", "type": "number" },
+      { "name": "closing_reading", "label": "Closing Reading", "type": "number" },
+      { "name": "doc_status", "label": "Status", "type": "text" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "View",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Shift Detail",
+              "body": {
+                "type": "form",
+                "initApi": { "method": "GET", "url": "/api/v1/shift/${id}" },
+                "mode": "horizontal",
+                "body": [
+                  { "type": "static", "name": "site_id", "label": "Site" },
+                  { "type": "static", "name": "shift_date", "label": "Shift Date" },
+                  { "type": "static", "name": "shift_number", "label": "Shift Number" },
+                  { "type": "static", "name": "attendant_id", "label": "Attendant" },
+                  { "type": "static", "name": "opening_reading", "label": "Opening Reading" },
+                  { "type": "static", "name": "closing_reading", "label": "Closing Reading" },
+                  { "type": "static", "name": "doc_status", "label": "Status" }
+                ],
+                "actions": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Shift",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Shift",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/shift" },
+            "body": [
+              { "type": "input-text", "name": "site_id", "label": "Site ID", "required": true },
+              { "type": "input-date", "name": "shift_date", "label": "Shift Date", "required": true },
+              {
+                "type": "select",
+                "name": "shift_number",
+                "label": "Shift Number",
+                "required": true,
+                "options": [
+                  { "label": "Shift 1", "value": "1" },
+                  { "label": "Shift 2", "value": "2" },
+                  { "label": "Shift 3", "value": "3" }
+                ]
+              },
+              { "type": "input-text", "name": "attendant_id", "label": "Attendant ID" },
+              { "type": "input-number", "name": "opening_reading", "label": "Opening Reading", "min": 0 },
+              { "type": "input-number", "name": "closing_reading", "label": "Closing Reading", "min": 0 }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

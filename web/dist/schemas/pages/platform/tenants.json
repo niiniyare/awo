@@ -1,0 +1,29 @@
+{
+  "type": "page",
+  "title": "Tenant Management",
+  "body": [
+    {
+      "type": "alert",
+      "level": "info",
+      "body": "Tenant management is a platform-level operation and is not available through the web UI."
+    },
+    {
+      "type": "panel",
+      "title": "Managing Tenants via CLI",
+      "body": [
+        {
+          "type": "tpl",
+          "tpl": "<p>Use the <strong>Awo CLI</strong> to create and manage tenants. The following commands are available:</p>"
+        },
+        {
+          "type": "tpl",
+          "tpl": "<pre style='background:#1e1e1e;color:#d4d4d4;padding:16px;border-radius:6px;overflow-x:auto;font-size:0.9rem;line-height:1.6;'><code># Create a new tenant\nawo tenant create --name \"Acme Corp\" --slug acme --plan standard\n\n# List all tenants\nawo tenant list\n\n# Get tenant details\nawo tenant get --slug acme\n\n# Suspend a tenant\nawo tenant suspend --slug acme\n\n# Delete a tenant (irreversible)\nawo tenant delete --slug acme --confirm</code></pre>"
+        },
+        {
+          "type": "tpl",
+          "tpl": "<p style='margin-top:16px;color:#666;'>Run <code>awo tenant --help</code> for the full list of options and flags.</p>"
+        }
+      ]
+    }
+  ]
+}

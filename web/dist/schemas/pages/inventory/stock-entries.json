@@ -1,0 +1,61 @@
+{
+  "type": "page",
+  "title": "Stock Entries",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/stock_entry",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "entry_date", "label": "Entry Date", "type": "date", "format": "YYYY-MM-DD" },
+      {
+        "name": "entry_type",
+        "label": "Type",
+        "type": "mapping",
+        "map": {
+          "receipt": "Receipt",
+          "issue": "Issue",
+          "transfer": "Transfer"
+        }
+      },
+      { "name": "warehouse_id", "label": "Warehouse", "type": "text" },
+      { "name": "reference", "label": "Reference", "type": "text" },
+      { "name": "doc_status", "label": "Status", "type": "text" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "View",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Stock Entry Detail",
+              "body": {
+                "type": "form",
+                "initApi": { "method": "GET", "url": "/api/v1/stock_entry/${id}" },
+                "mode": "horizontal",
+                "body": [
+                  { "type": "static", "name": "entry_date", "label": "Entry Date" },
+                  { "type": "static", "name": "entry_type", "label": "Type" },
+                  { "type": "static", "name": "warehouse_id", "label": "Warehouse" },
+                  { "type": "static", "name": "reference", "label": "Reference" },
+                  { "type": "static", "name": "doc_status", "label": "Status" }
+                ],
+                "actions": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "toolbar": []
+  }
+}

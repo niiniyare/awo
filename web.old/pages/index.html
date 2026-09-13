@@ -1,0 +1,766 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Awo ERP</title>
+
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/sdk.css" />
+  <link rel="stylesheet" href="https://unpkg.com/amis@3.6.6/sdk/iconfont.css" />
+
+  <style>
+    /* ── CSS Custom Property Theme Tokens ───────────────────────────────────
+     * Override these to customise branding without touching .cxd-* classes.
+     * Dark mode: invert neutral scale on html.dark (see MEMORY.md dark theme).
+     * ───────────────────────────────────────────────────────────────────── */
+    :root {
+      --colors-brand-primary:      #1677ff;
+      --colors-brand-primary-dark: #0958d9;
+      --background:                #f5f5f5;
+      --body-bg:                   #f5f5f5;
+      --Page-main-bg:              #f5f5f5;
+      --Panel-bg-color:            #ffffff;
+      --Table-bg:                  #ffffff;
+    }
+
+    html.dark {
+      /* Shell dark mode — controls sidebar, topbar, layout chrome only.
+         AMIS widget dark mode is handled separately via amis theme selection.
+         AMIS v3 does NOT consume these custom properties; AMIS colors are
+         controlled through the SDK theme parameter in amis.embed(). */
+      --background:     #141414;
+      --body-bg:        #1a1a1a;
+      --Page-main-bg:   #1a1a1a;
+      --Panel-bg-color: #262626;
+      --Table-bg:       #262626;
+      --colors-neutral-line-8: #434343;
+    }
+
+    /* Shell chrome dark mode — sidebar, topbar, nav only. */
+    html.dark body {
+      background: var(--body-bg);
+      color: rgba(255, 255, 255, 0.85);
+    }
+    html.dark .awo-sidebar {
+      background: var(--Panel-bg-color);
+      border-right-color: var(--colors-neutral-line-8);
+    }
+    html.dark .awo-logo {
+      border-bottom-color: var(--colors-neutral-line-8);
+    }
+    html.dark .awo-topbar {
+      background: var(--Panel-bg-color);
+      border-bottom-color: var(--colors-neutral-line-8);
+    }
+    html.dark .nav-module {
+      border-bottom-color: var(--colors-neutral-line-8);
+    }
+    html.dark .nav-module-label {
+      color: rgba(255, 255, 255, 0.45);
+    }
+    html.dark .nav-entry {
+      color: rgba(255, 255, 255, 0.82);
+    }
+    html.dark .nav-entry:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+    html.dark .nav-entry.active {
+      background: rgba(22, 119, 255, 0.15);
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: var(--body-bg);
+      overflow-x: hidden;
+    }
+
+    #app { min-height: 100vh; }
+
+    /* ── Layout ──────────────────────────────────────────────────────────── */
+    .awo-layout {
+      display: flex;
+      min-height: 100vh;
+    }
+
+    /* Sidebar: fixed on desktop, hidden off-canvas on mobile */
+    .awo-sidebar {
+      width: 240px;
+      min-width: 240px;
+      background: var(--Panel-bg-color);
+      border-right: 1px solid var(--colors-neutral-line-8, #f0f0f0);
+      flex-shrink: 0;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+      transition: transform 0.22s ease;
+      z-index: 200;
+    }
+
+    .awo-main {
+      flex: 1;
+      min-width: 0;        /* prevent flex overflow */
+      overflow-x: hidden;
+      overflow-y: auto;
+      background: var(--Page-main-bg);
+    }
+
+    .awo-logo {
+      padding: 16px 20px;
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--colors-brand-primary);
+      border-bottom: 1px solid var(--colors-neutral-line-8, #f0f0f0);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-shrink: 0;
+    }
+
+    /* Hamburger / close button */
+    .awo-menu-btn {
+      background: none;
+      border: none;
+      cursor: pointer;
+      padding: 4px 8px;
+      font-size: 20px;
+      color: var(--colors-brand-primary);
+      line-height: 1;
+      display: none; /* shown via media query */
+    }
+
+    /* Mobile top bar — sits above content, shows menu button */
+    .awo-topbar {
+      display: none;
+      align-items: center;
+      padding: 0 16px;
+      height: 52px;
+      background: var(--Panel-bg-color);
+      border-bottom: 1px solid var(--colors-neutral-line-8, #f0f0f0);
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .awo-topbar-title {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--colors-brand-primary);
+      margin-left: 12px;
+    }
+
+    /* Overlay behind open sidebar on mobile */
+    .awo-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 199;
+    }
+
+    .awo-content {
+      padding: 16px;
+      max-width: 1400px;
+    }
+
+    /* ── Responsive breakpoint ─────────────────────────────────────────── */
+    @media (max-width: 768px) {
+      .awo-menu-btn { display: inline-block; }
+      .awo-layout {
+        flex-direction: column;
+      }
+
+      .awo-topbar {
+        display: flex;
+      }
+
+      .awo-sidebar {
+        position: fixed;
+        top: 0;
+        left: 0;
+        height: 100%;
+        transform: translateX(-100%);
+        box-shadow: 2px 0 16px rgba(0,0,0,0.15);
+      }
+
+      .awo-sidebar.open {
+        transform: translateX(0);
+      }
+
+      .awo-overlay.open {
+        display: block;
+      }
+
+      /* Hide desktop logo inside sidebar on mobile (topbar takes over) */
+      .awo-logo { display: none; }
+
+      .awo-main {
+        padding-top: 0; /* topbar already provides spacing */
+      }
+
+      .awo-content {
+        padding: 12px;
+      }
+    }
+
+    /* ── Navigation ────────────────────────────────────────────────────────── */
+    .nav-module {
+      padding: 8px 0 4px 0;
+      border-bottom: 1px solid var(--colors-neutral-line-8, #f0f0f0);
+    }
+
+    .nav-module:last-child {
+      border-bottom: none;
+    }
+
+    .nav-module-label {
+      padding: 6px 20px 4px;
+      font-size: 11px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--colors-neutral-text-2, #8c8c8c);
+      user-select: none;
+    }
+
+    .nav-entry {
+      display: block;
+      padding: 7px 20px 7px 28px;
+      font-size: 14px;
+      color: rgba(0, 0, 0, 0.82);
+      text-decoration: none;
+      border-left: 3px solid transparent;
+      transition: background 0.12s, border-color 0.12s;
+    }
+
+    .nav-entry:hover {
+      background: var(--colors-neutral-fill-9, #f5f5f5);
+    }
+
+    .nav-entry.active {
+      border-left-color: var(--colors-brand-primary, #1677ff);
+      color: var(--colors-brand-primary, #1677ff);
+      background: rgba(22, 119, 255, 0.06);
+      font-weight: 500;
+    }
+
+    .nav-loading {
+      padding: 16px 20px;
+      font-size: 13px;
+      color: var(--colors-neutral-text-2, #8c8c8c);
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+  <!-- Mobile top bar (hidden on desktop) -->
+  <div class="awo-topbar" id="topbar">
+    <button class="awo-menu-btn" id="menuBtn" aria-label="Open menu">&#9776;</button>
+    <span class="awo-topbar-title">Awo ERP</span>
+  </div>
+
+  <!-- Overlay behind sidebar on mobile -->
+  <div class="awo-overlay" id="overlay"></div>
+
+  <div class="awo-layout">
+    <!-- Sidebar: auto-populated by navigation schema -->
+    <nav class="awo-sidebar" id="sidebar">
+      <div class="awo-logo">
+        <span>Awo ERP</span>
+        <button class="awo-menu-btn" id="closeBtn" aria-label="Close menu">&#10005;</button>
+      </div>
+      <div id="nav"></div>
+    </nav>
+
+    <!-- Main content: amis renders schemas here -->
+    <main class="awo-main">
+      <div id="content" class="awo-content"></div>
+    </main>
+  </div>
+</div>
+
+<script src="https://unpkg.com/amis@3.6.6/sdk/sdk.js"></script>
+<script>
+// ── AMIS SDK bootstrap ────────────────────────────────────────────────────────
+//
+// Runs synchronously after sdk.js. Responsibilities:
+//   1. Resolve the embed function (handles v1/v2/v3 API differences).
+//   2. Probe the i18n registry to verify en-US locale strings are present.
+//   3. Construct window.amisEnv — the single global env object reused by
+//      every amis.embed() call. locale lives here, not in per-call objects.
+//
+// LOCALE ARCHITECTURE
+// AMIS v3 fat SDK (sdk.js from unpkg) bundles zh-CN by default.
+// Whether en-US is bundled depends on the build. We probe amisRequire to
+// check if 'amis/locale/en-US' is registered and log the result so DevTools
+// can confirm which locale strings are actually loaded.
+// If the probe fails, we still pass locale:'en-US' in the env — AMIS will
+// use whatever strings it has registered under that key (or fall back).
+//
+// HOW TO DIAGNOSE LOCALE IN DEVTOOLS
+//   Console → filter "[awo] locale" → see registration status
+//   Console → filter "[awo] env"    → see env passed to every embed()
+//   Network → filter "en-US"        → see if separate locale bundle loaded
+(function () {
+  'use strict';
+
+  // ── 1. SDK globals diagnostic ─────────────────────────────────────────────
+  var amisType = typeof amis;
+  var reqType  = typeof amisRequire;
+  console.log('[awo] SDK load: amis=' + amisType + ' amisRequire=' + reqType);
+  if (amisType !== 'undefined' && amis) {
+    console.log('[awo] SDK version=' + (amis.version || 'unknown') +
+                ' embed=' + typeof amis.embed);
+  }
+
+  // ── 2. Resolve embed function ─────────────────────────────────────────────
+  var embedFn   = null;
+  var unmountFn = function (inst) {
+    if (inst && typeof inst.unmount === 'function') inst.unmount();
+  };
+
+  if (amisType !== 'undefined' && amis && typeof amis.embed === 'function') {
+    // v2 / some v3 builds: amis.embed directly available.
+    embedFn = function (el, schema, props, env) { return amis.embed(el, schema, props, env); };
+    console.log('[awo] SDK resolved via amis.embed');
+
+  } else if (amisType === 'function') {
+    // Some v1 builds: amis itself is the embed function.
+    embedFn = function (el, schema, props, env) { return amis(el, schema, props, env); };
+    console.log('[awo] SDK resolved via amis() call');
+
+  } else if (reqType === 'function') {
+    // v3 AMD system — try amis/embed then amis.
+    var resolved = false;
+    var candidates = ['amis/embed', 'amis'];
+    for (var ci = 0; ci < candidates.length && !resolved; ci++) {
+      try {
+        var mod = amisRequire(candidates[ci]);
+        console.log('[awo] amisRequire(' + candidates[ci] + ') type=' + typeof mod +
+                    ' keys=' + (mod ? Object.keys(mod).slice(0, 8).join(',') : 'null'));
+        if (mod && typeof mod.embed === 'function') {
+          (function (m) {
+            embedFn = function (el, schema, props, env) { return m.embed(el, schema, props, env); };
+          })(mod);
+          console.log('[awo] SDK resolved via amisRequire(' + candidates[ci] + ').embed');
+          resolved = true;
+        } else if (typeof mod === 'function') {
+          (function (m) {
+            embedFn = function (el, schema, props, env) { return m(el, schema, props, env); };
+          })(mod);
+          console.log('[awo] SDK resolved via amisRequire(' + candidates[ci] + ') as fn');
+          resolved = true;
+        }
+      } catch (e) {
+        console.warn('[awo] amisRequire(' + candidates[ci] + ') failed:', e.message);
+      }
+    }
+    if (!resolved) {
+      console.error('[awo] CRITICAL: AMD resolution failed — no embed function found');
+    }
+
+  } else {
+    console.error('[awo] CRITICAL: no known AMIS SDK API — check network for sdk.js load failure');
+  }
+
+  // ── 3. Probe i18n locale registry ─────────────────────────────────────────
+  // AMIS v3 registers locale bundles as AMD modules under 'amis/locale/{id}'.
+  // We probe several candidate module names to discover what is registered.
+  // This tells us whether we need a separate <script> to load en-US strings.
+  var localeID = 'en-US';
+  var localeProbes = [
+    'amis/locale/en-US',
+    'amis-i18n',
+    'i18n'
+  ];
+  if (reqType === 'function') {
+    for (var li = 0; li < localeProbes.length; li++) {
+      try {
+        var lmod = amisRequire(localeProbes[li]);
+        console.log('[awo] locale probe ' + localeProbes[li] + ':', typeof lmod,
+                    lmod ? JSON.stringify(Object.keys(lmod).slice(0, 6)) : 'null');
+      } catch (le) {
+        console.log('[awo] locale probe ' + localeProbes[li] + ': not registered (' + le.message + ')');
+      }
+    }
+  } else {
+    // v2 / direct API: check amis.locale or amis.getLocale
+    if (amis && (typeof amis.locale === 'function' || typeof amis.getLocale === 'function')) {
+      console.log('[awo] locale API: amis.locale/getLocale available');
+    } else {
+      console.log('[awo] locale probe: no AMD and no amis.locale — locale set via env only');
+    }
+  }
+
+  // ── 4. Register en-US overrides for untranslated AMIS strings ────────────
+  //
+  // AMIS uses Chinese strings as i18n keys in many components. When the en-US
+  // locale bundle does not define a mapping for a given Chinese key, AMIS
+  // renders the key itself — which is the Chinese string.
+  //
+  // "没有更多数据了" = key for "no more data" in List/crud footer.
+  // "暂无数据"       = key for empty-state placeholder.
+  // "加载中..."     = key for loading spinner text.
+  //
+  // Approach: call extendDefaultLocale('en-US', overrides) from amis-core.
+  // This merges our overrides into the registered en-US locale bundle.
+  // Works regardless of whether the bundle was loaded via AMD or inline.
+  var localeOverrides = {
+    '没有更多数据了': 'No more records.',
+    '暂无数据':      'No records found.',
+    '加载中...':    'Loading...',
+    '加载中':        'Loading',
+    '更多':          'More',
+    '确认':          'Confirm',
+    '取消':          'Cancel',
+    '操作':          'Actions',
+    '删除':          'Delete',
+    '编辑':          'Edit',
+    '新增':          'New',
+    '保存':          'Save',
+    '查询':          'Search',
+    '重置':          'Reset',
+    '提交':          'Submit',
+    '请选择':        'Please select',
+    '请输入':        'Please enter',
+  };
+  var localeRegistered = false;
+  if (reqType === 'function') {
+    // Try amis-core first (primary locale module in AMIS v3).
+    var coreCandidates = ['amis-core', 'amis'];
+    for (var oi = 0; oi < coreCandidates.length && !localeRegistered; oi++) {
+      try {
+        var coreMod = amisRequire(coreCandidates[oi]);
+        if (coreMod && typeof coreMod.extendDefaultLocale === 'function') {
+          coreMod.extendDefaultLocale('en-US', localeOverrides);
+          console.log('[awo] locale override: registered via ' + coreCandidates[oi] + '.extendDefaultLocale');
+          localeRegistered = true;
+        } else if (coreMod && typeof coreMod.addLocale === 'function') {
+          coreMod.addLocale('en-US', localeOverrides);
+          console.log('[awo] locale override: registered via ' + coreCandidates[oi] + '.addLocale');
+          localeRegistered = true;
+        }
+      } catch (oe) {
+        console.log('[awo] locale override attempt ' + coreCandidates[oi] + ' failed:', oe.message);
+      }
+    }
+  }
+  if (!localeRegistered) {
+    console.warn('[awo] locale override: no extendDefaultLocale API found — Chinese strings may remain for untranslated keys');
+  }
+
+  // ── 5. Build the global amisEnv ───────────────────────────────────────────
+  // Single object constructed once. locale lives here — not in per-call code.
+  // Every renderAmis() call passes window.amisEnv to amis.embed().
+  //
+  // Why global: ensures locale is identical across all embeds; avoids drift
+  // if renderAmis() is called with different arguments at different times.
+  window.amisEnv = {
+    locale: localeID,        // 'en-US' — must match a registered locale bundle
+    theme:  'cxd',           // base theme; dark override via html.dark CSS vars
+    fetcher: null            // filled in by the app script below (needs adaptResponse)
+  };
+
+  console.log('[awo] env constructed: locale=' + window.amisEnv.locale +
+              ' theme=' + window.amisEnv.theme);
+
+  window._amisEmbed   = embedFn;
+  window._amisUnmount = unmountFn;
+})();
+</script>
+<script>
+(function () {
+  'use strict';
+
+  // ── Mobile sidebar toggle ─────────────────────────────────────────────────
+  var sidebar  = document.getElementById('sidebar');
+  var overlay  = document.getElementById('overlay');
+  var menuBtn  = document.getElementById('menuBtn');
+  var closeBtn = document.getElementById('closeBtn');
+
+  function openSidebar()  { sidebar.classList.add('open'); overlay.classList.add('open'); }
+  function closeSidebar() { sidebar.classList.remove('open'); overlay.classList.remove('open'); }
+
+  if (menuBtn)  menuBtn.addEventListener('click', openSidebar);
+  if (closeBtn) closeBtn.addEventListener('click', closeSidebar);
+  if (overlay)  overlay.addEventListener('click', closeSidebar);
+
+  // ── Dark mode detection ────────────────────────────────────────────────────
+  var isDark = false;
+  function applyTheme() {
+    isDark = !!(window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches);
+    document.documentElement.classList.toggle('dark', isDark);
+  }
+  applyTheme();
+  if (window.matchMedia) {
+    window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', function () {
+      applyTheme();
+      // Re-render current page with correct theme.
+      var route = parseRoute();
+      if (route.module && route.resource) loadPage(route);
+    });
+  }
+
+  // ── Route parsing ──────────────────────────────────────────────────────────
+  // URL format: /ui/{module}/{resource}[/{id}][/edit|create]
+  function parseRoute() {
+    var parts = location.pathname.replace(/^\/ui\/?/, '').split('/').filter(Boolean);
+    var last  = parts[parts.length - 1];
+    return {
+      module:   parts[0] || '',
+      resource: parts[1] || '',
+      id:       parts[2] && parts[2] !== 'create' && parts[2] !== 'edit' ? parts[2] : null,
+      view:     last === 'edit'   ? 'edit'
+              : last === 'create' ? 'create'
+              : parts[2]          ? 'detail'
+              :                     'list',
+    };
+  }
+
+  // ── SDUI API URL builder ───────────────────────────────────────────────────
+  // Maps a parsed route to the server SDUI endpoint.
+  // GET /api/v1/ui/{module}/{resource}            → list
+  // GET /api/v1/ui/{module}/{resource}/create     → create form
+  // GET /api/v1/ui/{module}/{resource}/{id}       → detail
+  // GET /api/v1/ui/{module}/{resource}/{id}/edit  → edit form
+  function sduiURL(route) {
+    var base = '/api/v1/ui/' + route.module + '/' + route.resource;
+    switch (route.view) {
+      case 'create': return base + '/create';
+      case 'detail': return base + '/' + route.id;
+      case 'edit':   return base + '/' + route.id + '/edit';
+      default:       return base;
+    }
+  }
+
+  // ── Amis schema loading ────────────────────────────────────────────────────
+  function loadPage(route) {
+    if (!route.module || !route.resource) {
+      console.log('[awo] loadPage: skipped — no module/resource in route', route);
+      return;
+    }
+
+    var url = sduiURL(route);
+    console.log('[awo] loadPage: fetching SDUI schema', url, route);
+
+    fetch(url, { credentials: 'include' })
+      .then(function (r) {
+        console.log('[awo] loadPage: server responded', r.status, url);
+        if (!r.ok) throw new Error('HTTP ' + r.status + ' from ' + url);
+        return r.json();
+      })
+      .then(function (schema) {
+        console.log('[awo] loadPage: schema received, type=' + (schema && schema.type) +
+          ', keys=' + (schema ? Object.keys(schema).join(',') : 'null'));
+        renderAmis(schema);
+        updateNavActive(route);
+      })
+      .catch(function (err) {
+        console.error('[awo] loadPage: error', err);
+        renderAmis({
+          type: 'page',
+          title: 'Error',
+          body: { type: 'alert', level: 'danger', body: 'Failed to load page: ' + err.message }
+        });
+      });
+  }
+
+  // ── API response → AMIS format adapter ───────────────────────────────────
+  // Our API returns: { data: [...], meta: { total, page, page_size } }
+  // AMIS crud expects: { status: 0, data: { items: [...], count: N } }
+  // AMIS form initApi expects: { status: 0, data: { field: value, ... } }
+  function adaptResponse(json) {
+    // Already in AMIS format (has numeric status).
+    if (json && typeof json.status === 'number') return json;
+
+    var result = { status: 0, msg: '', data: json && json.data };
+
+    // List response: data is array with pagination meta.
+    if (json && Array.isArray(json.data) && json.meta) {
+      var total = json.meta.total || json.data.length;
+      result.data = { items: json.data, count: total, total: total };
+    }
+
+    // Error response.
+    if (json && json.error) {
+      result.status = 1;
+      result.msg = (json.error.message) || 'Error';
+      result.data = null;
+    }
+
+    return result;
+  }
+
+  // ── Wire fetcher into global amisEnv ──────────────────────────────────────
+  // Fetcher defined here (not in the bootstrap block) because adaptResponse
+  // is defined in this closure. amisEnv.fetcher is null until this runs.
+  // All renderAmis() calls use the same amisEnv object — locale never drifts.
+  if (window.amisEnv) {
+    window.amisEnv.fetcher = function (opts) {
+      return fetch(opts.url, {
+        method:  opts.method || 'GET',
+        headers: Object.assign({ 'Content-Type': 'application/json' }, opts.headers),
+        body:    opts.data ? JSON.stringify(opts.data) : undefined,
+        credentials: 'include',
+      }).then(function (r) { return r.json(); }).then(adaptResponse);
+    };
+    console.log('[awo] env.fetcher wired. Final env: locale=' + window.amisEnv.locale +
+                ' theme=' + window.amisEnv.theme + ' fetcher=' + typeof window.amisEnv.fetcher);
+  }
+
+  // ── Amis rendering ─────────────────────────────────────────────────────────
+  var currentApp = null;
+  function renderAmis(schema) {
+    var el = document.getElementById('content');
+
+    if (!window._amisEmbed) {
+      el.innerHTML =
+        '<div style="padding:32px 24px;margin:16px;background:#fff2f0;border:1px solid #ffccc7;border-radius:6px;">' +
+        '<strong style="color:#cf1322">AMIS SDK failed to load</strong>' +
+        '<p style="margin:8px 0 0;color:#595959;font-size:13px;">' +
+        'Check browser console → Network tab for sdk.js load failure.' +
+        '</p></div>';
+      console.error('[awo] renderAmis: _amisEmbed not available');
+      return;
+    }
+
+    if (currentApp) {
+      try { window._amisUnmount(currentApp); } catch (e) { console.warn('[awo] unmount:', e); }
+      currentApp = null;
+    }
+
+    // Apply current dark/light theme to the env object in-place.
+    // Theme changes without reconstruction — locale never changes.
+    var env = window.amisEnv;
+    env.theme = isDark ? 'cxd' : ((schema && schema.theme) || 'cxd');
+
+    console.log('[awo] renderAmis: schema.type=' + (schema && schema.type) +
+                ' env.locale=' + env.locale + ' env.theme=' + env.theme);
+    try {
+      currentApp = window._amisEmbed(el, schema, {}, env);
+    } catch (e) {
+      console.error('[awo] _amisEmbed threw:', e);
+      el.innerHTML = '<div style="padding:16px;color:#cf1322;font-size:13px;">Render error: ' + e.message + '</div>';
+    }
+  }
+
+  // ── Navigation loading ─────────────────────────────────────────────────────
+  // GET /api/v1/ui/nav → [{module, label, entries: [{module, label, entity, listUrl, icon}]}]
+  function loadNav() {
+    var navEl = document.getElementById('nav');
+    navEl.innerHTML = '<div class="nav-loading">Loading navigation...</div>';
+
+    fetch('/api/v1/ui/nav', { credentials: 'include' })
+      .then(function (r) {
+        console.log('[awo] nav: server responded', r.status);
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      })
+      .then(function (modules) {
+        console.log('[awo] nav: received', modules && modules.length, 'modules');
+        renderNav(navEl, modules);
+      })
+      .catch(function (err) {
+        console.error('[awo] nav: failed', err);
+        navEl.innerHTML = '<div class="nav-loading">Navigation unavailable</div>';
+      });
+  }
+
+  function navigate(href) {
+    console.log('[awo] navigate:', href);
+    history.pushState(null, '', href);
+    loadPage(parseRoute());
+    if (window.innerWidth <= 768) closeSidebar();
+  }
+
+  function renderNav(navEl, modules) {
+    if (!modules || modules.length === 0) {
+      navEl.innerHTML = '<div class="nav-loading">No modules</div>';
+      return;
+    }
+
+    // Build DOM directly so click handlers attach per-element (no delegation).
+    navEl.innerHTML = '';
+    for (var i = 0; i < modules.length; i++) {
+      var mod = modules[i];
+      var modEl = document.createElement('div');
+      modEl.className = 'nav-module';
+
+      var labelEl = document.createElement('div');
+      labelEl.className = 'nav-module-label';
+      labelEl.textContent = mod.label;
+      modEl.appendChild(labelEl);
+
+      if (mod.entries) {
+        for (var j = 0; j < mod.entries.length; j++) {
+          (function (entry) {
+            var a = document.createElement('a');
+            a.className = 'nav-entry';
+            a.href = entry.listUrl;
+            a.textContent = entry.label;
+            a.onclick = function (e) {
+              e.preventDefault();
+              console.log('[awo] nav click:', entry.listUrl);
+              navigate(entry.listUrl);
+            };
+            modEl.appendChild(a);
+          })(mod.entries[j]);
+        }
+      }
+
+      navEl.appendChild(modEl);
+    }
+
+    updateNavActive(parseRoute());
+  }
+
+  function updateNavActive(route) {
+    var entries = document.querySelectorAll('a.nav-entry');
+    var current = location.pathname;
+    for (var i = 0; i < entries.length; i++) {
+      var href = entries[i].getAttribute('href');
+      entries[i].classList.toggle('active', href === current || (route.module && route.resource && href === '/ui/' + route.module + '/' + route.resource));
+    }
+  }
+
+  function escapeHtml(str) {
+    return String(str)
+      .replace(/&/g, '&amp;')
+      .replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;')
+      .replace(/"/g, '&quot;');
+  }
+
+  // ── Bootstrap ──────────────────────────────────────────────────────────────
+  loadNav();
+
+  var route = parseRoute();
+  if (route.module) {
+    loadPage(route);
+  } else {
+    renderAmis({
+      type: 'page',
+      title: 'Awo ERP',
+      body: [
+        {
+          type: 'tpl',
+          tpl: '<div style="padding:48px 0;text-align:center;color:#8c8c8c;">'
+             + '<div style="font-size:48px;margin-bottom:16px;">&#9677;</div>'
+             + '<div style="font-size:18px;font-weight:500;margin-bottom:8px;">Welcome to Awo ERP</div>'
+             + '<div style="font-size:14px;">Select a module from the sidebar to get started.</div>'
+             + '</div>'
+        }
+      ]
+    });
+  }
+
+  // Handle browser navigation.
+  window.addEventListener('popstate', function () {
+    loadPage(parseRoute());
+  });
+})();
+</script>
+</body>
+</html>

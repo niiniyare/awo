@@ -1,0 +1,120 @@
+{
+  "type": "page",
+  "title": "Items",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/item",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "code", "label": "Code", "type": "text" },
+      { "name": "name", "label": "Name", "type": "text" },
+      {
+        "name": "item_type",
+        "label": "Type",
+        "type": "mapping",
+        "map": {
+          "product": "Product",
+          "service": "Service",
+          "consumable": "Consumable"
+        }
+      },
+      { "name": "unit", "label": "Unit", "type": "text" },
+      { "name": "cost_price", "label": "Cost Price", "type": "number" },
+      { "name": "selling_price", "label": "Selling Price", "type": "number" },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Item",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/item/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/item/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "code", "label": "Code", "required": true },
+                  { "type": "input-text", "name": "name", "label": "Name", "required": true },
+                  {
+                    "type": "select",
+                    "name": "item_type",
+                    "label": "Item Type",
+                    "required": true,
+                    "options": [
+                      { "label": "Product", "value": "product" },
+                      { "label": "Service", "value": "service" },
+                      { "label": "Consumable", "value": "consumable" }
+                    ]
+                  },
+                  { "type": "input-text", "name": "unit", "label": "Unit" },
+                  { "type": "input-number", "name": "cost_price", "label": "Cost Price", "min": 0 },
+                  { "type": "input-number", "name": "selling_price", "label": "Selling Price", "min": 0 },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this item?",
+            "api": { "method": "DELETE", "url": "/api/v1/item/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Item",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Item",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/item" },
+            "body": [
+              { "type": "input-text", "name": "code", "label": "Code", "required": true },
+              { "type": "input-text", "name": "name", "label": "Name", "required": true },
+              {
+                "type": "select",
+                "name": "item_type",
+                "label": "Item Type",
+                "required": true,
+                "options": [
+                  { "label": "Product", "value": "product" },
+                  { "label": "Service", "value": "service" },
+                  { "label": "Consumable", "value": "consumable" }
+                ]
+              },
+              { "type": "input-text", "name": "unit", "label": "Unit" },
+              { "type": "input-number", "name": "cost_price", "label": "Cost Price", "min": 0 },
+              { "type": "input-number", "name": "selling_price", "label": "Selling Price", "min": 0 },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,82 @@
+{
+  "type": "page",
+  "title": "Forecourt Sites",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/site",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "code", "label": "Code", "type": "text" },
+      { "name": "name", "label": "Name", "type": "text" },
+      { "name": "address", "label": "Address", "type": "text" },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Site",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/site/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/site/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "code", "label": "Code", "required": true },
+                  { "type": "input-text", "name": "name", "label": "Name", "required": true },
+                  { "type": "input-text", "name": "address", "label": "Address" },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this site?",
+            "api": { "method": "DELETE", "url": "/api/v1/site/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Site",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Site",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/site" },
+            "body": [
+              { "type": "input-text", "name": "code", "label": "Code", "required": true },
+              { "type": "input-text", "name": "name", "label": "Name", "required": true },
+              { "type": "input-text", "name": "address", "label": "Address" },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

@@ -1,0 +1,117 @@
+{
+  "type": "page",
+  "title": "Opportunities",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/opportunity",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "title", "label": "Title", "type": "text" },
+      { "name": "customer_id", "label": "Customer", "type": "text" },
+      {
+        "name": "stage",
+        "label": "Stage",
+        "type": "mapping",
+        "map": {
+          "prospect": "Prospect",
+          "proposal": "Proposal",
+          "negotiation": "Negotiation",
+          "closed_won": "Closed Won",
+          "closed_lost": "Closed Lost"
+        }
+      },
+      { "name": "value", "label": "Value", "type": "number" },
+      { "name": "close_date", "label": "Close Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "probability", "label": "Probability (%)", "type": "number" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Opportunity",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/opportunity/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/opportunity/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "title", "label": "Title", "required": true },
+                  { "type": "input-text", "name": "customer_id", "label": "Customer ID" },
+                  {
+                    "type": "select",
+                    "name": "stage",
+                    "label": "Stage",
+                    "options": [
+                      { "label": "Prospect", "value": "prospect" },
+                      { "label": "Proposal", "value": "proposal" },
+                      { "label": "Negotiation", "value": "negotiation" },
+                      { "label": "Closed Won", "value": "closed_won" },
+                      { "label": "Closed Lost", "value": "closed_lost" }
+                    ]
+                  },
+                  { "type": "input-number", "name": "value", "label": "Value", "min": 0 },
+                  { "type": "input-date", "name": "close_date", "label": "Close Date" },
+                  { "type": "input-number", "name": "probability", "label": "Probability (%)", "min": 0, "max": 100 }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this opportunity?",
+            "api": { "method": "DELETE", "url": "/api/v1/opportunity/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Opportunity",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Opportunity",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/opportunity" },
+            "body": [
+              { "type": "input-text", "name": "title", "label": "Title", "required": true },
+              { "type": "input-text", "name": "customer_id", "label": "Customer ID" },
+              {
+                "type": "select",
+                "name": "stage",
+                "label": "Stage",
+                "value": "prospect",
+                "options": [
+                  { "label": "Prospect", "value": "prospect" },
+                  { "label": "Proposal", "value": "proposal" },
+                  { "label": "Negotiation", "value": "negotiation" },
+                  { "label": "Closed Won", "value": "closed_won" },
+                  { "label": "Closed Lost", "value": "closed_lost" }
+                ]
+              },
+              { "type": "input-number", "name": "value", "label": "Value", "min": 0 },
+              { "type": "input-date", "name": "close_date", "label": "Close Date" },
+              { "type": "input-number", "name": "probability", "label": "Probability (%)", "min": 0, "max": 100 }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

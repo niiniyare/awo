@@ -1,0 +1,70 @@
+{
+  "body": [
+    {
+      "actions": [
+        {
+          "actionType": "link",
+          "icon": "fa fa-edit",
+          "id": "edit",
+          "label": "Edit",
+          "level": "default",
+          "link": "/ui/finance/invoices/${id}/edit",
+          "type": "button"
+        },
+        {
+          "actionType": "ajax",
+          "api": "DELETE:/api/v1/finance/invoices/${id}",
+          "confirmText": "Delete this Invoice?",
+          "icon": "fa fa-trash",
+          "id": "delete",
+          "label": "Delete",
+          "level": "danger",
+          "type": "button"
+        }
+      ],
+      "body": null,
+      "title": "Invoice",
+      "type": "panel"
+    },
+    {
+      "body": [
+        {
+          "disabled": true,
+          "label": "Status",
+          "name": "status",
+          "type": "select"
+        },
+        {
+          "disabled": true,
+          "label": "Amount",
+          "name": "amount",
+          "precision": 2,
+          "type": "input-number"
+        },
+        {
+          "disabled": true,
+          "format": "YYYY-MM-DD",
+          "label": "Due Date",
+          "name": "due_date",
+          "type": "input-date"
+        },
+        {
+          "disabled": true,
+          "label": "Customer",
+          "name": "customer",
+          "type": "input-text"
+        },
+        {
+          "disabled": true,
+          "label": "Notes",
+          "name": "notes",
+          "type": "textarea"
+        }
+      ],
+      "initApi": "GET:/api/v1/finance/invoices/${id}",
+      "type": "form"
+    }
+  ],
+  "title": "Invoice",
+  "type": "page"
+}

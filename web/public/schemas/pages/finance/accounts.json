@@ -1,0 +1,134 @@
+{
+  "type": "page",
+  "title": "Chart of Accounts",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/account",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "code", "label": "Code", "type": "text" },
+      { "name": "name", "label": "Name", "type": "text" },
+      {
+        "name": "account_type",
+        "label": "Type",
+        "type": "mapping",
+        "map": {
+          "asset": "Asset",
+          "liability": "Liability",
+          "equity": "Equity",
+          "revenue": "Revenue",
+          "expense": "Expense"
+        }
+      },
+      { "name": "currency", "label": "Currency", "type": "text" },
+      {
+        "name": "is_active",
+        "label": "Active",
+        "type": "status",
+        "map": { "true": "success", "false": "danger" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Account",
+              "body": {
+                "type": "form",
+                "api": {
+                  "method": "PUT",
+                  "url": "/api/v1/account/${id}"
+                },
+                "initApi": {
+                  "method": "GET",
+                  "url": "/api/v1/account/${id}"
+                },
+                "body": [
+                  { "type": "input-text", "name": "code", "label": "Code", "required": true },
+                  { "type": "input-text", "name": "name", "label": "Name", "required": true },
+                  {
+                    "type": "select",
+                    "name": "account_type",
+                    "label": "Account Type",
+                    "required": true,
+                    "options": [
+                      { "label": "Asset", "value": "asset" },
+                      { "label": "Liability", "value": "liability" },
+                      { "label": "Equity", "value": "equity" },
+                      { "label": "Revenue", "value": "revenue" },
+                      { "label": "Expense", "value": "expense" }
+                    ]
+                  },
+                  { "type": "input-text", "name": "currency", "label": "Currency", "value": "USD" },
+                  { "type": "switch", "name": "is_active", "label": "Active", "value": true },
+                  { "type": "textarea", "name": "description", "label": "Description" }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this account?",
+            "api": {
+              "method": "DELETE",
+              "url": "/api/v1/account/${id}"
+            },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Account",
+        "actionType": "dialog",
+        "icon": "fa fa-plus",
+        "dialog": {
+          "title": "Create Account",
+          "body": {
+            "type": "form",
+            "api": {
+              "method": "POST",
+              "url": "/api/v1/account"
+            },
+            "body": [
+              { "type": "input-text", "name": "code", "label": "Code", "required": true },
+              { "type": "input-text", "name": "name", "label": "Name", "required": true },
+              {
+                "type": "select",
+                "name": "account_type",
+                "label": "Account Type",
+                "required": true,
+                "options": [
+                  { "label": "Asset", "value": "asset" },
+                  { "label": "Liability", "value": "liability" },
+                  { "label": "Equity", "value": "equity" },
+                  { "label": "Revenue", "value": "revenue" },
+                  { "label": "Expense", "value": "expense" }
+                ]
+              },
+              { "type": "input-text", "name": "currency", "label": "Currency", "value": "USD" },
+              { "type": "switch", "name": "is_active", "label": "Active", "value": true },
+              { "type": "textarea", "name": "description", "label": "Description" }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

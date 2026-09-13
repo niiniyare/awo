@@ -1,0 +1,82 @@
+{
+  "type": "page",
+  "title": "Fiscal Years",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/fiscal_year",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "name", "label": "Name", "type": "text" },
+      { "name": "start_date", "label": "Start Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "end_date", "label": "End Date", "type": "date", "format": "YYYY-MM-DD" },
+      {
+        "name": "is_closed",
+        "label": "Closed",
+        "type": "status",
+        "map": { "true": "danger", "false": "success" }
+      },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "Edit",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Edit Fiscal Year",
+              "body": {
+                "type": "form",
+                "api": { "method": "PUT", "url": "/api/v1/fiscal_year/${id}" },
+                "initApi": { "method": "GET", "url": "/api/v1/fiscal_year/${id}" },
+                "body": [
+                  { "type": "input-text", "name": "name", "label": "Name", "required": true },
+                  { "type": "input-date", "name": "start_date", "label": "Start Date", "required": true },
+                  { "type": "input-date", "name": "end_date", "label": "End Date", "required": true },
+                  { "type": "switch", "name": "is_closed", "label": "Closed" }
+                ]
+              }
+            }
+          },
+          {
+            "label": "Delete",
+            "type": "button",
+            "actionType": "ajax",
+            "confirmText": "Delete this fiscal year?",
+            "api": { "method": "DELETE", "url": "/api/v1/fiscal_year/${id}" },
+            "reload": "crud"
+          }
+        ]
+      }
+    ],
+    "toolbar": [
+      {
+        "type": "button",
+        "label": "New Fiscal Year",
+        "icon": "fa fa-plus",
+        "actionType": "dialog",
+        "dialog": {
+          "title": "Create Fiscal Year",
+          "body": {
+            "type": "form",
+            "api": { "method": "POST", "url": "/api/v1/fiscal_year" },
+            "body": [
+              { "type": "input-text", "name": "name", "label": "Name", "required": true },
+              { "type": "input-date", "name": "start_date", "label": "Start Date", "required": true },
+              { "type": "input-date", "name": "end_date", "label": "End Date", "required": true },
+              { "type": "switch", "name": "is_closed", "label": "Closed", "value": false }
+            ]
+          }
+        }
+      }
+    ]
+  }
+}

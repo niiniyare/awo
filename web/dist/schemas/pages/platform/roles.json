@@ -1,0 +1,64 @@
+{
+  "type": "page",
+  "title": "Roles & Assignments",
+  "body": [
+    {
+      "type": "crud",
+      "name": "rolesList",
+      "title": "Available Roles",
+      "api": {
+        "method": "GET",
+        "url": "/iam/roles",
+        "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||payload.data||[],total:payload.data.total||0}};"
+      },
+      "defaultParams": { "$page": 1, "$perPage": 50 },
+      "perPage": 50,
+      "perPageField": "$perPage",
+      "pageField": "$page",
+      "itemsFieldName": "items",
+      "columns": [
+        { "name": "name", "label": "Role Name", "type": "text" },
+        { "name": "description", "label": "Description", "type": "text" }
+      ],
+      "toolbar": []
+    },
+    {
+      "type": "divider"
+    },
+    {
+      "type": "panel",
+      "title": "Assign Role to User",
+      "body": {
+        "type": "form",
+        "title": "",
+        "api": {
+          "method": "POST",
+          "url": "/iam/users/${user_id}/roles"
+        },
+        "body": [
+          {
+            "type": "input-text",
+            "name": "user_id",
+            "label": "User ID",
+            "required": true,
+            "placeholder": "Enter the user UUID"
+          },
+          {
+            "type": "select",
+            "name": "role",
+            "label": "Role",
+            "required": true,
+            "source": {
+              "method": "GET",
+              "url": "/iam/roles",
+              "adaptor": "return {status:0,msg:'',data:{options:(payload.data.items||payload.data||[]).map(function(r){return {label:r.name,value:r.name};})}};"
+            },
+            "labelField": "label",
+            "valueField": "value"
+          }
+        ],
+        "submitText": "Assign Role"
+      }
+    }
+  ]
+}

@@ -1,0 +1,57 @@
+{
+  "type": "page",
+  "title": "Journal Entries",
+  "body": {
+    "type": "crud",
+    "api": {
+      "method": "GET",
+      "url": "/api/v1/journal_entry",
+      "adaptor": "return {status:0,msg:'',data:{items:payload.data.items||[],total:payload.data.total||0}};"
+    },
+    "defaultParams": { "$page": 1, "$perPage": 20 },
+    "perPage": 20,
+    "perPageField": "$perPage",
+    "pageField": "$page",
+    "itemsFieldName": "items",
+    "columns": [
+      { "name": "entry_date", "label": "Entry Date", "type": "date", "format": "YYYY-MM-DD" },
+      { "name": "reference", "label": "Reference", "type": "text" },
+      { "name": "description", "label": "Description", "type": "text" },
+      { "name": "doc_status", "label": "Status", "type": "text" },
+      { "name": "total_debit", "label": "Total Debit", "type": "number" },
+      { "name": "total_credit", "label": "Total Credit", "type": "number" },
+      {
+        "type": "operation",
+        "label": "Actions",
+        "buttons": [
+          {
+            "label": "View",
+            "type": "button",
+            "actionType": "dialog",
+            "dialog": {
+              "title": "Journal Entry Detail",
+              "body": {
+                "type": "form",
+                "initApi": {
+                  "method": "GET",
+                  "url": "/api/v1/journal_entry/${id}"
+                },
+                "mode": "horizontal",
+                "body": [
+                  { "type": "static", "name": "entry_date", "label": "Entry Date" },
+                  { "type": "static", "name": "reference", "label": "Reference" },
+                  { "type": "static", "name": "description", "label": "Description" },
+                  { "type": "static", "name": "doc_status", "label": "Status" },
+                  { "type": "static", "name": "total_debit", "label": "Total Debit" },
+                  { "type": "static", "name": "total_credit", "label": "Total Credit" }
+                ],
+                "actions": []
+              }
+            }
+          }
+        ]
+      }
+    ],
+    "toolbar": []
+  }
+}
