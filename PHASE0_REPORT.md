@@ -79,7 +79,7 @@ Added `.github/workflows/ci.yml` with three jobs:
 2. `test` — `go test ./... -count=1 -coverprofile=coverage.out` against real PostgreSQL 16 and Redis 7 **service containers** (not mocks), with coverage uploaded as a build artifact and printed (not gated — current 51.5% is far below the 90% target tracked in `tasks.md` Phase 9; gating now would only produce noise).
 3. `race` — `go test -race ./... -count=1` on `ubuntu-latest` (linux/amd64), the same Postgres/Redis service containers, since `-race` cannot run on this development sandbox's android/arm64 host.
 
-**This workflow has not yet been exercised by an actual GitHub Actions run** — no push was made to a remote in this session. Verify it on first push; do not assume it is correct purely because it parses and reads sensibly.
+**Verified on the first real push** (run [35373542498](https://github.com/niiniyare/awo/actions/runs/35373542498)): all three jobs completed successfully — `fmt-vet-build`, `test` (real PostgreSQL 16 + Redis 7 service containers, coverage 52.6% of statements), and `race` (`go test -race ./...` passing on `ubuntu-latest`/linux-amd64 — the race coverage this development sandbox cannot provide). CI is now a proven, not merely plausible, baseline.
 
 ## 9. Documentation changes
 
@@ -181,7 +181,7 @@ None from `go vet`, `go build`, or `gofmt`. Test suite is fully green. Statement
 | 11 | Real PostgreSQL integration tests pass where required | **PASS** |
 | 12 | Real Redis integration tests pass where required | **PASS** |
 | 13 | Race testing has either passed or been proven impossible, and is covered by CI | **PASS** (proven impossible locally; CI targets a supported architecture) |
-| 14 | CI verifies build/test/vet/integration/race appropriately | **PARTIAL** — workflow authored and committed, but not yet exercised by a real run; do not treat as fully proven until the first push confirms it |
+| 14 | CI verifies build/test/vet/integration/race appropriately | **PASS** — confirmed on run 35373542498: all three jobs green, including `-race` on a supported architecture |
 | 15 | No investigation artifacts remain without justification | **PASS** |
 | 16 | `.gitignore` appropriately protects generated/local artifacts | **PASS** |
 | 17 | README contains accurate bootstrap/build/test instructions | **PASS** |
@@ -189,10 +189,8 @@ None from `go vet`, `go build`, or `gofmt`. Test suite is fully green. Statement
 | 19 | `git diff --check` passes | **PASS** |
 | 20 | `tasks.md` accurately records Phase 0 completion status | **PASS** |
 
-**18 of 19 line items fully PASS; 1 (CI) is PARTIAL pending a real workflow run.**
+**19 of 19 line items PASS.**
 
 ## 19. Final recommendation
 
-**The repository is safe to proceed to Phase 1.** The build-integrity foundation Phase 0 exists to establish is genuinely in place: a real, evidence-based module identity; a documented, non-arbitrary resolution of the Finance-import blocker; a clean `go build`/`go vet`/`gofmt`/`go test` baseline verified twice independently against real PostgreSQL and Redis; and a CI pipeline that will keep this baseline honest going forward once its first run is confirmed.
-
-The one open item (CI's first real run) is low-risk and fast to close — push to a branch and watch it run before treating "CI is green" as an established fact rather than a well-founded expectation. It does not need to block starting Phase 1 work in parallel.
+**The repository is safe to proceed to Phase 1.** The build-integrity foundation Phase 0 exists to establish is genuinely in place: a real, evidence-based module identity; a documented, non-arbitrary resolution of the Finance-import blocker; a clean `go build`/`go vet`/`gofmt`/`go test` baseline verified independently against real PostgreSQL and Redis both locally and in CI; and a CI pipeline proven green on its first real run (35373542498), including `-race` on a supported architecture. Every Phase 0 acceptance criterion is satisfied.
