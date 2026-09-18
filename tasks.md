@@ -1,677 +1,319 @@
-# AWO Framework — Implementation Tracker
+# Awo Implementation Roadmap
 
-**Updated:** 2026-08-31
-**Owner:** Solo developer / Claude Code
-**Scope:** Transform AWO into a clean, reusable, production-grade Go framework extractable from the ERP repository.
-**Module:** `awo.so` (at `erp/go.mod`)
-**Phase Rule:** Never mark a phase complete unless its required tests pass. Code existing ≠ phase complete.
+**Status:** Authoritative implementation tracker. Supersedes all prior status claims in this file's history.
+**Source:** `AUDIT_REPORT.md` (2026-09-13/18 full architecture/implementation/competitive audit — read it for evidence behind every item below).
+**Rule:** Never check an item complete without evidence (a passing test, a verified `git diff`, or an explicit command output). "Code exists" ≠ "phase complete."
+**Baseline at time of writing:** repo does not build as committed (see Phase 0). Once repaired, `go build`/`go vet`/`go test ./...` all pass clean (~100 packages), coverage 51.5%. `-race` untested (host limitation, must run in CI).
 
----
-
-## Architecture Decisions
-
-| ADR | Decision | Status |
-|---|---|---|
-| ADR-020 | No Wire codegen. Manual DI with Options pattern. | IMPLEMENTED |
-| ADR-021 | `filter.Filter` is the single query abstraction. SQLC absent from go.mod. | IMPLEMENTED |
-| ADR-022 | PostgreSQL authoritative for sessions. Redis is hot path. `Session.Metadata` JSONB. | IMPLEMENTED |
-| ADR-023 | `IsPlatformAdmin()` bypasses Casbin, NOT RLS. SystemContext required for cross-tenant. | IMPLEMENTED |
-| ADR-024 | `platform_organization` with ltree hierarchy. Entities opt-in via `EntityScope`. | IMPLEMENTED (integration tests pending) |
-| ADR-025 | Migration gen derives SQL from CompiledSchema. `golang-migrate` for execution. | IMPLEMENTED |
-| ADR-026 | Framework = `awo/` except `cmd/`. ERP = `cmd/` + `modules/`. | IMPLEMENTED |
-| ADR-027 | `workflow.Executor` interface. Temporal adapter implements it. | IMPLEMENTED |
-| ADR-028 | Feature flags and settings are framework-native. Redis→memory eval chain. | IMPLEMENTED (platform) |
-| ADR-029 | Unified audit. `AllowAudit: true` default. `platform/audit` canonical entity. | IMPLEMENTED |
+Every item includes GOAL / WHY / FILES / DEPENDENCIES / IMPLEMENTATION / TESTS / ACCEPTANCE CRITERIA. Phases are ordered by actual dependency, not just severity — documentation-first per the framework's own Principle 5, then core contracts, then tests, then implementation, then infrastructure, then platform entities, then CLI/tooling, then advanced features.
 
 ---
 
-## Verified Implementation State (2026-08-17)
+## Phase 0 — Restore Buildability (BLOCKS EVERYTHING)
 
-This section reflects actual code state, not aspirational status.
+### 0.1 Commit a real `go.mod`
+- [ ] **GOAL:** Repository builds from a clean checkout with no manual steps.
+- **WHY:** No `go.mod` was carried over when the framework was extracted from the monorepo into this standalone repo. Every package's own import statements already use `awo.so/awo/...` — the correct fix is `module awo.so/awo` at the repo root (not `module awo.so`), since that makes `./def` resolve to import path `awo.so/awo/def`, matching every existing source file exactly.
+- **FILES:** `go.mod`, `go.sum` (new, at repo root).
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** `go mod init awo.so/awo && go mod tidy` (this audit already did this as a diagnostic step — the resulting `go.mod`/`go.sum` are sitting untracked in the working tree; review and commit them, or regenerate).
+- **TESTS:** `go build ./...` must fail with exactly one error class (missing `awo.so/modules/finance`) until 0.2 is resolved.
+- **ACCEPTANCE CRITERIA:** [ ] `go.mod` committed with `module awo.so/awo`. [ ] `go.sum` committed. [ ] `go vet ./...` runs (even if it fails on 0.2's error).
 
-### Packages Confirmed Implemented
+### 0.2 Resolve the `awo.so/modules/finance` import
+- [ ] **GOAL:** `cmd/awo` and `cmd/server` compile.
+- **WHY:** Both binaries blank-import `_ "awo.so/modules/finance"` — a package that does not exist anywhere in this repository (the ERP application layer was not moved here, only the framework). This makes both CLI entry points uncompilable today.
+- **FILES:** `cmd/awo/cmds_schema.go:31`, `cmd/server/main.go:64`.
+- **DEPENDENCIES:** 0.1. Decision needed on which of the two fixes below the team wants — **ask the user / make an explicit call**, don't silently pick one:
+  - **(a)** Remove the finance-module import entirely from framework `cmd/` binaries — the framework's own `cmd/awo`/`cmd/server` should not hard-depend on any specific ERP application module. This matches ADR-026 ("Framework = repo root except `cmd/`; ERP = `cmd/` + `modules/`") read literally now that `modules/` doesn't exist in this repo at all.
+  - **(b)** Bring `modules/finance` back into this repo (it was presumably left behind in the monorepo) if the team wants a reference/example module shipped alongside the framework.
+- **IMPLEMENTATION:** Whichever option is chosen, remove the diagnostic `// DIAG-COMMENTED:` state (already reverted to the original blank-import by this audit) and replace with the real fix.
+- **TESTS:** `go build ./...` exits 0. `go test ./...` runs to completion.
+- **ACCEPTANCE CRITERIA:** [ ] `go build ./...` clean. [ ] `go vet ./...` clean. [ ] Decision (a) or (b) documented in a short ADR or a note in this file.
 
-| Package | Evidence | Status |
-|---|---|---|
-| `awo/def` | 18-method interface, 17 field types, EdgeDef, HookSet, ActionDef, WorkflowTrigger | COMPLETE |
-| `awo/compiler` | Validates + compiles EntityDefinitions → CompiledSchema; graph.go cycle detection | COMPLETE |
-| `awo/registry` | Register/Lookup/All/Seal; BuildFrom for test isolation | COMPLETE |
-| `awo/runtime` | BeforeValidate→Validate→Authorize→Persist→AfterCreate pipeline | COMPLETE |
-| `awo/filter` | 14 predicates + And/Or/Not + fluent builder + SQL translator | COMPLETE |
-| `awo/driver` | EntityRepository[T] interface; QueryOptions; CreateInput; BulkCreate | COMPLETE |
-| `awo/auth` | Session (with Metadata), ViewerContext, SessionValidator interface | COMPLETE |
-| `awo/contrib/pgx` | EntityRepository impl; BulkCreate (pgx.Batch round-trip — BUG-008 fixed); set_tenant_context | COMPLETE |
-| `awo/contrib/redis` | Session store; service-account index bug fixed | COMPLETE |
-| `awo/cache` | Cache/Counter interfaces; NoopCache, NoopCounter | COMPLETE |
-| `awo/events` | DomainEvent; Publisher/Subscriber; Bus; outbox relay | COMPLETE |
-| `awo/workflow/executor.go` | WorkflowExecutor interface; NoopExecutor; TemporalExecutor | COMPLETE |
-| `awo/scheduler/scheduler.go` | Cron-based scheduler; Schedule/Cancel/Status | COMPLETE |
-| `awo/report/report.go` | ReportDefinition DSL; GenerateSQL → parameterized SELECT | COMPLETE |
-| `awo/ioport/importer.go` | Import/Export; CSV/JSON/JSONL; driven by EntityRepository | COMPLETE |
-| `awo/docgen/docgen.go` | Markdown entity docs from CompiledSchema; topological order | COMPLETE |
-| `awo/api/meta/handler.go` | GET /entities, /entities/:name, /permissions | COMPLETE |
-| `awo/api/router` | Auto-generated CRUD + action routes from CompiledSchema | COMPLETE |
-| `awo/api/sdui/handler.go` | SDUI handler; PageBuilderSet wiring verified with 18 tests (BUG-012 closed) | COMPLETE |
-| `awo/platform/audit` | platform_audit_log entity; AuditWriter; lifecycle integration | COMPLETE |
-| `awo/platform/iam` | iam_user, iam_role, iam_session entities; AuthService | COMPLETE |
-| `awo/platform/tenant` | platform_tenant entity; transitions | COMPLETE |
-| `awo/platform/flags` | platform_feature_flag entity; evaluation chain | COMPLETE |
-| `awo/platform/settings` | platform_setting entity; hierarchical override | COMPLETE |
-| `awo/platform/metadata` | platform_metadata entity | COMPLETE |
-| `awo/generator` | SQL migration generator; ScopeSystem fix; awo_audit_log stub | COMPLETE |
-| `awo/cmd/awo` | serve/schema/entity/generate/docgen/doctor/version; Temporal wired; --json/--dry-run | COMPLETE |
-| `modules/finance` | 14 entities; unit+migration+handler tests; real state machine handlers | COMPLETE |
-| `awo/cmd/server/main.go` | Temporal wired via TEMPORAL_HOST; finance module imported | COMPLETE |
+### 0.3 Stand up CI
+- [ ] **GOAL:** Every push/PR runs `go build ./...`, `go vet ./...`, `go test ./...`, and `go test ./... -race` (on a linux/amd64 runner — `-race` is unsupported on the android/arm64 host this audit ran on).
+- **WHY:** Zero CI/CD exists today. Every "100% pass" claim, including this audit's own, is from an ad hoc local run with no durability against regressions. This is P1 and blocks trusting any future "all green" claim.
+- **FILES:** `.github/workflows/ci.yml` (new).
+- **DEPENDENCIES:** 0.1, 0.2.
+- **TESTS:** the workflow itself; verify it fails on a deliberately broken commit and passes on `main`.
+- **ACCEPTANCE CRITERIA:** [ ] CI file committed. [ ] A test PR shows the pipeline running and passing. [ ] `-race` runs somewhere in CI (even if only on a subset of packages if full-suite race is too slow).
 
-### Known Gaps (not yet implemented)
-
-| Gap | Impact | Priority |
-|---|---|---|
-| Finance migration integration tests | DONE — suite passes | — |
-| Finance state machine hooks | DONE — real handlers + unit tests; stubs removed | — |
-| OpenAPI spec generation | DONE — openapi.go implemented + tests written | — |
-| SDUI PageBuilderSet verification (BUG-012) | DONE — handler_test.go verifies full wiring; 18 tests | — |
-| Organization hierarchy entity + RLS | ADR-024 partial; ltree not confirmed in schema | MEDIUM |
-| Wire still in go.mod (BUG-007) | Dead weight; blocks clean extraction | LOW |
-| BulkCreate was sequential (BUG-008) | FIXED — pgx.Batch; single round-trip | — |
+### 0.4 Reconcile documentation drift (do this before touching any P0/P1 code fix below)
+- [ ] **GOAL:** `docs/` stops actively misleading engineers.
+- **WHY:** Per the audit's Phase 28 rule and the framework's own Principle 5 ("one concept, one owner"), fixing code before fixing the doc that will immediately contradict the fix is backwards.
+- **FILES:** `docs/00-overview/DECISION_REGISTER.md`, `docs/00-overview/ARCH_OVERVIEW.md`, `docs/00-overview/PACKAGE_DEPENDENCY_MAP.md`, `docs/04-multitenancy/RLS_SPEC.md`, `docs/04-multitenancy/GLOBAL_TABLES.md`, `docs/README.md`, `tasks.md` (this file, ADR table below).
+- **IMPLEMENTATION:**
+  1. Merge the two colliding ADR sequences (`docs/00-overview/DECISION_REGISTER.md` ADR-001..024 vs. this file's old ADR-020..029 table) into **one** numbered sequence. Renumber the old tasks.md-only decisions (Wire removal, filter-as-query-abstraction, session PG/Redis model, platform-admin-bypass model, org hierarchy, migration-gen, workflow.Executor interface, feature-flags-native, unified-audit) as ADR-025 through ADR-033 in `docs/00-overview/DECISION_REGISTER.md`, since ADR-024 is the current end of that register.
+  2. Update `ARCH_OVERVIEW.md` §4 and `PACKAGE_DEPENDENCY_MAP.md`'s dependency graph to list the actual 40+ top-level packages (`platform/*`, `api/*`, `contrib/*`, `driver`, `generator`, `docgen`, `workflow`, `scheduler`, `report`, `ioport`, `module`, `observability`, `config`, `crypto`, `secrets`, `lock`, `tx`, `version`, `sdk`, `cmd/*`, `testing/*`, `testutil`, `tests`, `migration`, `migrations`, `db`, `bootstrap`), not just the 2026-07-20 kernel snapshot.
+  3. Fix `RLS_SPEC.md`/`GLOBAL_TABLES.md`/`SECURITY_MODEL.md` to say `platform_tenant` (not `tenants`) and GUC `awo.tenant_id` (not `app.current_tenant_id`) — **only after** Phase 1.1 below decides which side (doc or code) is authoritative; do not just rubber-stamp the current code as "correct" without the tenant-ACTIVE-status fix, since the doc's stricter version is the one that's actually secure.
+  4. Fix broken `docs/README.md` links: `05-registry/REGISTRY_SPEC.md` (doesn't exist — either write it or repoint to `05-compiler/COMPILE_SPEC.md` + index the previously-unlisted `05-compiler/` directory), `04-multitenancy/TENANT_RESOLUTION.md` → `TENANT_IDENTIFICATION.md`.
+  5. Either write the missing `docs/ARCH_FREEZE_REVIEW.md` (cited repeatedly as the constitutional rationale source) and `CLAUDE.md` (cited as mandatory first-read in 3+ docs), or remove the references.
+  6. Resolve `ACTOR_MODEL.md` vs `ACTOR_SPEC.md` and `SESSION_MODEL.md` vs `SESSION_SPEC.md` — mark one of each pair deprecated/superseded, don't leave both live.
+  7. Consider relocating `IMPLEMENTATION.md`, `phaseA.md`, `sdui_architecture.md`, `sdui_implementation.md` out of the repo root (they're historical design blueprints, not living docs) — e.g. into a `docs/adr-history/` or archive folder — so the root doesn't keep accumulating parallel tracker documents alongside this file.
+- **TESTS:** a `docs-lint` script (new, simple) that checks every relative link in `docs/README.md` resolves to a real file — run in CI (0.3).
+- **ACCEPTANCE CRITERIA:** [ ] One ADR sequence. [ ] Architecture docs list real packages. [ ] No dead links in `docs/README.md`. [ ] No two "frozen"/"constitutional" documents describe the same concept differently.
 
 ---
 
-## Progress Summary (ACCURATE)
+## Phase 1 — Close the P0 Security/Correctness Gaps
 
-| Phase | Status | Evidence |
-|---|---|---|
-| Phase 0 — Documentation + Task Tracking | COMPLETE | tasks.md exists |
-| Phase 1 — Framework Core | COMPLETE | framework.go, Options pattern, SessionValidator, Scope, Wire removed |
-| Phase 2 — Compiler Dependency Graph | COMPLETE | compiler/graph.go; cycle detection tests pass |
-| Phase 3 — Runtime Pipeline Hardening | COMPLETE | pipeline tests; ActionRuntime concrete impl; hook panic recovery; AllowAudit enforcement |
-| Phase 4 — Filter + Query Builder | COMPLETE | fluent builder; SQL translator; TranslationError typed; Like() alias; ValidateField/Limit/Offset helpers; 90%+ coverage |
-| Phase 5 — Migration Generation | COMPLETE | awo/generator; awo generate migrations command |
-| Phase 6 — CLI | COMPLETE | awo serve/schema/entity/generate/docgen/doctor/version; --json/--dry-run; Temporal wired in serve |
-| Phase 7 — Contrib Infrastructure | COMPLETE | BulkCreate (pgx.Batch, not sequential — BUG-008 FIXED); session PG recovery in ValidateToken |
-| Phase 8 — Framework Platform Entities | COMPLETE | audit, iam, tenant, org, flags, settings, notifications |
-| Phase 9 — API / OpenAPI / SDUI / Docgen | COMPLETE | meta handler; docgen; OpenAPI + tests; SDUI PageBuilderSet verified (18 tests); Phase 17 schema-content tests added |
-| Phase 10 — Reports / Import / Export / Scheduling | COMPLETE | report.go; importer.go; scheduler.go; workflow/executor.go; Temporal wired |
-| Phase 11 — ERP Entity Initialization | COMPLETE | 14 finance entities; unit tests pass; migration integration suite PASSES |
-| Phase 12 — Extraction / Public API / Hardening | IN PROGRESS | PG integration suite passing (repo + IAM); audit tests written; RLS defense tests written |
+Each item here needs: a failing regression test written first (red), the fix (green), then the doc corrected to match.
 
----
+### 1.1 Tenant ACTIVE-status enforcement at the RLS layer
+- [ ] **GOAL:** `set_tenant_context()` itself refuses non-ACTIVE tenants, exactly as `RLS_SPEC.md`/`SECURITY_MODEL.md`/`TENANT_LIFECYCLE.md` all specify, so every caller — HTTP or internal — inherits the guarantee.
+- **WHY:** Currently only one Fiber middleware (`TenantResolver`) checks tenant status, and `POST /api/v1/auth/login` is mounted outside that middleware's group entirely — a suspended/archived tenant's users can still authenticate and receive a live session (AUDIT_REPORT.md §4, §9 S1).
+- **FILES:** `generator/generator.go` (the `set_tenant_context` SQL template), `testutil/db/db.go` (test helper reimplementation — must match), `platform/iam/handler.go` / `platform/iam/service.go` (Login path), `db/migrations/*` (any already-applied version needs a follow-up migration).
+- **DEPENDENCIES:** 0.4 (doc reconciliation for GUC naming).
+- **IMPLEMENTATION:** Rewrite the generated `set_tenant_context(p_tenant_id uuid)` function to `SELECT status FROM platform_tenant WHERE id = p_tenant_id`, raise on not-found / not-ACTIVE with distinct SQLSTATEs, then `set_config`. Update `testutil/db/db.go`'s reimplementation to match exactly (currently it's a simplified stand-in that would hide a regression). Either apply the ACTIVE check ahead of the login handler too (defense in depth) or rely on the DB function alone — prefer both.
+- **TESTS:** (integration, real PG) create a SUSPENDED tenant; call `set_tenant_context` directly → expect an error. Call `POST /api/v1/auth/login` for a user of a SUSPENDED tenant → expect 402/403, not 200. Call `EntityRepository.WithTx` directly (bypassing HTTP) with a SUSPENDED tenant's ID → expect rejection, not silent zero-row success.
+- **ACCEPTANCE CRITERIA:** [ ] New test proves the login bypass is closed. [ ] New test proves non-HTTP callers (simulating a background job) are also rejected. [ ] `testutil/db` helper updated to match production behavior exactly. [ ] `RLS_SPEC.md` and code agree on GUC name and table name.
 
-## Test Matrix
+### 1.2 Session revocation race
+- [ ] **GOAL:** A logged-out token cannot be revived by the Redis-miss PG-recovery path.
+- **WHY:** AUDIT_REPORT.md §5, §9 S2 — Redis delete is authoritative and immediate; the PG `revoked_at` write is best-effort and its failure is silently swallowed; `recoverSessionFromDB` trusts PG unconditionally on a Redis miss.
+- **FILES:** `platform/iam/service.go` (Logout, `recoverSessionFromDB`).
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Make the PG revocation write synchronous and checked before Logout returns success (fail closed — return an error rather than a silent partial revoke), **or** write a short-TTL Redis tombstone key on logout that `recoverSessionFromDB` checks before trusting a PG row.
+- **TESTS:** (integration) force the PG update to fail (e.g. inject a connection error) and confirm the token is still rejected afterward, not resurrected. Concurrent Logout + validate-token race test.
+- **ACCEPTANCE CRITERIA:** [ ] Forced-PG-failure test passes (token stays revoked). [ ] Concurrency test passes. [ ] `SESSION_SPEC.md` documents the actual chosen mechanism.
 
-### Core (unit tests)
-- [x] EntityDefinition (SystemDefinition, CustomDefinition, interface contract)
-- [x] Compiler: valid entity compiles without error
-- [x] Compiler: duplicate entity name → error
-- [x] Compiler: orphaned LinkTarget → error
-- [x] Compiler: self-referential link → no error
-- [x] Compiler: circular edge (A→B→A) → error
-- [x] Compiler: route generation (5 CRUD + actions)
-- [x] Compiler: CapabilityGrant emission
-- [x] Compiler dependency graph: topological sort correct
-- [x] Registry: Register → Lookup → All
-- [x] Registry: Seal prevents further registration
-- [x] Filter: all 14 leaf predicates
-- [x] Filter: And/Or/Not combinators
-- [x] Filter: fluent builder API
-- [x] Filter: SQL translator (parameterized, no injection)
-- [x] Filter: Like() alias for Contains (KindContains)
-- [x] Filter: ValidateField returns BuilderError on empty field
-- [x] Filter: ValidateLimit returns BuilderError on negative limit
-- [x] Filter: ValidateOffset returns BuilderError on negative offset
-- [x] Filter: TranslationError typed struct for unsupported kind (errors.As detectable)
-- [x] Filter: FieldNotAllowedError typed struct for unknown field in allowlist (errors.As detectable)
-- [x] Pipeline: BeforeValidate fires before field validation
-- [x] Pipeline: Required field missing → ValidationError
-- [x] Pipeline: Immutable field on update → ImmutableFieldError
-- [x] Pipeline: hook error short-circuits pipeline
-- [x] Pipeline: BeforeCreate/AfterCreate/BeforeSave/AfterSave order
-- [x] Finance: all 14 entities register without error
-- [x] Finance: compiler produces no errors for finance entities
-- [x] Finance: immutable fields on bank_transaction blocked on update
-- [x] Finance: state machine options (draft/submitted/posted/reversed) declared
-- [x] Finance: all entities have Read permissions declared
-- [ ] Finance: actions return error (not success) when stubbed ← verify
-- [x] Actions: ActionDef.HandlerFunc invoked correctly
-- [x] Actions: ActionContext implements def.ActionRuntime (compile-time)
-- [x] Actions: ActionContext.Repo returns entity repo by name
-- [x] Actions: ActionContext.Tx calls inner function
-- [x] Actions: ActionContext.Publish forwards to events.Publisher with auto TenantID
-- [x] Actions: ActionContext.StartWorkflow calls WorkflowExecutor; auto-generates ID when empty
-- [x] Actions: ActionContext.Clock returns non-zero time
-- [x] Actions: ActionContext.Logger returns non-nil logger
-- [x] Actions: ActionContext.Cache returns non-nil cache (NoopActionCache default)
-- [x] Actions: ActionContext.Notify is no-op when notifyFn is nil
-- [x] Actions: ActionContext.InvalidateCache is no-op when invalidateFn is nil
-- [x] Actions: NewActionContext panics on nil Publish
-- [x] Actions: NewActionContext panics on nil Executor
-- [x] Pipeline: hook panic recovered → HookPanicError returned (not server crash)
-- [x] Pipeline: HookPanicError contains Stage and Panic fields
-- [x] Pipeline: subsequent hooks NOT fired after hook panic
-- [x] Events: DomainEvent structure, NoopPublisher, EventType constants
-- [ ] Outbox: relay polling + delivery (needs real PG)
-- [x] Scheduler: job fires at cron interval
-- [x] Scheduler: job cancel
-- [x] Report: GenerateSQL produces correct parameterized SQL
-- [x] Report: unknown entity → error
-- [x] Report: unknown field → error
-- [x] Import: CSV → creates records via repo
-- [x] Import: JSON → creates records via repo
-- [x] Import: SkipErrors mode accumulates errors
-- [x] Export: CSV → correct headers + rows
-- [x] Workflow executor: NoopExecutor returns ErrWorkflowUnavailable
-- [x] Docgen: entity doc generated with all sections
+### 1.3 Bulk import/export must not bypass the pipeline
+- [ ] **GOAL:** Every row created via `ioport.Import` runs the same validation/hooks/audit as `Create`.
+- **WHY:** AUDIT_REPORT.md §6, §7, §9 S3 — `BulkCreate` is a raw `pgx.Batch` INSERT with zero pipeline integration; every CSV/JSON import is invisible to the audit trail and exempt from required/immutable-field rules.
+- **FILES:** `ioport/importer.go`, `contrib/pgx/repo.go` (`BulkCreate`), `driver/repository.go`.
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Either (a) route `ioport.Import` through per-record `Create` (accept the performance cost, or batch-with-pipeline in chunks), or (b) keep `BulkCreate` as a distinct, explicitly-documented "trusted, pipeline-exempt" path used only where the caller has already validated/audited by other means, and make `ioport.Import` use path (a) exclusively. Do not leave the current silent default.
+- **TESTS:** import a CSV missing a required field → expect a rejection, not a silently-persisted invalid row. Import a batch → expect one `platform_audit_log` row per created record.
+- **ACCEPTANCE CRITERIA:** [ ] Required/immutable-field violations in an import are rejected. [ ] Every imported record has a corresponding audit record. [ ] Performance regression (if any) measured and accepted or mitigated with chunked pipelined batches.
 
-### Security (unit tests)
-- [x] SessionValidator interface: valid token → session
-- [x] SessionValidator: expired token → error
-- [x] Sessions: service account store skips user index (BUG-001 fix)
-- [x] Sessions: Session.Metadata JSONB round-trip
-- [x] RBAC: actor with permission → allowed
-- [x] RBAC: actor without permission → 403
-- [x] RBAC: platform admin bypasses Casbin but logged
+### 1.4 Workflow-trigger durability (implement the documented outbox)
+- [ ] **GOAL:** `WorkflowTrigger` starts survive a crash or transient Temporal outage between commit and dispatch, as ADR-007 requires.
+- **WHY:** AUDIT_REPORT.md §7, §9 S4 — `EntityService.startWorkflows` calls Temporal directly and synchronously; failure is a log line and a `// TODO`; no `workflow_outbox` table exists.
+- **FILES:** `api/service/entity.go` (`startWorkflows`), new: a `workflow_outbox` table/migration, a relay worker (can likely reuse `events/outbox`'s existing relay machinery/pattern — it already solves this exact problem for domain events).
+- **DEPENDENCIES:** none, but should be designed alongside 1.7 below (unify the two workflow-dispatch paths).
+- **IMPLEMENTATION:** Write the workflow start to a durable `workflow_outbox` row in the same TX as the entity mutation; a background relay (mirroring `events/outbox`'s relay) dispatches pending rows to Temporal via `workflow.WorkflowExecutor`, with WorkflowID-based dedup so retries are safe.
+- **TESTS:** kill the process (or mock a Temporal-unavailable error) between commit and dispatch → confirm the workflow eventually starts once the relay runs. Confirm no duplicate workflow starts on relay retry (WorkflowID dedup).
+- **ACCEPTANCE CRITERIA:** [ ] `workflow_outbox` table exists and is populated transactionally with the entity mutation. [ ] Relay worker dispatches pending rows. [ ] Crash-recovery test passes. [ ] `EntityService.startWorkflows` no longer calls Temporal directly. [ ] `docs/08-workflow/OUTBOX_SPEC.md`/`TEMPORAL_INTEGRATION.md` match reality.
 
-### PostgreSQL Integration Tests (MANDATORY — needs real PG)
-- [x] pool connection + ping
-- [x] set_tenant_context activates RLS
-- [x] EntityRepository.Create persists record (contrib/pgx/repository_test.go PASSES)
-- [x] EntityRepository.Get retrieves by ID
-- [x] EntityRepository.Query with filters (Eq, pagination, empty result)
-- [x] EntityRepository.BulkCreate (sequential within TX)
-- [x] EntityRepository.Update, Delete, WithTx rollback
-- [x] EntityRepository.Count, Exists
-- [x] Tenant isolation: Tenant A cannot read Tenant B's rows (Get + Query + BulkCreate)
-- [x] Tenant isolation: RLS alone sufficient (testutil/db/rls_test.go PASSES)
-- [x] Tenant isolation: malformed filter cannot bypass RLS (rls_defense_test.go WRITTEN — needs PG to run)
-- [x] Finance migration: generated SQL applies without error (suite PASSES)
-- [x] Finance migration: RLS policy generated for ScopeTenant; none for ScopeSystem
-- [x] Finance migration: ScopeSystem (finance_currency) has no tenant_id column
-- [x] Finance migration: RLS tenant isolation verified (finance_fiscal_year)
-- [x] Finance migration: ScopeSystem readable without tenant context
-- [x] Finance migration: all 14 tables exist after migration apply
-- [x] Audit: record written atomically with mutation (audit_integration_test.go WRITTEN — needs PG to run)
-- [x] Audit: Sensitive fields excluded from audit payload (StripSensitiveFields unit + integration written)
-- [x] Audit: AllowAudit:false disables audit for that entity (convention test written)
-- [x] Login: success → session in Redis + PG (platform/iam/service_integration_test.go PASSES)
-- [x] Login: wrong password → 401
-- [x] Login: unknown user → 401
-- [x] Login: inactive/suspended user → 403
-- [x] Session: Redis miss → falls back to PG
-- [x] Session: expired session not returned (DB query filters expires_at > NOW())
-- [x] Session: revoked session not returned (revoked_at IS NOT NULL excluded)
+### 1.5 Casbin policy reload on permission change
+- [ ] **GOAL:** Revoking a role's permission takes effect without a process restart.
+- **WHY:** AUDIT_REPORT.md §5, §9 S5 — `CasbinEvaluator.Reload()` exists, works, and is never called anywhere outside its own package.
+- **FILES:** `auth/casbin.go`, wherever `iam_role_permissions` mutations happen (likely a `platform/iam` admin handler/service method).
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Call `Reload()` (or an incremental policy update, if Casbin supports it more cheaply) from the `iam_role_permissions` mutation path. Consider a hook (`AfterCreate`/`AfterDelete` on that entity) mirroring the existing `UserRoleChangeHook` pattern.
+- **TESTS:** revoke a permission from a role with a live session holding it; call the now-forbidden endpoint immediately (no restart) → expect 403.
+- **ACCEPTANCE CRITERIA:** [ ] Test above passes. [ ] Reload latency documented (should be near-immediate, not batched/delayed in a way that reintroduces a meaningful window).
 
-### Generation tests
-- [x] Migration: table DDL generated from SystemDefinition
-- [x] Migration: column types correct per FieldType
-- [x] Migration: NOT NULL for Required fields
-- [x] Migration: UNIQUE constraint for Unique fields
-- [x] Migration: CHECK constraint for Select Options
-- [x] Migration: FK constraint for FieldTypeLink
-- [x] Migration: GIN trigram index for Searchable fields
-- [x] Migration: RLS policy generated for ScopeTenant entities
-- [x] Migration: ScopeSystem entities have no tenant_id, no RLS (generator fixed)
-- [x] Migration: awo_audit_log() stub defined in sharedInfraSQL
-- [x] Migration: set_tenant_context function generated
-- [x] Migration: updated_at trigger generated
-- [x] Migration: audit trigger generated (AllowAudit:true)
-- [x] Migration: CustomDefinition → custom_entity_records (no new table)
-- [x] OpenAPI: all entities present in spec
-- [x] OpenAPI: paths match RouteDescriptor list
-- [x] OpenAPI: required fields marked
-- [x] Metadata API: /api/v1/meta/entities returns all entities
-- [x] Metadata API: /api/v1/meta/entities/{name} returns schema
-- [x] Docgen: entity doc has fields, edges, permissions, actions sections
-- [x] SDUI: TestEngine_ListSchema_Type — root type="page", body[0] type="crud"
-- [x] SDUI: TestEngine_ListSchema_HasColumns — columns match InList fields (non-gated)
-- [x] SDUI: TestEngine_FormSchema_Type — root type="page", body[0] type="form"
-- [x] SDUI: TestEngine_FormSchema_HasBody — body array contains controls for InForm fields
-- [x] SDUI: TestEngine_DetailSchema_Type — root type="page"
-- [x] SDUI: TestEngine_SensitiveField_ExcludedFromList — gated field absent, not hidden
-- [x] SDUI: TestEngine_SensitiveField_ExcludedFromForm — gated field absent from form body
-- [x] SDUI: TestEngine_SelectField_HasOptions — select control with static options
-- [x] SDUI: TestEngine_RequiredField_Marked — required:true on AMIS form control
-- [x] SDUI: TestEngine_LinkField_LookupWithDataSource — select+searchable for link fields
+### 1.6 Fix `/auth/logout` and `/auth/me` (currently always 401)
+- [ ] **GOAL:** Self-service logout actually works.
+- **WHY:** AUDIT_REPORT.md §5, §9 S6 — both routes read `c.Locals("session")`, populated only by `RequireAuth`, which isn't mounted ahead of them.
+- **FILES:** `platform/iam/handler.go`, `platform/iam/module.go` (route registration), `api/router/router.go`.
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Mount `middleware.RequireAuth` (without `TenantResolver`, since these are tenant-header-driven, not `/api/v1`-group routes) ahead of `logout`/`me` registration.
+- **TESTS:** integration test hitting the real Fiber route (not just `AuthService` directly) — `POST /api/v1/auth/logout` with a valid bearer token → expect 200, and confirm the session is actually gone afterward.
+- **ACCEPTANCE CRITERIA:** [ ] Route-level integration test passes (this class of bug specifically evaded unit tests before — must be a real HTTP-route test). [ ] `GET /api/v1/auth/me` returns the caller's identity with a valid token.
 
 ---
 
-## Phase 11 — ERP Entity Initialization (PARTIAL)
+## Phase 2 — Close the P1 Architecture/Dependency Gaps
 
-### Acceptance Criteria
+### 2.1 Dependency-graph violations
+- [ ] **GOAL:** `compiler` and `audit` stop violating the documented "Prohibited Dependencies" table.
+- **WHY:** AUDIT_REPORT.md §9 S8 — `compiler/schema.go` imports `auth` for `CapabilityGrant`; `audit/queryer.go` imports `pgxpool` directly, contradicting `driver/doc.go`'s stated pgx-confinement rule.
+- **FILES:** `compiler/schema.go`, `def/` (or a new leaf package for `CapabilityGrant`), `audit/queryer.go`, `contrib/pgx/`.
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Move `CapabilityGrant`'s type definition down to `def` (or a new dependency-free package both `compiler` and `auth` can import) so `compiler` doesn't reach upward into `auth`. Move `audit.PoolQueryer`'s pgx-specific implementation into `contrib/pgx` (mirroring the existing `contrib/pgx.NewPoolQuerier` pattern for the writer side), leaving `audit` itself pgx-free behind its `Queryer` interface.
+- **TESTS:** a dependency-graph lint (can be a simple `go list -deps` check in CI) asserting `compiler` and `audit` never import `auth`/`pgxpool` respectively going forward.
+- **ACCEPTANCE CRITERIA:** [ ] Both violations fixed. [ ] CI lint added so they can't silently reappear. [ ] `PACKAGE_DEPENDENCY_MAP.md` updated to reflect the corrected, enforced graph.
 
-- [x] Finance module imported and all 14 entities register without error
-- [x] Compiler produces no errors for finance entities
-- [x] CRUD routes exist for all finance entities (auto-generated from CompiledSchema)
-- [x] Immutable fields on finance_bank_transaction blocked on update
-- [x] State machine options declared (draft/submitted/posted/reversed)
-- [x] Permission identifiers follow convention for all 14 entities
-- [ ] Finance actions return error (not silent success) when stubbed — verify `stubAction` returns error not nil
-- [ ] Generated migrations execute without error (needs real PG)
-- [ ] RLS isolates finance data between tenants (needs real PG)
-- [ ] finance_journal_entry state machine transitions enforced by hook (deferred)
-- [ ] finance_payment state machine transitions enforced by hook (deferred)
+### 2.2 Wire the audit history endpoint into production
+- [ ] **GOAL:** `GET /:id/history` returns real data in the deployed server, not an empty array.
+- **WHY:** AUDIT_REPORT.md §6, §7, §9 S7 — `cmd/server/main.go`'s `router.Register()` call never sets `RegisterOptions.AuditQueryer`, silently defaulting to `NoopQueryer`.
+- **FILES:** `cmd/server/main.go`.
+- **DEPENDENCIES:** none (one-line fix, but needs a real end-to-end test since this exact class of "wired in tests, not wired in prod" bug already happened once).
+- **IMPLEMENTATION:** `router.Register(app, schema, router.RegisterOptions{..., AuditQueryer: audit.NewPoolQueryer(result.Pool), ...})`.
+- **TESTS:** an end-to-end test that starts the real server binary (or as close to it as practical) and hits `/:id/history` against a record with audit history — not just a handler-level unit test with a manually-constructed `RegisterOptions`.
+- **ACCEPTANCE CRITERIA:** [ ] Fix applied. [ ] End-to-end test added that would have caught this class of bug. [ ] Audit a `RegisterOptions`-construction checklist/test so other options fields can't silently default-to-noop in production the same way.
 
-**Phase 11: PARTIAL** — unit tests pass; PG integration pending.
+### 2.3 Reconcile the duplicate `platform_audit_log` migrations
+- [ ] **GOAL:** Exactly one migration creates `platform_audit_log`.
+- **WHY:** AUDIT_REPORT.md §6 — `db/migrations/000452_platform_audit_log.up.sql` (top-level, the generator's configured default output dir) and `platform/audit/migrations/001_platform_audit_log.up.sql` (module-embedded) both independently create the same partitioned table. If both are ever applied to one database, the second fails.
+- **FILES:** `db/migrations/000452_*.sql`, `platform/audit/migrations/001_*.sql`, `platform/audit/migrations/migrations.go`, whatever loads `db/migrations/` (locate via `config.manager.go`'s `migration.dir`).
+- **DEPENDENCIES:** none, but do this before any production deployment.
+- **IMPLEMENTATION:** First determine, by tracing the actual bootstrap/deploy path, which one is genuinely live. Delete or clearly mark-as-superseded the other. If both are somehow independently used in different deployment modes, document that explicitly and make it impossible to run both against the same database (e.g. one checks for the other's table name first).
+- **TESTS:** apply the full migration set to a clean database end-to-end (both directories, in whatever order a real deploy would use) and confirm no conflict — or confirm the dead one has been removed and a clean apply still works.
+- **ACCEPTANCE CRITERIA:** [ ] Exactly one authoritative `platform_audit_log` migration remains (or the dual-path design is explicit and documented). [ ] Clean-database migration test passes.
 
----
+### 2.4 Unify workflow dispatch paths
+- [ ] **GOAL:** Both custom Actions and automatic `WorkflowTrigger`s go through `workflow.WorkflowExecutor`.
+- **WHY:** AUDIT_REPORT.md §7 — currently only the Action path uses the interface; the automatic trigger path hits the Temporal SDK directly, breaking the "Temporal must be replaceable" goal and creating inconsistent retry/error semantics.
+- **FILES:** `api/service/entity.go`, `workflow/executor.go`.
+- **DEPENDENCIES:** should land together with 1.4 (the outbox work) since both touch the same call site.
+- **IMPLEMENTATION:** Make `EntityService` take a `workflow.WorkflowExecutor` and route the automatic-trigger path through it exclusively, same as the Action path already does.
+- **TESTS:** unit test with a fake `WorkflowExecutor` confirming the automatic-trigger path calls it, not the Temporal SDK directly.
+- **ACCEPTANCE CRITERIA:** [ ] One dispatch path. [ ] Test passes. [ ] `NoopExecutor`/degraded-mode behavior (server runs, workflows queue) verified for the trigger path too, not just Actions.
 
-## Phase 9 — API / OpenAPI / SDUI / Docgen (PARTIAL)
-
-### Acceptance Criteria
-
-- [x] Metadata API: /api/v1/meta/entities handler implemented
-- [x] Metadata API: /api/v1/meta/entities/:name handler implemented
-- [x] Metadata API: /api/v1/meta/permissions handler implemented
-- [x] Docgen: Generate() produces ordered Markdown files from CompiledSchema
-- [x] CLI: `awo generate docs` invokes docgen
-- [x] OpenAPI: spec generated from CompiledSchema (not just CLI placeholder)
-- [x] OpenAPI: paths match all entity routes
-- [x] OpenAPI: schemas reflect field types and required constraints
-- [x] SDUI: PageBuilderSet invocation verified in handler (BUG-012) — CONFIRMED via handler_test.go
-- [x] SDUI: List view schema generated — root type="page", body[0] type="crud" with columns
-- [x] SDUI: Create/Edit form schema generated — root type="page", body[0] type="form" with body array
-- [x] SDUI: Detail view schema generated — root type="page" with summary card + form
-- [x] SDUI: Sensitive/permission-gated fields absent from list and form (not hidden)
-- [x] SDUI: Required fields marked required:true in AMIS form output
-- [x] SDUI: Select fields generate "select" type with options array
-- [x] SDUI: Link fields with DataSource generate lookup (select+searchable) control
-- [x] SDUI: Dark mode via CSS custom property token overrides (not .cxd-* !important) — CONFIRMED in index.html
-- [x] SDUI: Engine tests verify schema content (not just no-error) — engine_test.go Phase 17 block
-- [x] SDUI PageContext: TenantSettings populated via SettingsProvider (WithSettingsProvider option)
-- [x] SDUI PageContext: EnabledFeatureFlags populated via FlagsProvider (WithFlagsProvider option)
-- [x] SDUI PageContext: RecordID extracted from :id param for detail/edit views; uuid.Nil for list/create
-- [x] SDUI PageContext: RecordState populated when RecordFetcher wired (WithRecordFetcher option)
-- [x] SDUI PageContext: Provider error non-blocking — empty map returned, request proceeds
-- [x] SDUI cache: FeatureFlagFP added to KeyParams; participates in ETag computation
-- [x] SDUI: computeFlagFingerprint deterministic, order-independent, SHA-256 hex
-
-**Phase 9: COMPLETE** — all SDUI, OpenAPI, meta API, docgen acceptance criteria verified. PageContext dynamism (Phase 17 items) implemented.
+### 2.5 Wire or remove `module/` (entity/module registration)
+- [ ] **GOAL:** Answer, concretely, whether Awo has configuration-driven module registration.
+- **WHY:** AUDIT_REPORT.md §7 — `module/` (Manifest, `ModuleRegistry`, Kahn's-algorithm dependency resolution) is fully built, has its own tests, and has **zero callers anywhere outside itself**. The real mechanism is 100% hand-edited blank-import lists in two `cmd/` files.
+- **FILES:** `module/manifest.go`, `module/registry.go`, `bootstrap/bootstrap.go`, `cmd/server/main.go`, `cmd/awo/cmds_schema.go`, every `platform/*` package's `init()`.
+- **DEPENDENCIES:** 0.2 (decide the fate of the finance-module import first, since this phase changes the same registration mechanism).
+- **IMPLEMENTATION:** Wire `module.ModuleRegistry` into `bootstrap.Run`: each `platform/*` package (and any future business module) registers a `Manifest` in `init()`; `bootstrap` calls `Resolve()` to order registration deterministically and validate version compatibility, replacing (or augmenting, if compile-time safety needs to be preserved via blank imports for `go build` reachability) the hand-edited import lists. If, after review, the team decides `module/` isn't worth wiring in, delete it — don't leave built-but-unwired infrastructure presented as a capability.
+- **TESTS:** a test that registers two modules with a declared dependency out of import order and confirms `Resolve()` orders them correctly; a bootstrap test confirming all platform modules are discovered without a hand-edited list (if implemented), or confirming `module/` is fully removed (if not).
+- **ACCEPTANCE CRITERIA:** [ ] Either `module/` is load-bearing in `bootstrap.Run` with a passing dependency-ordering test, or it's deleted. [ ] `docs/99-modules/MODULE_AUTHOR_GUIDE.md` matches whichever choice is made.
 
 ---
 
-## Phase 12 — PostgreSQL Integration Test Foundation
+## Phase 3 — Organisation Hierarchy (make it real)
 
-### Objective
-
-Establish the mandatory PostgreSQL integration test suite. All security-critical paths require real DB testing. This unblocks Phase 11 acceptance and provides the foundation for all future integration work.
-
-### Why
-
-- RLS enforcement cannot be verified without a real PostgreSQL connection
-- `PolicyFunc` removal test requires real DB
-- Migration execution correctness requires real DB
-- Sessions and auth flows require real DB
-- The user prompt explicitly states: "Do not rely exclusively on mocks"
-
-### Dependencies
-
-- Real PostgreSQL available in test environment (connection via `TEST_DATABASE_URL` env var)
-- Existing migration generator output (Phase 5 complete)
-- Finance entities registered (Phase 11 partial)
-
-### Implementation Requirements
-
-#### 12.1 Test database helper (`awo/testutil/db/`)
-
-```go
-// SetupTestDB creates an isolated test schema, applies migrations, returns pool.
-// Automatically rolls back on t.Cleanup().
-func SetupTestDB(t *testing.T) *pgxpool.Pool
-
-// WithTenant creates a tenant row and returns its ID.
-func WithTenant(t *testing.T, pool *pgxpool.Pool) uuid.UUID
-
-// SetTenantContext sets the current_tenant_id session variable on a connection.
-func SetTenantContext(t *testing.T, conn *pgxpool.Conn, tenantID uuid.UUID)
-```
-
-#### 12.2 RLS isolation tests (`awo/contrib/pgx/rls_test.go`)
-
-Test that:
-- Tenant A creates record; Tenant B query returns empty
-- PolicyFunc absent → RLS alone sufficient
-- Malformed filter cannot bypass RLS
-
-#### 12.3 Finance migration integration test (`modules/finance/migration_test.go`)
-
-- Run `generator.Generate(schema)` for all 14 finance entities
-- Apply generated SQL to test DB
-- Verify tables exist with correct columns
-- Verify RLS policies exist
-- Verify FK constraints exist
-
-#### 12.4 Session integration tests (`awo/contrib/redis/session_store_integration_test.go`)
-
-- Login → PostgreSQL session created
-- Redis session populated
-- Redis miss → fallback to PostgreSQL
-- Revoke → deleted from both
-
-### Tests Required
-
-All tests in the PostgreSQL Integration section of the test matrix above.
-
-### Acceptance Criteria
-
-- [x] `testutil/db` package exists and provides isolation helpers
-- [x] RLS isolation verified: Tenant A cannot read Tenant B rows (TestRLSIsolation)
-- [x] PolicyFunc absent → RLS alone sufficient (TestRLSDefenseInDepth)
-- [x] No tenant context → 0 rows visible (NULL uuid matches nothing)
-- [x] AppRole pattern: non-superuser role required for RLS enforcement
-- [x] Finance migration SQL applies to real PostgreSQL without error
-- [x] Finance entity tables exist with correct structure
-- [x] Finance RLS policies active
-- [x] Session round-trip: Redis + PG verified
-- [x] RLS defense: cross-tenant ID predicate blocked (rls_defense_test.go written)
-- [x] RLS defense: OR predicate blocked (rls_defense_test.go written)
-- [x] RLS defense: Count obeys RLS (rls_defense_test.go written)
-- [x] Audit PostgresWriter implemented (awo/audit/pg_writer.go)
-- [x] Audit integration tests written (platform/audit/audit_integration_test.go)
-- [x] Audit: atomicity test (write commits atomically)
-- [x] Audit: rollback test (tx rollback discards audit)
-- [x] Audit: sensitive field stripping (StripSensitiveFields)
-- [x] Audit: tenant isolation (RLS on platform_audit_log)
-- [ ] All integration tests pass with `TEST_DATABASE_URL` set
+### 3.1 Implement `OrganizationService`
+- [ ] **GOAL:** Create/Move/ResolveScope actually work.
+- **WHY:** AUDIT_REPORT.md §4, §9 S10 — every method returns `"not implemented"` today; `PathComputeHook` silently mis-records every non-root org as a root on the real (non-test) call path, since it only computes a correct path when an internal test-only field is pre-populated.
+- **FILES:** `platform/organization/service.go`, `platform/organization/hooks.go`.
+- **DEPENDENCIES:** none, but should land before any business module claims to use org scoping.
+- **IMPLEMENTATION:** Implement each `OrganizationService` method against `EntityRepository`, and fix `PathComputeHook` to always compute the materialized path from the real parent record (via a repository lookup), not from a pre-populated test-only field.
+- **TESTS:** create a 3-level org hierarchy (Tenant → Holding → Company A); confirm `path`/`depth` are correct at each level; confirm a Company-A-scoped user cannot see Holding-level records; confirm a manager sees their subtree.
+- **ACCEPTANCE CRITERIA:** [ ] All `OrganizationService` methods implemented, tested against real PG. [ ] Hierarchy creation/query integration tests pass (these were explicitly unchecked/pending in every prior status doc). [ ] `path` field decision made explicitly (real `ltree` extension vs. formally-documented VARCHAR+LIKE) and ADR-012/024 corrected to match.
 
 ---
 
-## Phase 13 — OpenAPI Generation
+## Phase 4 — Platform Entity & Subsystem Cleanup (dead code, duplication)
 
-### Objective
+### 4.1 Resolve `platform/notification` vs `platform/notifications`
+- [ ] **GOAL:** One notification module, registered in production.
+- **WHY:** AUDIT_REPORT.md — `platform/notification` (singular, 130-line stub) is the one blank-imported by both `cmd/server/main.go` and `cmd/awo/cmds_schema.go`. `platform/notifications` (plural, full module: driver/hooks/service/migrations) is blank-imported only from `tests/integration/db_test.go` — never reaches production.
+- **FILES:** `platform/notification/`, `platform/notifications/`, `cmd/server/main.go`, `cmd/awo/cmds_schema.go`.
+- **DEPENDENCIES:** none.
+- **IMPLEMENTATION:** Decide which is intended to be real. If `notifications` (plural) is the actual, more complete implementation, switch both `cmd/` binaries to import it instead and delete `notification` (singular). If `notification` (singular) is intentionally the current minimal version, delete `notifications` (plural) and its now-orphaned test import.
+- **TESTS:** the surviving module's existing tests must pass; add a bootstrap-level test confirming the notification entity registered in a running server matches the intended module.
+- **ACCEPTANCE CRITERIA:** [ ] Exactly one `platform/notification*` package remains. [ ] Production `cmd/` binaries import it. [ ] No orphaned test-only import of a module absent from production.
 
-Implement real OpenAPI 3.0 spec generation from CompiledSchema. The existing CLI command (`awo generate openapi`) is a placeholder.
+### 4.2 Delete dead/misleading code
+- [ ] **GOAL:** Remove code whose existence actively misleads.
+- **FILES:** `runtime/tenant.SystemContext` (misleading "special admin token" doc comment, zero production callers — see 1.1/S9), `api/handler/sdui.go` (4-line dead stub superseded by `api/sdui/handler.go`).
+- **DEPENDENCIES:** 1.1 (SystemContext's fate may be decided alongside the tenant-status fix — either delete it or implement it explicitly and audit-gated, never leave the misleading comment).
+- **ACCEPTANCE CRITERIA:** [ ] `SystemContext` either removed or reimplemented with an accurate comment and an explicit audit-gated mechanism. [ ] Dead `sdui.go` stub removed.
 
-### Why
+### 4.3 Fix `Scheduler.Cancel()`
+- [ ] **GOAL:** A cancelled job actually stops firing.
+- **WHY:** AUDIT_REPORT.md §7 — the `robfig/cron` v1 closure never checks the active/inactive flag `Cancel()` sets; the existing test never waits a tick, so this has never been caught.
+- **FILES:** `scheduler/scheduler.go`, `scheduler/scheduler_test.go`.
+- **IMPLEMENTATION:** Migrate to `robfig/cron/v3` (has `cron.Remove(id)`), or gate the closure body on the active flag.
+- **TESTS:** schedule a job with a sub-second interval, cancel it, wait past the next scheduled fire time, confirm it did not fire.
+- **ACCEPTANCE CRITERIA:** [ ] Test above passes (currently would fail if written honestly).
 
-- External consumers (UI, mobile, partner integrations) need a machine-readable API spec
-- OpenAPI spec must stay in sync with EntityDefinitions automatically
-- Enables API client generation for any language
-
-### Implementation Requirements
-
-#### 13.1 OpenAPI generator (`awo/generator/openapi/`)
-
-```go
-// Generate produces an OpenAPI 3.0 spec from a compiled schema.
-func Generate(schema *compiler.CompiledSchema) (*OpenAPISpec, error)
-```
-
-- One path entry per entity CRUD route (List, Get, Create, Update, Delete)
-- One path entry per entity action
-- Schema objects for each entity (fields → properties, required, enum)
-- Security scheme: Bearer token
-- Info section from Config
-
-#### 13.2 Wire into CLI
-
-Update `awo/cmd/awo/cmds_schema.go` `generateOpenAPI()` to call the real generator.
-
-### Tests Required
-
-- [ ] All entities present in paths
-- [ ] Required fields marked in schemas
-- [ ] Select field options → enum constraint
-- [ ] Link fields → $ref or uuid format
-- [ ] Sensitive fields excluded from response schemas
-
-### Acceptance Criteria
-
-- [ ] `awo generate openapi` produces valid OpenAPI 3.0 JSON/YAML
-- [ ] Spec validates against OpenAPI 3.0 schema validator
-- [ ] All 14 finance entities appear in paths
-- [ ] All required fields marked as required in schemas
+### 4.4 Deduplicate OpenAPI generators
+- [ ] **GOAL:** One OpenAPI generation implementation.
+- **WHY:** AUDIT_REPORT.md §7 — `api/openapi/openapi.go` (live) and `generator/openapi/openapi.go` (CLI) independently reimplement the same entity→schema logic; a future field-type addition updated in only one silently desyncs the live spec from the CLI output.
+- **FILES:** `api/openapi/openapi.go`, `generator/openapi/openapi.go`.
+- **IMPLEMENTATION:** Have `api/openapi` call into `generator/openapi.Generate` and adapt its richer `Spec` type to the live route's response shape, eliminating the duplicate implementation.
+- **TESTS:** existing tests for both packages should still pass after consolidation; add a test proving both entry points produce identical output for the same schema.
+- **ACCEPTANCE CRITERIA:** [ ] One implementation. [ ] Both entry points verified identical.
 
 ---
 
-## Phase 14 — Finance State Machine Hooks
+## Phase 5 — Migration Engine Hardening
 
-### Objective
+### 5.1 Schema-diff / rename safety
+- [ ] **GOAL:** The generator cannot silently produce a data-losing migration for a field rename.
+- **WHY:** AUDIT_REPORT.md §3 — currently a field rename in `def.FieldDef` is indistinguishable from drop+add; no warning, no plan/diff/approve step exists.
+- **FILES:** `generator/generator.go`, `def/field.go` (may need a `RenamedFrom string` field or equivalent).
+- **DEPENDENCIES:** Phase 0-2 complete first (don't build new migration-engine features on top of an unbuildable repo or unfixed security gaps).
+- **IMPLEMENTATION:** At minimum: (a) detect a column drop + a column add of a compatible type in the same generation pass and refuse to emit silently — require an explicit `RenamedFrom` annotation to emit a real `ALTER TABLE ... RENAME COLUMN`; (b) implement the `plan → diff → explain → approve → generate → apply → verify` workflow the audit's Phase 10 describes, at least as a CLI flag (`awo generate migrations --explain`) before full automation.
+- **TESTS:** rename a field without `RenamedFrom` → generation refuses/warns loudly. Rename with `RenamedFrom` set → real `RENAME COLUMN`, no data loss, verified against a seeded table.
+- **ACCEPTANCE CRITERIA:** [ ] No silent drop+add possible for a documented rename. [ ] `MIGRATION_GUIDE.md` documents the workflow.
 
-Implement real (non-stub) action handlers for finance entity lifecycle transitions. Currently every action returns `fmt.Errorf("action %q: not yet implemented", name)` — which correctly signals unavailability but provides no business behavior.
-
-### Framework-First Rule
-
-State machine transitions must use generic framework mechanisms (ActionDef + hooks + runtime pipeline). No Finance-specific state machine infrastructure in the framework.
-
-### Transitions to Implement
-
-#### finance_journal_entry
-
-```
-draft → submit → submitted → post → posted → reverse → reversed
-```
-
-- `submit`: validate total_debit == total_credit; set status="submitted"
-- `post`: validate period open; set status="posted"; write to GL
-- `reverse`: create reversal journal_entry with negated lines; set status="reversed"
-
-#### finance_payment
-
-```
-draft → submit → submitted → process → processed → reconcile → reconciled
-```
-
-- `submit`: validate payment method + amounts; set status="submitted"
-- `process`: mark as processed; link journal_entry
-- `reconcile`: match to bank_transaction; set status="reconciled"
-
-#### finance_fiscal_year
-
-- `activate`: set status="active"
-- `close`: set status="closed"; lock all accounting_periods
-
-#### finance_accounting_period
-
-- `open`: validate fiscal_year active; set status="open"
-- `close`: set status="closed"
-
-### Implementation Note
-
-Business logic goes in `modules/finance/handlers.go`. Framework's `ActionContext` provides Repo + Actor. No direct SQL — use EntityRepository interface.
-
-### Acceptance Criteria
-
-- [ ] `stubAction` replaced with real implementations for journal_entry (submit, post, reverse)
-- [ ] `stubAction` replaced with real implementations for payment (submit, process, reconcile)
-- [ ] `stubAction` replaced with real implementations for fiscal_year (activate, close)
-- [ ] `stubAction` replaced with real implementations for accounting_period (open, close)
-- [ ] State transitions validated (cannot post without submitting first)
-- [ ] Integration tests: happy path for each transition
-- [ ] Integration tests: invalid transition → error
+### 5.2 Migration directory consolidation
+- [ ] **GOAL:** One clear, documented migration-file location/convention.
+- **WHY:** Currently `db/migrations/` (generator default), top-level `migrations/` (framework bootstrap), and per-module `platform/*/migrations/` all coexist with different naming conventions (numeric vs. timestamp).
+- **DEPENDENCIES:** 2.3 (the `platform_audit_log` duplicate is one symptom of this).
+- **IMPLEMENTATION:** Document (in `MIGRATION_GUIDE.md`) which directories are canonical for what (e.g. "framework bootstrap = top-level `migrations/`; per-platform-module = `platform/<module>/migrations/`, embedded via `migrations.go`; generator output for business-module schemas = `db/migrations/`") and verify the actual migration-runner code applies them in the intended order without conflicts.
+- **ACCEPTANCE CRITERIA:** [ ] Convention documented. [ ] A clean-database bootstrap test applies all of them without conflict.
 
 ---
 
-## Phase 15 — Organization Hierarchy (Framework)
+## Phase 6 — Search (currently missing)
 
-### Objective
-
-Implement ltree-based organization hierarchy as a first-class framework platform entity. Verify `ScopeOrganization` and `ScopeOrganizationTree` entity scoping works correctly.
-
-### Why
-
-ADR-024 declares this. The platform_organization entity is referenced in platform entities but hierarchy enforcement and RLS integration is unverified.
-
-### Requirements
-
-- `platform_organization` entity with `parent_id` (self-ref) and `path ltree`
-- ltree path computed on create/update via trigger
-- RLS policy for ScopeOrganization entities: `org_id = current_org_id()`
-- `set_org_context(org_id uuid)` PostgreSQL function
-- Access policy: member can see org's rows; manager can see subtree rows
-- Hierarchy test: Tenant → Holding → Company A; Company A user cannot see Holding's records
-
-### Acceptance Criteria
-
-- [x] platform_organization entity confirmed in platform/ (definition.go, hooks.go, service.go, viewer.go)
-- [x] parent_id self-referential FieldTypeLink to platform_organization
-- [x] path field (FieldTypeData, materialized path computed by PathComputeHook)
-- [x] ScopeOrganization and ScopeOrganizationTree defined in def/scope.go
-- [x] platform_organization init() registers Definition, OrgTypeDefinition, OrgAssignmentDefinition
-- [x] `set_org_context` function defined in sharedInfraSQL (generator.go)
-- [x] `current_org_id()` and `current_org_path()` defined in sharedInfraSQL
-- [x] RLS policy for ScopeOrganization entities: `org_id = current_org_id()`
-- [x] RLS policy for ScopeOrganizationTree entities: path LIKE prefix match
-- [x] Composite (tenant_id, org_id) index for org-scoped entities
-- [x] SetOrgContext() in contrib/pgx/conn.go
-- [x] definition_test.go: 9 unit tests for platform_organization entity
-- [x] generator_test.go: 5 new tests for org-scoped RLS and infra SQL
-- [ ] Integration test: org hierarchy creation (parent/child) — needs real PG
-- [ ] Integration test: org-scoped entity returns only org's rows — needs real PG
-- [ ] Integration test: manager sees subtree; member sees own org only — needs real PG
+- [ ] **GOAL:** Decide and, if in scope for v1, build a real query-side search capability.
+- **WHY:** AUDIT_REPORT.md §2 — `Searchable` fields today only drive GIN/trigram *index generation*; there is no search API, no ranking, no multi-field/global search anywhere in the repo. This is a real, notable competitive gap versus both Odoo and Frappe.
+- **FILES:** new — likely a `search/` package sitting on top of `filter/`, consuming the trigram/tsvector indexes the generator already creates.
+- **DEPENDENCIES:** Phase 0-2. Not urgent relative to the P0/P1 security items, but should not be deferred indefinitely if "serious ERP framework" is the goal.
+- **IMPLEMENTATION:** Design first (per Phase 28's documentation-first rule) — a `search.Query` type building on PostgreSQL full-text (`tsvector`/`to_tsquery`) and trigram similarity, tenant/org-scoped, permission-aware, exposed via `filter.Filter` integration and a CLI/API surface. Explicitly design for replaceability (PostgreSQL first, not architecturally locked in) per the audit's Phase 11 guidance.
+- **ACCEPTANCE CRITERIA:** [ ] Design doc written and reviewed before code. [ ] Basic global search works end-to-end with tenant/permission scoping. [ ] Indexed-field search is measurably faster than a naive `ILIKE` scan on a representative dataset.
 
 ---
 
-## Phase 16 — Audit Trail as Document History
+## Phase 7 — Feature Flags / Settings Re-Verification
 
-### Objective
-
-Expose audit history as a queryable document timeline per entity record. SDUI should be able to show an activity feed for any audited entity.
-
-### Why
-
-Audit log exists but is write-only from the application's perspective. The framework should expose "show me the history of record X" generically — not just for Finance.
-
-### Requirements
-
-- `platform_audit_log` query by (entity_name, record_id) → ordered timeline
-- Generic `/api/v1/{module}/{resource}/:id/history` route added per entity (when AllowAudit: true)
-- Response: array of {actor, action, timestamp, diff, metadata}
-- SDUI: generic AuditTimeline block usable by any entity
-
-### Acceptance Criteria
-
-- [x] History route registered for audited entities — GET /:id/history added in router.go for AllowAudit:true entities
-- [x] audit.Queryer interface + NoopQueryer + PoolQueryer implemented (awo/audit/queryer.go)
-- [x] HistoryHandler implemented (awo/api/handler/history.go) — 400/404/200 responses, limit capping
-- [x] router.RegisterOptions.AuditQueryer field added; NoopQueryer default
-- [x] Query returns correct ordered timeline (chronological ASC, RLS via pool connection)
-- [x] Sensitive fields absent from audit diff — already handled by StripSensitiveFields in pg_writer before Write
-- [x] Unit tests: awo/audit/queryer_test.go (5 tests) — Noop, JSON tags, nil actor omission
-- [x] Unit tests: awo/api/handler/history_test.go (9 tests) — all acceptance scenarios
-- [ ] SDUI AuditTimeline block — deferred (not a Phase 16 blocker for API)
-- [ ] Integration test: history returns correct entries from real PG — needs TEST_DATABASE_URL
+- [ ] **GOAL:** Confirm (or fix) the precedence chain, hot-path caching, and cross-subsystem wiring claimed by ADR-028/tasks.md's old table.
+- **WHY:** AUDIT_REPORT.md §8 — this area's dedicated parallel investigation was interrupted before delivering a full report; existing claims are unverified by this audit and should not be trusted at face value.
+- **FILES:** `platform/flags/`, `platform/settings/`.
+- **DEPENDENCIES:** none — can run in parallel with Phase 1-2.
+- **IMPLEMENTATION:** Re-derive, from source, the actual precedence order (system→tenant→org→role→user, or whatever the code implements), the actual cache-invalidation strategy, and whether `WithSettingsProvider`/`WithFlagsProvider` SDUI wiring is genuinely consumed end-to-end or decorative.
+- **ACCEPTANCE CRITERIA:** [ ] A short verification report (evidence-based, file:line) replaces this phase's placeholder status. [ ] Any gaps found get their own follow-up item here.
 
 ---
 
-## Phase 17 — SDUI Verification
+## Phase 8 — CLI: Build the Control Plane
 
-### Objective
-
-Verify and fix the SDUI PageBuilderSet integration (BUG-012). Ensure List, Form, and Detail views generate correctly for at least one finance entity.
-
-### Acceptance Criteria
-
-- [ ] BUG-012 resolved: PageBuilderSet invocation produces non-nil schema
-- [ ] finance_currency list view schema generated
-- [ ] finance_currency form schema generated
-- [ ] finance_currency detail view schema generated
-- [ ] Permission-gated fields absent when actor lacks permission
-- [ ] Dark mode: no `.cxd-*` class overrides; CSS token approach confirmed
+- [ ] **GOAL:** `awo` becomes a real operational control plane, not just schema/codegen + server launcher.
+- **WHY:** AUDIT_REPORT.md §7 — no CLI surface exists today for tenant/org/user/role/permission/feature/settings/job/schedule/search/report/import/export/audit operations; `migrate`, `module list`, and `validate` are confirmed stubs.
+- **FILES:** `cmd/awo/*.go` (new subcommand files per area).
+- **DEPENDENCIES:** the corresponding library-level work in earlier phases (e.g. CLI `tenant` commands depend on `platform/tenant` being solid, which it already is; CLI `search` commands depend on Phase 6).
+- **IMPLEMENTATION:** Design the minimal-but-competitive command tree first (per the audit's Phase 19 guidance — do not blindly adopt every command the audit brainstormed; decide what's actually needed). At minimum, finish the three already-tracked stubs (`migrate up/down/version/status`, `module list`, `validate <file>`) before adding new surface area. Interactive mode, if built at all, must be opt-in, never default.
+- **TESTS:** each new subcommand gets a CLI-level test (not just the underlying library call).
+- **ACCEPTANCE CRITERIA:** [ ] `migrate`/`module list`/`validate` are real, not stubs. [ ] A documented, deliberately-scoped command tree exists for at least tenant/user/role/audit operations. [ ] No command is silently non-functional (every stub either works or clearly errors "not implemented" rather than printing a misleading hint).
 
 ---
 
-## Phase 18 — Wire Removal + Extraction Readiness
+## Phase 9 — Test Suite Hardening
 
-### Objective
+### 9.1 Fix registry test-order-dependence
+- [ ] **GOAL:** Tests don't `t.Skip` to avoid a shared-global-registry double-registration panic.
+- **FILES:** `def/` (registry), `registry/registry_test.go`.
+- **IMPLEMENTATION:** Give the registry a `Reset()`/test-scoped-instance path, or use unique per-test-run entity names.
+- **ACCEPTANCE CRITERIA:** [ ] `go test ./... -count=2` and `go test ./... -shuffle=on` both pass with no skips caused by registration collisions.
 
-Prepare the framework for extraction into a standalone module. Remove Wire from go.mod. Verify no framework package imports ERP-specific code.
+### 9.2 Exercise `workflow.Saga` and `TemporalExecutor`'s real dispatch path
+- [ ] **GOAL:** The built-but-unused Temporal no-server test harness (`workflow/testing.go`) actually gets used.
+- **FILES:** `workflow/saga.go`, `workflow/testing.go`, `workflow/executor.go`.
+- **ACCEPTANCE CRITERIA:** [ ] `Saga` has unit tests (no Temporal needed). [ ] At least one test wires `NewTestEnv`/`MockActivityResult` against `TemporalExecutor`.
 
-### Extraction Blockers Checklist
+### 9.3 Cover `sdui/renderer` and `sdui/sduictx`
+- [ ] **GOAL:** Real branch logic currently at 0% coverage gets tested.
+- **FILES:** `sdui/renderer/renderer.go`, `sdui/renderer/locale.go`, `sdui/sduictx/context.go`.
+- **ACCEPTANCE CRITERIA:** [ ] `Validate()`, locale-fallback tiers, and `Registry.Register`/`MustLookup` have table-driven tests.
 
-- [x] Wire removed from go.mod (`github.com/google/wire`, `github.com/goforj/wire`) — both direct + indirect entries removed; `tool` block entry removed. Run `go mod tidy` to clean go.sum.
-- [x] No `awo/platform` package imports ERP modules — verified; only `cmd/server/main.go` imports `modules/finance`, which is correct (cmd/ is ERP, not framework per ADR-026)
-- [x] API middleware uses `auth.SessionValidator` interface (not IAM concrete) — BUG-010 FIXED
-- [x] No hard-coded ERP entity names in framework internals — `cmd/server/main.go` references `iam_session`, `iam_user`, `iam_user_role`, `platform_tenant` schema lookups; these are platform entities, not ERP-specific. Framework packages (compiler/runtime/filter/driver) contain no hardcoded ERP names.
-- [x] All platform entities use `EntityDefinition` framework (no raw SQL in entity layer) — confirmed via bootstrap.go and iam module structure
-- [x] `awo.New()` public API stable and documented — `awo/public/doc.go` created with full godoc covering entry point, entity registration, DI pattern, stable/unstable packages, auth model, multi-tenancy, and naming convention
+### 9.4 Remove sleep-based test synchronization
+- [ ] **GOAL:** No flaky fixed-sleep tests.
+- **FILES:** `sdui/cache/cache_test.go:163`.
+- **IMPLEMENTATION:** Replace the 20ms sleep with a barrier (counted channel/WaitGroup) confirming goroutines have actually entered the function before proceeding.
+- **ACCEPTANCE CRITERIA:** [ ] Test passes reliably under `-count=20` with artificial scheduler delay/load.
 
-### Acceptance Criteria
-
-- [ ] `go mod tidy` after Wire removal succeeds — USER MUST RUN: `go mod tidy && go vet ./...`
-- [ ] `go vet ./...` passes — USER MUST RUN
-- [x] Dependency graph: no `awo/` framework package imports `modules/` — only `cmd/server/main.go` does, which is ERP territory (ADR-026)
-- [ ] All framework tests pass without ERP modules — USER MUST RUN: `go test ./awo/...`
-
----
-
-## Phase 19 — Final Quality Gate
-
-### Objective
-
-90%+ test coverage on all framework packages. All integration tests pass. No critical TODOs.
-
-### Quality Gate Commands (user runs these)
-
-```bash
-go test ./... -count=1 -race
-go vet ./...
-go test ./... -coverprofile=coverage.out
-go tool cover -func=coverage.out | tail -1  # must show ≥90%
-```
-
-### Coverage Gaps Filled (2026-09-01)
-
-| Package | Gap | Fix |
-|---|---|---|
-| `awo/audit` | No Queryer interface, no tests | queryer.go + queryer_test.go added |
-| `awo/api/handler` | No history handler | history.go + history_test.go added |
-| `awo/naming` | 0% coverage (pattern.go, service.go untested) | pattern_test.go + service_test.go added (37 tests) |
-| `awo/tx` | 0% coverage | tx_test.go added (7 tests) |
-| `awo/lock` | 0% coverage (only interface + sentinel) | lock_test.go added (5 tests) |
-| `awo/events/outbox` | 0% unit coverage (all tests needed PG) | relay_unit_test.go added (8 unit tests) |
-| `awo/crypto` | COVERED — crypto_test.go exists (14 tests) | no action needed |
-| `awo/secrets` | COVERED — secrets_test.go exists (11 tests) | no action needed |
-| `awo/version` | COVERED — version_test.go exists (6 tests) | no action needed |
-
-### TODO/FIXME Audit Results
-
-- BUG-016: `awo migrate up/down` stubs — LOW, deferred to cmd/migrate
-- BUG-017: `awo validate` stub — LOW, deferred
-- BUG-011: Registry naming confusion — OPEN/LOW
-
-No CRITICAL or HIGH unresolved TODOs found in code reviewed.
-
-### Acceptance Criteria
-
-- [ ] `go test ./...` passes — USER MUST RUN
-- [ ] `go vet ./...` passes — USER MUST RUN
-- [ ] Framework coverage ≥ 90% — USER MUST RUN: go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out | grep total
-- [ ] Critical security paths (RLS, auth, audit) ≥ 95% — USER MUST RUN with TEST_DATABASE_URL
-- [ ] No unresolved CRITICAL or HIGH TODOs — CONFIRMED (see audit above)
-- [ ] All PostgreSQL integration tests pass — USER MUST RUN with TEST_DATABASE_URL set
+### 9.5 Coverage push toward 90% on security-critical paths
+- [ ] **GOAL:** RLS, auth, audit packages reach ≥95% coverage (not just "framework overall ≥90%").
+- **DEPENDENCIES:** 9.1-9.4, plus the P0/P1 fixes above (which each come with their own new tests).
+- **ACCEPTANCE CRITERIA:** [ ] `go test ./... -coverprofile=coverage.out && go tool cover -func=coverage.out` shows ≥95% for `auth`, `platform/iam`, `contrib/pgx`, `audit`, `platform/audit`, `platform/organization`. [ ] Overall framework coverage tracked and trending toward 90%, reported honestly (not rounded up).
 
 ---
 
-## Known Issues Registry
+## Phase 10 — Performance Baseline
 
-| ID | Severity | Description | Status |
-|---|---|---|---|
-| BUG-001 | Medium | Service account sessions create index under uuid.Nil in Redis | FIXED |
-| BUG-002 | Medium | Session.Metadata field missing | FIXED |
-| BUG-003 | High | Compiler missing cross-entity dependency graph | FIXED |
-| BUG-004 | Medium | ActionRuntime no concrete implementation | FIXED — runtime.ActionContext in runtime_action_context.go |
-| BUG-005 | High | Temporal client nil at runtime | FIXED |
-| BUG-006 | Medium | Finance module not imported | FIXED |
-| BUG-007 | Low | Wire in go.mod as dead weight | FIXED — both entries + tool block removed; run go mod tidy |
-| BUG-008 | Medium | BulkCreate is sequential (n INSERTs), not batch | FIXED — uses pgx.Batch; one round-trip per BulkCreate call |
-| BUG-009 | Low | Session.RedisKey() deprecated but not removed | FIXED — method removed from auth/session.go; no callers found |
-| BUG-010 | Medium | API middleware accepts IAM concrete type, not interface | FIXED — SessionValidator interface defined in api/middleware/auth.go; iam concrete type not imported |
-| BUG-011 | Low | Registry naming confusion: 3 registry objects with similar names | OPEN |
-| BUG-012 | Medium | PageBuilderSet invocation unverified in SDUI engine | OPEN |
-| BUG-013 | HIGH | Finance actions stub — correct (returns error not nil), verified by reading stubAction | RESOLVED |
-| BUG-014 | HIGH | PostgreSQL integration tests entirely absent — RLS unverified | FIXED — testutil/db created; 4 RLS tests pass against real PG |
-| BUG-015 | HIGH | OpenAPI generation not implemented (CLI placeholder only) | FIXED — openapi.Generate() implemented and wired into CLI |
-| BUG-016 | LOW | `awo migrate up/down/version/status` are stubs — print "run go run ./cmd/migrate" | OPEN — deferred; cmd/migrate handles real execution |
-| BUG-017 | LOW | `awo validate <file>` is a stub — static YAML/JSON file validation not implemented | OPEN — deferred |
+- [ ] **GOAL:** Turn the reasoning-based performance assessment (AUDIT_REPORT.md §11) into measured data.
+- **FILES:** `tests/bench/` (currently empty — "no tests to run").
+- **IMPLEMENTATION:** Write real `func Benchmark*` cases for: Filter→SQL generation, a representative `EntityRepository.Create`/`Query` round trip, SDUI schema generation with and without cache hit, `set_tenant_context` overhead per transaction. Add explicit `pgxpool` tuning (`MaxConns`, idle/lifetime) to `bootstrap/bootstrap.go` based on the results, with pool-exhaustion metrics/alerting.
+- **ACCEPTANCE CRITERIA:** [ ] Benchmarks exist and run in CI (tracked, not gated, to start). [ ] `bootstrap.go` has explicit, justified pool sizing. [ ] Migration generator's FK/Link-field indexing coverage confirmed (or fixed) — was flagged as unverified in this audit.
 
 ---
 
-## Immediate Next Actions (ordered by priority)
+## Immediate Next Actions (ordered)
 
-1. **Verify finance stubs return error not nil** — read stub handler, confirm behavior matches expectation. If `stubAction` returns `(nil, error)` that's correct. Mark BUG-013 resolved.
-2. **Phase 12: PostgreSQL integration test foundation** — this is blocking all security verification. Create `awo/testutil/db/` helper + first RLS isolation test.
-3. **Phase 13: OpenAPI generation** — implement real OpenAPI output for `awo generate openapi`.
-4. **Phase 14: Finance state machine hooks** — replace stubs with real business logic.
-5. **Phase 15: Organization hierarchy verification** — confirm ltree + RLS integration.
-6. **Phase 17: SDUI verification** — resolve BUG-012.
-7. **Phase 18: Wire removal + extraction readiness**.
-8. **Phase 19: Final quality gate**.
+1. **Phase 0** — without a committed `go.mod` and a working `cmd/` build, nothing else can be verified by CI or by any future contributor. This is the literal first thing to do.
+2. **Phase 0.4** — reconcile documentation before touching security-critical code, so the fix and the spec don't diverge again immediately.
+3. **Phase 1** — close the five P0 findings, each with a regression test written first.
+4. **Phase 2** — close the P1 dependency/wiring gaps (many are near-one-line fixes with outsized impact: the audit-history no-op, the dependency violations).
+5. **Phase 3** — make organisation hierarchy real before any business module is built assuming it works.
+6. **Phases 4-10** — cleanup, migration hardening, search, CLI, test/perf hardening, in roughly that dependency order; several can run in parallel once Phase 0-2 are closed.
+
+**Do not mark any checkbox above complete without the evidence its own item specifies.** This file's predecessor was found, during this audit, to contain checkboxes marked complete on the basis of code in a module (`modules/finance`) that does not exist in this repository — the failure mode this rule exists to prevent.
