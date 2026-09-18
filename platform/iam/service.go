@@ -13,6 +13,7 @@ import (
 	"awo.so/awo/def"
 	"awo.so/awo/driver"
 	"awo.so/awo/filter"
+	"awo.so/awo/internal/dberr"
 	"awo.so/awo/runtime"
 	"awo.so/awo/runtime/tenant"
 	"github.com/google/uuid"
@@ -131,12 +132,22 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginResult
 	defer tx.Rollback(ctx) // no-op after Commit; ensures cleanup on early return
 
 	// Establish tenant RLS context for all queries in this transaction.
-	// set_tenant_context() calls set_config('app.current_tenant_id', $1, TRUE).
-	// The TRUE (is_local) flag makes the setting transaction-local — it reverts
-	// automatically on COMMIT or ROLLBACK, so the connection returned to the pool
-	// is clean and will not leak the tenant context to the next request.
+	// set_tenant_context() validates the tenant exists and is ACTIVE (raising
+	// SQLSTATE P0001/P0002 otherwise) before calling
+	// set_config('awo.tenant_id', $1, TRUE). The TRUE (is_local) flag makes
+	// the setting transaction-local — it reverts
+	// automatically on COMMIT or ROLLBACK, so the connection returned to the
+	// pool is clean and will not leak the tenant context to the next request.
+	//
+	// This is the sole tenant-lifecycle enforcement point for login: unlike
+	// every other authenticated route, POST /api/v1/auth/login is registered
+	// outside the TenantResolver-gated /api/v1 group (see platform/iam/module.go),
+	// so a non-ACTIVE tenant's login attempt is rejected here, at the database
+	// layer, rather than by HTTP middleware.
 	if _, err := tx.Exec(ctx, sqlSetTenantContext, input.TenantID); err != nil {
-		return nil, fmt.Errorf("iam: login: set tenant context: %w", err)
+		tx.Rollback(ctx)
+		s.writeFailedLoginAudit(ctx, input, uuid.Nil, "tenant_not_active_or_not_found")
+		return nil, dberr.Parse(err, "iam.login.set_tenant_context")
 	}
 
 	var (
@@ -438,6 +449,35 @@ func (s *AuthService) ValidateToken(ctx context.Context, token string) (*auth.Se
 	if err != nil {
 		if errors.Is(err, auth.ErrSessionNotFound) {
 			// Redis miss: key absent, TTL-expired, or revoked.
+			//
+			// Before attempting PostgreSQL recovery, check the revocation
+			// tombstone. This guards against a real race: Logout/RevokeUserSessions
+			// delete the live Redis key synchronously (critical path) but mark iam_sessions
+			// revoked in PostgreSQL only best-effort (a separate, independently
+			// fallible write). If that best-effort write fails or hasn't
+			// landed yet, recoverSessionFromDB's query — which only checks
+			// "revoked_at IS NULL AND expires_at > NOW()" — would otherwise
+			// find the row, treat it as still valid, and resurrect the
+			// supposedly-revoked session back into Redis. The tombstone is
+			// written synchronously by the same Delete/DeleteAll call that
+			// removes the live key, so it cannot disagree with Redis's own
+			// revocation state the way the PostgreSQL best-effort write can.
+			revoked, revErr := s.Sessions.IsRevoked(ctx, token)
+			if revErr != nil {
+				return nil, &runtime.BusinessError{
+					Code:    "iam.service_unavailable",
+					Message: "Authentication service temporarily unavailable.",
+					Status:  503,
+				}
+			}
+			if revoked {
+				return nil, &runtime.BusinessError{
+					Code:    "iam.session.not_found",
+					Message: "Session not found or expired.",
+					Status:  401,
+				}
+			}
+
 			// Attempt PostgreSQL recovery — handles Redis eviction/restart without
 			// forcing users to re-authenticate.
 			recovered, recErr := s.recoverSessionFromDB(ctx, token)
@@ -560,7 +600,7 @@ func (s *AuthService) lookupAPIToken(ctx context.Context, hash string, tenantID 
 	defer tx.Rollback(ctx)
 
 	if _, err := tx.Exec(ctx, sqlSetTenantContext, tenantID); err != nil {
-		return nil, fmt.Errorf("iam: lookup api token: set tenant context: %w", err)
+		return nil, dberr.Parse(err, "iam.lookup_api_token.set_tenant_context")
 	}
 
 	var (
@@ -725,7 +765,7 @@ func (s *AuthService) recoverSessionFromDB(ctx context.Context, token string) (*
 	defer tx.Rollback(ctx) //nolint:errcheck
 
 	if _, err := tx.Exec(ctx, sqlSetTenantContext, tc.TenantID); err != nil {
-		return nil, fmt.Errorf("iam: session recovery: set tenant context: %w", err)
+		return nil, dberr.Parse(err, "iam.session_recovery.set_tenant_context")
 	}
 
 	var (

@@ -169,6 +169,56 @@ func setupIAM(t *testing.T) (*iam.AuthService, context.Context, uuid.UUID) {
 	return svc, ctx, tenantID
 }
 
+// setupIAMWithTenantLifecycle is setupIAM, but installs the real
+// set_tenant_context (see testutil/db.InstallTenantLifecycle) instead of the
+// simple pass-through, and creates a real platform_tenant row with the given
+// status instead of an arbitrary unbacked UUID. Use this for tests that
+// assert on tenant-lifecycle enforcement; use setupIAM for tests that only
+// care about tenant-ID row isolation.
+func setupIAMWithTenantLifecycle(t *testing.T, tenantStatus string) (*iam.AuthService, context.Context, uuid.UUID) {
+	t.Helper()
+
+	pool := testdb.SetupTestDB(t)
+	testdb.InstallTenantLifecycle(t, pool)
+	testdb.ApplySQL(t, pool, iamUsersDDL)
+	testdb.ApplySQL(t, pool, iamUserRolesDDL)
+	testdb.ApplySQL(t, pool, iamSessionsDDL)
+
+	tenantID := testdb.CreateTenant(t, pool, tenantStatus)
+
+	var ctx context.Context
+	if tenantStatus == "ACTIVE" {
+		testdb.ActivateTenant(t, pool, tenantID)
+		ctx = testdb.WithTenant(context.Background(), tenantID)
+	} else {
+		// Non-ACTIVE tenants can't establish RLS context at all (that's the
+		// property under test) — ctx carries the tenant ID for the caller's
+		// own bookkeeping only; AuthService.Login re-derives context itself
+		// via its own set_tenant_context call, so this ctx is never used to
+		// bypass that check.
+		ctx = context.Background()
+	}
+
+	mr := miniredis.RunT(t)
+	rdb := goredis.NewClient(&goredis.Options{Addr: mr.Addr()})
+	t.Cleanup(func() { _ = rdb.Close() })
+	store := contribRedis.NewSessionStore(rdb)
+
+	svc := &iam.AuthService{
+		DB:       pool,
+		Sessions: store,
+		Cache:    cache.NoopCache{},
+		Repos: iam.IAMRepositories{
+			Sessions:  contribpgx.NewRepository(pool, iamSessionsSchema()),
+			Users:     contribpgx.NewRepository(pool, iamUsersSchema()),
+			UserRoles: contribpgx.NewRepository(pool, iamUserRolesSchema()),
+		},
+		AuditWriter: audit.NoopAuditWriter{},
+	}
+
+	return svc, ctx, tenantID
+}
+
 // hashTestPassword returns a bcrypt hash at MinCost for use in tests.
 // Using MinCost keeps tests fast (~1ms vs ~200ms at cost 12).
 func hashTestPassword(t *testing.T, plain string) string {
@@ -267,6 +317,88 @@ func TestAuthService_Login_InactiveUser_Returns403(t *testing.T) {
 	assert.Contains(t, err.Error(), "suspended")
 }
 
+// ── Tenant lifecycle tests ────────────────────────────────────────────────────
+//
+// POST /api/v1/auth/login is the one authenticated route NOT covered by
+// TenantResolver middleware (see api/router/router.go — login is registered
+// directly on the bare app, outside the /api/v1 group). Without a check at
+// some other layer, this would let a suspended/archived tenant's users still
+// authenticate and receive a live session. These tests prove Login itself
+// rejects every non-ACTIVE status, because set_tenant_context() enforces it
+// at the database layer regardless of which application code path calls it.
+
+func TestAuthService_Login_SuspendedTenant_Rejected(t *testing.T) {
+	svc, _, tenantID := setupIAMWithTenantLifecycle(t, "SUSPENDED")
+
+	_, err := svc.Login(context.Background(), iam.LoginInput{
+		Email:    "anyone@example.com",
+		Password: "irrelevant",
+		TenantID: tenantID,
+	})
+	require.Error(t, err, "login for a SUSPENDED tenant must be rejected — "+
+		"the login route sits outside the tenant-status HTTP middleware, so this "+
+		"guarantee has to come from the database layer or it doesn't exist at all")
+	assert.Contains(t, err.Error(), "tenant")
+}
+
+func TestAuthService_Login_ArchivedTenant_Rejected(t *testing.T) {
+	svc, _, tenantID := setupIAMWithTenantLifecycle(t, "ARCHIVED")
+
+	_, err := svc.Login(context.Background(), iam.LoginInput{
+		Email:    "anyone@example.com",
+		Password: "irrelevant",
+		TenantID: tenantID,
+	})
+	require.Error(t, err, "login for an ARCHIVED tenant must be rejected")
+	assert.Contains(t, err.Error(), "tenant")
+}
+
+func TestAuthService_Login_PendingTenant_Rejected(t *testing.T) {
+	svc, _, tenantID := setupIAMWithTenantLifecycle(t, "PENDING")
+
+	_, err := svc.Login(context.Background(), iam.LoginInput{
+		Email:    "anyone@example.com",
+		Password: "irrelevant",
+		TenantID: tenantID,
+	})
+	require.Error(t, err, "login for a PENDING tenant must be rejected")
+	assert.Contains(t, err.Error(), "tenant")
+}
+
+func TestAuthService_Login_NonexistentTenant_Rejected(t *testing.T) {
+	svc, _, _ := setupIAMWithTenantLifecycle(t, "ACTIVE") // schema/pool setup only
+
+	_, err := svc.Login(context.Background(), iam.LoginInput{
+		Email:    "anyone@example.com",
+		Password: "irrelevant",
+		TenantID: testdb.RawTenantID(), // no backing platform_tenant row
+	})
+	require.Error(t, err, "login against a nonexistent tenant ID must be rejected")
+	assert.Contains(t, err.Error(), "tenant")
+}
+
+func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) {
+	svc, _, tenantID := setupIAMWithTenantLifecycle(t, "ACTIVE")
+
+	userID := uuid.New()
+	pwHash := hashTestPassword(t, "correct horse battery staple")
+	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
+		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		 VALUES ('%s', '%s', 'dana@example.com', '%s', 'active')`,
+		userID, tenantID, pwHash,
+	))
+
+	result, err := svc.Login(context.Background(), iam.LoginInput{
+		Email:    "dana@example.com",
+		Password: "correct horse battery staple",
+		TenantID: tenantID,
+	})
+	require.NoError(t, err, "login for an ACTIVE tenant with valid credentials must succeed — "+
+		"the tenant-lifecycle fix must not break the legitimate path")
+	assert.Equal(t, tenantID, result.Session.TenantID)
+	assert.Equal(t, userID, result.Session.UserID)
+}
+
 // ── Session fallback tests ────────────────────────────────────────────────────
 
 func TestAuthService_ValidateToken_RedisMiss_RecoverFromDB(t *testing.T) {
@@ -359,5 +491,85 @@ func TestAuthService_ValidateToken_RevokedSession_NotReturned(t *testing.T) {
 
 	_, err = svc.ValidateToken(ctx, rawToken)
 	require.Error(t, err)
+	assert.Contains(t, err.Error(), "iam.session.not_found")
+}
+
+// TestAuthService_ValidateToken_RevocationTombstone_BlocksResurrection is a
+// deterministic regression test for a session-revocation race.
+//
+// Logout/RevokeUserSessions delete the live Redis key synchronously (the
+// critical, error-propagating path) but mark iam_sessions.revoked_at only
+// best-effort, in a separate write that can fail independently — a network
+// blip, a connection pool exhaustion, anything. Before this fix,
+// recoverSessionFromDB's query only checked "revoked_at IS NULL AND
+// expires_at > NOW()", so if that best-effort write had failed (exactly the
+// state this test constructs directly, without going through Logout, to
+// isolate the race from the mechanism that triggers it), a Redis-miss
+// lookup would silently resurrect the revoked session as valid.
+//
+// This test proves the fix holds even in that exact state: PostgreSQL still
+// says "not revoked" (revoked_at IS NULL), but Sessions.Delete's tombstone
+// write is what actually blocks it, independent of PostgreSQL's state. If
+// the IsRevoked check in ValidateToken (or the tombstone write in
+// RedisSessionStore.Delete) is ever removed or bypassed, this test fails.
+func TestAuthService_ValidateToken_RevocationTombstone_BlocksResurrection(t *testing.T) {
+	svc, ctx, tenantID := setupIAM(t)
+
+	rawToken, err := auth.GenerateToken()
+	require.NoError(t, err)
+	hash := sha256hex(rawToken)
+
+	userID := uuid.New()
+	now := time.Now().UTC()
+	expiresAt := now.Add(24 * time.Hour)
+
+	// Simulate the state after a real login: a live session exists in
+	// PostgreSQL with revoked_at IS NULL (the "still valid" state that
+	// recoverSessionFromDB's query would match).
+	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
+		`INSERT INTO iam_sessions
+		    (id, tenant_id, token_hash, user_id, service_account_id,
+		     issued_at, expires_at, device_id, ip_address)
+		 VALUES (gen_random_uuid(), '%s', '%s', '%s', NULL,
+		         '%s', '%s', 'device', '127.0.0.1')`,
+		tenantID, hash, userID,
+		now.Format(time.RFC3339Nano),
+		expiresAt.Format(time.RFC3339Nano),
+	))
+
+	// Simulate exactly the failure mode this test targets: the session was
+	// logged out (Sessions.Delete ran and succeeded — the live Redis key is
+	// gone and the tombstone is written), but the best-effort PostgreSQL
+	// revocation write never landed (revoked_at is still NULL, as inserted
+	// above — we deliberately do NOT update it, standing in for a failed
+	// auditLogout BulkUpdate). Call Delete directly (not Logout) so this
+	// test isolates the tombstone mechanism from Logout's own orchestration,
+	// which is covered separately by the logout/me route-level test.
+	session := &auth.Session{
+		Token:            rawToken,
+		UserID:           userID,
+		ServiceAccountID: uuid.Nil,
+		TenantID:         tenantID,
+		ExpiresAt:        expiresAt,
+		IssuedAt:         now,
+	}
+	// Store it in Redis first so Delete has something to remove — mirrors a
+	// real session's lifecycle (Store at login, Delete at logout).
+	require.NoError(t, svc.Sessions.Store(ctx, session))
+	require.NoError(t, svc.Sessions.Delete(ctx, session))
+
+	// PostgreSQL still says this session is valid (revoked_at IS NULL,
+	// expires_at in the future) — confirm that precondition directly.
+	var revokedAt *time.Time
+	require.NoError(t, testdb.QueryRowSQL(t, svc.DB,
+		`SELECT revoked_at FROM iam_sessions WHERE token_hash = $1`, hash).Scan(&revokedAt))
+	require.Nil(t, revokedAt, "precondition: PostgreSQL must still show this session as not-revoked")
+
+	// Redis has no live key (Delete removed it) → ValidateToken falls
+	// through to the Redis-miss branch, which must consult the tombstone
+	// BEFORE trusting the still-valid-looking PostgreSQL row.
+	_, err = svc.ValidateToken(ctx, rawToken)
+	require.Error(t, err, "a token revoked via Delete must never validate again, "+
+		"even when PostgreSQL's own revocation record is missing")
 	assert.Contains(t, err.Error(), "iam.session.not_found")
 }

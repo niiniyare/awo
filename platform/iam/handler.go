@@ -10,13 +10,13 @@ import (
 	"awo.so/awo/runtime"
 )
 
-func registerRoutes(app *fiber.App, svc *AuthService, loginLimiter fiber.Handler) {
+func registerRoutes(app *fiber.App, svc *AuthService, loginLimiter, requireAuth fiber.Handler) {
 	h := &authHandler{svc: svc}
 
 	ag := app.Group("/api/v1/auth")
 	ag.Post("/login", loginLimiter, h.login)
-	ag.Post("/logout", h.logout)
-	ag.Get("/me", h.me)
+	ag.Post("/logout", requireAuth, h.logout)
+	ag.Get("/me", requireAuth, h.me)
 }
 
 type authHandler struct {

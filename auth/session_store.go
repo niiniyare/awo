@@ -57,14 +57,18 @@ type SessionStore interface {
 	// infrastructure failures from genuine authentication failures.
 	Load(ctx context.Context, token string) (*Session, error)
 
-	// Delete removes the session identified by token.
+	// Delete removes the session identified by token and records a revocation
+	// tombstone for it (see IsRevoked) valid for the remainder of the session's
+	// original lifetime.
 	//
-	// Returns an error only if the primary session removal fails. The per-user
-	// index entry for this token is removed as a best-effort side effect; index
-	// removal failure is logged but does not cause Delete to return an error.
+	// Returns an error if either the primary session removal or the tombstone
+	// write fails. The per-user index entry for this token is removed as a
+	// best-effort side effect; index removal failure is logged but does not
+	// cause Delete to return an error.
 	//
 	// Callers must treat Delete errors as hard failures: the session may still
-	// be live if the primary removal failed.
+	// be live (or resurrectable via a fallback recovery path) if the primary
+	// removal or the tombstone write failed.
 	Delete(ctx context.Context, session *Session) error
 
 	// ListUserTokens returns all non-expired token strings currently held for
@@ -75,12 +79,35 @@ type SessionStore interface {
 	// no active sessions.
 	ListUserTokens(ctx context.Context, tenantID, userID uuid.UUID) ([]string, error)
 
-	// DeleteAll removes every session in tokens from the store and clears the
-	// user's session index for the given (tenantID, userID) pair.
+	// DeleteAll removes every session in tokens from the store, records a
+	// revocation tombstone for each (see IsRevoked), and clears the user's
+	// session index for the given (tenantID, userID) pair.
 	//
 	// Called after a successful ListUserTokens during role-change revocation
-	// and admin forced-logout. Returns an error if the bulk removal fails.
-	// Index cleanup is best-effort; its failure does not cause DeleteAll to
-	// return an error.
+	// and admin forced-logout. Returns an error if the bulk removal or the
+	// tombstone writes fail. Index cleanup is best-effort; its failure does
+	// not cause DeleteAll to return an error.
 	DeleteAll(ctx context.Context, tenantID, userID uuid.UUID, tokens []string) error
+
+	// IsRevoked reports whether token has an active revocation tombstone,
+	// written by a prior Delete or DeleteAll call.
+	//
+	// This is the authoritative defense against session resurrection: a
+	// durable-store recovery path (e.g. a PostgreSQL fallback used when this
+	// store has no record of the token at all — evicted, restarted, or never
+	// synced) MUST check IsRevoked before trusting any record it finds there.
+	// The durable store's own revocation write is typically best-effort and
+	// can fail independently of Delete/DeleteAll succeeding here; the
+	// tombstone is the single source of truth that cannot silently disagree
+	// with it. Once Delete/DeleteAll has returned successfully for a token,
+	// IsRevoked(token) MUST return true for at least the remainder of that
+	// token's original validity window, regardless of the durable store's
+	// state.
+	//
+	// Returns a non-nil error only for infrastructure failures (the store is
+	// unavailable). Callers must NOT treat an error as "not revoked" — an
+	// unreachable store means the revocation status is unknown, and callers
+	// must fail closed (treat the caller-facing operation as unavailable, not
+	// as authenticated).
+	IsRevoked(ctx context.Context, token string) (bool, error)
 }

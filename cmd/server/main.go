@@ -67,7 +67,7 @@ import (
 	// it must build and run with only platform/* modules. An application
 	// repository that depends on awo.so/awo should provide its own cmd/
 	// entrypoint that blank-imports its business modules alongside the
-	// platform modules below. See AUDIT_REPORT.md and tasks.md Phase 0.2.
+	// platform modules below.
 	_ "awo.so/awo/platform/notification"
 	_ "awo.so/awo/platform/organization"
 	_ "awo.so/awo/platform/registry"
@@ -174,7 +174,13 @@ func main() {
 		Users:     contrib.NewRepository(result.Pool, iamUserSchema),
 		UserRoles: contrib.NewRepository(result.Pool, iamUserRoleSchema),
 	}
+	// AUDIT_SIGNING_SECRET is also used below for router.RegisterOptions —
+	// read once here so both the IAM auth middleware and the entity API use
+	// the same HMAC key for session-ID correlation in audit records.
+	auditSigningSecret := getEnv("AUDIT_SIGNING_SECRET", "")
+
 	iamModule := iam.New(result.Pool, sessions, tokenCache, iamRepos).WithAuditWriter(auditWriter)
+	iamModule = iamModule.WithAuthMiddleware(middleware.RequireAuth(iamModule.Auth, auditSigningSecret))
 
 	// Tenant entity repository for TenantResolver middleware.
 	tenantSchema, ok := result.Schema.ByName["platform_tenant"]
@@ -214,7 +220,10 @@ func main() {
 	app.Get("/health/ready", checker.Ready)
 	app.Get("/metrics", metrics.Handler())
 
-	// Auth routes (login/logout/me — no upstream RequireAuth middleware).
+	// Auth routes: POST /login has no auth middleware (that's how a session is
+	// obtained); POST /logout and GET /me require one, wired via
+	// WithAuthMiddleware above — without it, both routes' handlers find no
+	// session in c.Locals and unconditionally return 401.
 	iamModule.RegisterRoutes(app)
 
 	// Metadata API — entity schema introspection, no auth required.
@@ -278,7 +287,7 @@ func main() {
 		Authz:              evaluator,
 		Temporal:           temporalClient,
 		AuditWriter:        auditWriter,
-		AuditSigningSecret: getEnv("AUDIT_SIGNING_SECRET", ""),
+		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
 	})
 

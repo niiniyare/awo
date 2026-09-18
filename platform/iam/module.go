@@ -80,6 +80,19 @@ type Module struct {
 	// Defaults to passthroughHandler (no rate limiting) if not set via
 	// [Module.WithLoginRateLimiter].
 	loginLimiter fiber.Handler
+
+	// authMiddleware is applied to POST /auth/logout and GET /auth/me before
+	// their handlers run. Both handlers require c.Locals("session") to be
+	// populated, which only session-validating middleware does — without it,
+	// these routes always return 401 regardless of the caller's credentials.
+	// Defaults to passthroughHandler; callers MUST set this via
+	// [Module.WithAuthMiddleware] (typically middleware.RequireAuth(m.Auth,
+	// auditSigningSecret)) for logout/me to function. platform/iam does not
+	// import awo/api/middleware itself — that would invert the framework's
+	// layering (API middleware depends on platform/iam via the
+	// auth.SessionValidator interface, not the reverse) — so the caller
+	// constructs the handler and injects it here.
+	authMiddleware fiber.Handler
 }
 
 // New constructs the IAM Module with its required runtime dependencies and
@@ -113,7 +126,8 @@ func New(db *pgxpool.Pool, sessions auth.SessionStore, tokenCache cache.Cache, r
 			Cache:    tokenCache,
 			Repos:    repos,
 		},
-		loginLimiter: passthroughHandler,
+		loginLimiter:   passthroughHandler,
+		authMiddleware: passthroughHandler,
 	}
 }
 
@@ -141,15 +155,31 @@ func (m *Module) WithLoginRateLimiter(h fiber.Handler) *Module {
 	return m
 }
 
+// WithAuthMiddleware sets the Fiber handler applied to POST /auth/logout and
+// GET /auth/me before their handlers run. Required for those two routes to
+// function — without it (the zero-value default), they always return 401
+// regardless of the caller's credentials, because their handlers read
+// c.Locals("session"), which only session-validating middleware populates.
+//
+// Call before [Module.RegisterRoutes]. Typical production wiring:
+//
+//	m := iam.New(db, sessions, cache, repos).
+//	    WithAuditWriter(auditWriter).
+//	    WithAuthMiddleware(middleware.RequireAuth(iamModule.Auth, auditSigningSecret))
+func (m *Module) WithAuthMiddleware(h fiber.Handler) *Module {
+	m.authMiddleware = h
+	return m
+}
+
 // RegisterRoutes attaches the IAM HTTP endpoints to the Fiber application.
 //
-// Routes registered (no authentication middleware on login):
+// Routes registered:
 //
-//	POST  /api/v1/auth/login   — issue a session token
-//	POST  /api/v1/auth/logout  — revoke the current session (requires session)
-//	GET   /api/v1/auth/me      — return the current viewer's identity (requires session)
+//	POST  /api/v1/auth/login   — issue a session token (no auth middleware — this is how one is obtained)
+//	POST  /api/v1/auth/logout  — revoke the current session (requires [Module.WithAuthMiddleware])
+//	GET   /api/v1/auth/me      — return the current viewer's identity (requires [Module.WithAuthMiddleware])
 func (m *Module) RegisterRoutes(app *fiber.App) {
-	registerRoutes(app, m.Auth, m.loginLimiter)
+	registerRoutes(app, m.Auth, m.loginLimiter, m.authMiddleware)
 }
 
 func init() {

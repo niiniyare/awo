@@ -36,9 +36,11 @@ import (
 	"testing"
 
 	"github.com/google/uuid"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	contribpgx "awo.so/awo/contrib/pgx"
+	"awo.so/awo/generator"
 	"awo.so/awo/runtime/tenant"
 )
 
@@ -165,20 +167,36 @@ func RawTenantID() uuid.UUID {
 // AppRole ("awo_app"). Both must be called together: RLS checks current_tenant_id()
 // AND requires a non-superuser role.
 //
-// Call this before any DML or SELECT on tenant-scoped tables.
+// Call this before any DML or SELECT on tenant-scoped tables. Fails the test
+// immediately if set_tenant_context rejects tenantID — if InstallTenantLifecycle
+// was called, that means tenantID must be a real, ACTIVE platform_tenant row
+// (see CreateTenant); use TryActivateTenant instead to assert a rejection.
 func ActivateTenant(t *testing.T, pool *pgxpool.Pool, tenantID uuid.UUID) {
 	t.Helper()
+	if err := TryActivateTenant(pool, tenantID); err != nil {
+		t.Fatalf("db.ActivateTenant: %v", err)
+	}
+}
+
+// TryActivateTenant is ActivateTenant without the fatal assertion — it
+// returns the set_tenant_context error (if any) instead of failing the test,
+// for negative-path tests asserting that a PENDING/SUSPENDED/ARCHIVED or
+// nonexistent tenant is rejected. On success, the role switch to AppRole
+// still happens, matching ActivateTenant's behavior; on failure, no role
+// switch occurs (the caller remains the superuser/owner role — call
+// ResetRole is a no-op in that case since RESET ROLE with no prior SET ROLE
+// is harmless).
+func TryActivateTenant(pool *pgxpool.Pool, tenantID uuid.UUID) error {
 	q := contribpgx.NewPoolQuerier(pool)
-	// set_tenant_context first (session-level).
 	if _, err := q.ExecSQL(context.Background(),
 		"SELECT set_tenant_context($1)", tenantID.String()); err != nil {
-		t.Fatalf("db.ActivateTenant: set_tenant_context: %v", err)
+		return fmt.Errorf("set_tenant_context: %w", err)
 	}
-	// Switch to non-superuser role so RLS is enforced.
 	if _, err := q.ExecSQL(context.Background(),
 		fmt.Sprintf("SET ROLE %s", AppRole)); err != nil {
-		t.Fatalf("db.ActivateTenant: SET ROLE %s: %v", AppRole, err)
+		return fmt.Errorf("SET ROLE %s: %w", AppRole, err)
 	}
+	return nil
 }
 
 // ResetRole switches the session back to the original superuser/admin role.
@@ -191,6 +209,69 @@ func ResetRole(t *testing.T, pool *pgxpool.Pool) {
 	}
 }
 
+// InstallTenantLifecycle creates a minimal platform_tenant(id, status) table
+// in the test schema (if not already present) and replaces the schema's
+// set_tenant_context with the real production implementation
+// (generator.TenantContextSQL()) — the same SQL the framework's own
+// migration generator and bootstrap migration emit, not a hand-maintained
+// reimplementation that could silently drift from it and enforce something
+// weaker than production actually does.
+//
+// Call this before CreateTenant/ActivateTenant in any test that needs to
+// exercise tenant-lifecycle enforcement (PENDING/SUSPENDED/ARCHIVED
+// rejection). Tests that only need tenant-ID row isolation and don't care
+// about lifecycle status can continue using the simpler pass-through
+// set_tenant_context(text) installed by SetupTestDB, and must NOT call this
+// function (it replaces that pass-through with one that requires a real
+// platform_tenant row to exist for any tenant ID used).
+func InstallTenantLifecycle(t *testing.T, pool *pgxpool.Pool) {
+	t.Helper()
+	ResetRole(t, pool) // DDL requires superuser/owner privileges
+	q := contribpgx.NewPoolQuerier(pool)
+	ctx := context.Background()
+
+	ddl := `
+CREATE TABLE IF NOT EXISTS platform_tenant (
+    id     uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+    status text NOT NULL DEFAULT 'ACTIVE'
+);
+GRANT SELECT ON platform_tenant TO ` + AppRole + `;
+`
+	if _, err := q.ExecSQL(ctx, ddl); err != nil {
+		t.Fatalf("db.InstallTenantLifecycle: create platform_tenant: %v", err)
+	}
+
+	if _, err := q.ExecSQL(ctx, generator.TenantContextSQL()); err != nil {
+		t.Fatalf("db.InstallTenantLifecycle: install real set_tenant_context: %v", err)
+	}
+	if _, err := q.ExecSQL(ctx,
+		fmt.Sprintf(`GRANT EXECUTE ON FUNCTION set_tenant_context(uuid) TO %s;`, AppRole)); err != nil {
+		t.Fatalf("db.InstallTenantLifecycle: grant execute: %v", err)
+	}
+	if _, err := q.ExecSQL(ctx,
+		fmt.Sprintf(`GRANT EXECUTE ON FUNCTION current_tenant_id() TO %s;`, AppRole)); err != nil {
+		t.Fatalf("db.InstallTenantLifecycle: grant execute: %v", err)
+	}
+}
+
+// CreateTenant inserts a platform_tenant row with the given status (e.g.
+// "ACTIVE", "PENDING", "SUSPENDED", "ARCHIVED") and returns its ID. Requires
+// InstallTenantLifecycle (or an equivalent migration providing
+// platform_tenant) to have been applied first. Runs as the superuser/owner
+// role since AppRole only has SELECT on platform_tenant (it is a
+// framework-managed table, never written by application code via RLS).
+func CreateTenant(t *testing.T, pool *pgxpool.Pool, status string) uuid.UUID {
+	t.Helper()
+	ResetRole(t, pool)
+	id := uuid.New()
+	q := contribpgx.NewPoolQuerier(pool)
+	if _, err := q.ExecSQL(context.Background(),
+		`INSERT INTO platform_tenant (id, status) VALUES ($1, $2)`, id, status); err != nil {
+		t.Fatalf("db.CreateTenant: %v", err)
+	}
+	return id
+}
+
 // ApplySQL executes raw SQL (e.g., a generated migration) as the original
 // superuser role. Automatically resets role before executing so DDL succeeds.
 func ApplySQL(t *testing.T, pool *pgxpool.Pool, sql string) {
@@ -200,6 +281,17 @@ func ApplySQL(t *testing.T, pool *pgxpool.Pool, sql string) {
 	if _, err := q.ExecSQL(context.Background(), sql); err != nil {
 		t.Fatalf("db.ApplySQL:\n%v\nSQL:\n%s", err, sql)
 	}
+}
+
+// QueryRowSQL runs a single-row query as the original superuser/owner role
+// (bypassing RLS, so it sees ground truth regardless of tenant context) and
+// returns the resulting pgx.Row for the caller to Scan. Useful for asserting
+// on raw table state directly, independent of what any tenant-scoped
+// application code path would see.
+func QueryRowSQL(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) pgx.Row {
+	t.Helper()
+	ResetRole(t, pool)
+	return pool.QueryRow(context.Background(), sql, args...)
 }
 
 // TableExists reports whether tableName exists in the current search_path.

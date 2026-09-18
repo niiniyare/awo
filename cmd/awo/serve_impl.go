@@ -182,7 +182,10 @@ func startServer(cfg ServeConfig) error {
 		Users:     contrib.NewRepository(pool, iamUserSchema),
 		UserRoles: contrib.NewRepository(pool, iamUserRoleSchema),
 	}
+	auditSigningSecret := getEnvDefault("AUDIT_SIGNING_SECRET", "")
+
 	iamModule := iam.New(pool, sessions, tokenCache, iamRepos).WithAuditWriter(auditWriter)
+	iamModule = iamModule.WithAuthMiddleware(middleware.RequireAuth(iamModule.Auth, auditSigningSecret))
 
 	tenantSchema, ok := result.Schema.ByName["platform_tenant"]
 	if !ok {
@@ -287,14 +290,15 @@ func startServer(cfg ServeConfig) error {
 	}
 
 	router.Register(app, result.Schema, router.RegisterOptions{
-		Pool:        pool,
-		Redis:       result.Redis,
-		IAM:         iamAuth,
-		Tenants:     tenants,
-		Authz:       evaluator,
-		Temporal:    temporalClient,
-		AuditWriter: auditWriter,
-		SDUIEngine:  sduiEng,
+		Pool:               pool,
+		Redis:              result.Redis,
+		IAM:                iamAuth,
+		Tenants:            tenants,
+		Authz:              evaluator,
+		Temporal:           temporalClient,
+		AuditWriter:        auditWriter,
+		AuditSigningSecret: auditSigningSecret,
+		SDUIEngine:         sduiEng,
 	})
 
 	// Vite build output. Serves /assets/*, /sdk/*, /locales/*, etc.

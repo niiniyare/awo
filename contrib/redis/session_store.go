@@ -6,6 +6,7 @@
 // # Key layout
 //
 //	session:{token}                      — JSON-encoded auth.Session; TTL = ExpiresAt
+//	session:revoked:{token}              — revocation tombstone; TTL bounds its lifetime (see IsRevoked)
 //	user_sessions:{tenantID}:{userID}    — sorted set; member = token, score = expiry unix
 //
 // The sorted set enables O(log N) pruning of expired members via ZREMRANGEBYSCORE
@@ -14,11 +15,14 @@
 //
 // # Error handling
 //
-// Session key writes (SET, DEL on primary key) are critical path — errors are
-// returned to callers. Index writes (ZADD, ZREM, ZREMRANGEBYSCORE) are
-// best-effort — errors are logged via slog but do not cause the method to fail.
-// This asymmetry is intentional: a missing index entry impairs bulk revocation
-// but does not compromise session validity or security.
+// Session key writes (SET, DEL on primary key), revocation tombstone writes,
+// and IsRevoked reads are critical path — errors are returned to callers.
+// Index writes (ZADD, ZREM, ZREMRANGEBYSCORE) are best-effort — errors are
+// logged via slog but do not cause the method to fail. This asymmetry is
+// intentional: a missing index entry impairs bulk revocation but does not
+// compromise session validity or security. A missing tombstone write, by
+// contrast, would weaken the session-resurrection defense (see IsRevoked in
+// awo/auth), so it is treated as a hard failure like the primary DEL.
 package redis
 
 import (
@@ -54,6 +58,23 @@ var _ auth.SessionStore = (*RedisSessionStore)(nil)
 func sessionKey(token string) string {
 	return "session:" + token
 }
+
+// revokedKey returns the Redis key for a session's revocation tombstone.
+// Format: "session:revoked:{token}"
+func revokedKey(token string) string {
+	return "session:revoked:" + token
+}
+
+// bulkRevokeTombstoneTTL bounds the tombstone lifetime written by DeleteAll,
+// which (unlike Delete) does not have each token's exact ExpiresAt on hand —
+// only the raw token strings returned by ListUserTokens. Using the maximum
+// possible human-session lifetime as the TTL is conservative (it can only
+// over-protect, by outliving the token's actual, possibly-shorter, remaining
+// validity — it can never under-protect) and needs no additional Redis round
+// trip to look up each token's real expiry. Must be >= the largest session
+// TTL issued anywhere in the framework; platform/iam's humanSessionTTL is
+// currently 24h, so this intentionally matches it.
+const bulkRevokeTombstoneTTL = 24 * time.Hour
 
 // userIndexKey returns the Redis sorted-set key for a user's session index.
 // Format: "user_sessions:{tenantID}:{userID}"
@@ -123,12 +144,23 @@ func (s *RedisSessionStore) Load(ctx context.Context, token string) (*auth.Sessi
 	return &session, nil
 }
 
-// Delete removes the session from the store. The primary DEL is critical:
-// if it fails, Delete returns an error and the session remains live.
-// The ZREM from the user index is best-effort: failure is logged, not returned.
+// Delete removes the session from the store and writes a revocation
+// tombstone (see IsRevoked). The primary DEL and the tombstone write are
+// both critical: if either fails, Delete returns an error. The ZREM from the
+// user index is best-effort: failure is logged, not returned.
 func (s *RedisSessionStore) Delete(ctx context.Context, session *auth.Session) error {
 	if err := s.rdb.Del(ctx, sessionKey(session.Token)).Err(); err != nil {
 		return fmt.Errorf("session store: DEL session: %w", err)
+	}
+
+	// Tombstone TTL matches the session's own remaining lifetime — there is
+	// nothing left to protect against once the session would have expired
+	// naturally anyway (recoverSessionFromDB's own query already excludes
+	// expired rows). A session with no remaining TTL needs no tombstone.
+	if ttl := session.TTL(time.Now()); ttl > 0 {
+		if err := s.rdb.Set(ctx, revokedKey(session.Token), "1", ttl).Err(); err != nil {
+			return fmt.Errorf("session store: SET revocation tombstone: %w", err)
+		}
 	}
 
 	// Best-effort: remove from user session index.
@@ -145,6 +177,16 @@ func (s *RedisSessionStore) Delete(ctx context.Context, session *auth.Session) e
 	}
 
 	return nil
+}
+
+// IsRevoked reports whether token has an active revocation tombstone written
+// by a prior Delete or DeleteAll call. See [auth.SessionStore.IsRevoked].
+func (s *RedisSessionStore) IsRevoked(ctx context.Context, token string) (bool, error) {
+	n, err := s.rdb.Exists(ctx, revokedKey(token)).Result()
+	if err != nil {
+		return false, fmt.Errorf("session store: EXISTS revocation tombstone: %w", err)
+	}
+	return n > 0, nil
 }
 
 // ListUserTokens prunes expired index entries then returns all non-expired
@@ -172,7 +214,9 @@ func (s *RedisSessionStore) ListUserTokens(ctx context.Context, tenantID, userID
 	return tokens, nil
 }
 
-// DeleteAll removes all sessions in tokens and the user's index key.
+// DeleteAll removes all sessions in tokens and the user's index key, and
+// writes a revocation tombstone (see IsRevoked) for each token, bounded by
+// bulkRevokeTombstoneTTL since per-token exact expiry is not available here.
 // This is the bulk revocation path: called after role changes and forced logout.
 // The index DEL is included in the same multi-key Del call as the session keys.
 func (s *RedisSessionStore) DeleteAll(ctx context.Context, tenantID, userID uuid.UUID, tokens []string) error {
@@ -185,6 +229,16 @@ func (s *RedisSessionStore) DeleteAll(ctx context.Context, tenantID, userID uuid
 
 	if err := s.rdb.Del(ctx, keys...).Err(); err != nil {
 		return fmt.Errorf("session store: DEL sessions: %w", err)
+	}
+
+	if len(tokens) > 0 {
+		pipe := s.rdb.Pipeline()
+		for _, tok := range tokens {
+			pipe.Set(ctx, revokedKey(tok), "1", bulkRevokeTombstoneTTL)
+		}
+		if _, err := pipe.Exec(ctx); err != nil {
+			return fmt.Errorf("session store: SET revocation tombstones: %w", err)
+		}
 	}
 
 	return nil
