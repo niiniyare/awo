@@ -1,6 +1,7 @@
 -- Bootstrap 002: Shared utility functions and tables used by all AWO modules.
 --
 -- Provides:
+--   set_tenant_context()         — the SOLE RLS enforcement point (validates + sets awo.tenant_id)
 --   current_tenant_id()          — reads awo.tenant_id session variable (RLS gate)
 --   set_updated_at()             — trigger function; auto-maintains updated_at column
 --   awo_naming_series            — counter table for formatted sequential IDs
@@ -8,10 +9,61 @@
 
 -- ── Tenant context ────────────────────────────────────────────────────────────
 
+-- set_tenant_context() is the single RLS enforcement point (docs/04-multitenancy/
+-- RLS_SPEC.md, docs/04-multitenancy/TENANT_LIFECYCLE.md §5 normative requirement).
+-- It MUST be called before any tenant-scoped query — contrib/pgx's driver calls
+-- it via "SELECT set_tenant_context($1)" inside WithTx, before any DML.
+--
+-- Phase 1 fix: prior to this migration, no set_tenant_context() function
+-- existed anywhere in the embedded (production-default) migration path at
+-- all — contrib/pgx's "SELECT set_tenant_context($1)" call would fail with
+-- "function set_tenant_context(uuid) does not exist" on any freshly
+-- bootstrapped database. Where a compatible-signature version existed
+-- elsewhere (generator/generator.go's template, the orphaned top-level
+-- migrations/20260706000000_bootstrap.up.sql), it never validated tenant
+-- existence or ACTIVE status, contradicting the "MUST reject non-ACTIVE
+-- tenants" normative requirement and leaving zero defense-in-depth for any
+-- caller other than the one HTTP middleware (api/middleware/tenant.go) that
+-- happened to check status itself. See AUDIT_REPORT.md §4/§9 S1 and
+-- tasks.md Phase 1.1.
+--
+-- This function is created before platform_tenant exists in migration
+-- ordering (platform/tenant/migrations DependsOn "bootstrap", so it applies
+-- after this file) — that is safe: plpgsql resolves table references at
+-- EXECUTION time, not at CREATE FUNCTION time, and this function is never
+-- invoked until real request traffic begins, long after platform_tenant
+-- exists.
+CREATE OR REPLACE FUNCTION set_tenant_context(p_tenant_id uuid) RETURNS void
+    LANGUAGE plpgsql AS
+$$
+DECLARE
+    v_status text;
+BEGIN
+    SELECT status INTO v_status FROM platform_tenant WHERE id = p_tenant_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'tenant_not_found: %', p_tenant_id
+            USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_status != 'ACTIVE' THEN
+        RAISE EXCEPTION 'tenant_not_active: % (status=%)', p_tenant_id, v_status
+            USING ERRCODE = 'P0002';
+    END IF;
+
+    PERFORM set_config('awo.tenant_id', p_tenant_id::text, true);
+END;
+$$;
+
+COMMENT ON FUNCTION set_tenant_context(uuid) IS
+    'The sole RLS enforcement point. Validates the tenant exists and is '
+    'ACTIVE (raising P0001/P0002 otherwise), then sets the transaction-local '
+    'awo.tenant_id GUC read by current_tenant_id(). Must be called before '
+    'any tenant-scoped query — never call set_config(''awo.tenant_id'', ...) directly.';
+
 -- current_tenant_id() is the RLS gate used by every tenant-scoped table policy.
--- The PostgreSQL driver (contrib/pgx) must set this via:
---   SET LOCAL "awo.tenant_id" = '<uuid>';
--- before executing any query on a tenant-scoped connection.
+-- Only ever set via set_tenant_context() above — never call SET/set_config
+-- directly, since that bypasses tenant existence/status validation.
 --
 -- Returns NULL (not an error) when no tenant is set — platform-wide queries
 -- (e.g. reading platform_tenant from a platform-admin context) operate without
@@ -25,7 +77,7 @@ $$
 $$;
 
 COMMENT ON FUNCTION current_tenant_id() IS
-    'Returns the tenant UUID set by the pgx driver for the current transaction. '
+    'Returns the tenant UUID set by set_tenant_context() for the current transaction. '
     'Used in all tenant-scoped RLS policies. Returns NULL for platform-admin connections.';
 
 -- ── Auto updated_at ──────────────────────────────────────────────────────────

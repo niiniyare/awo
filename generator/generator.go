@@ -126,9 +126,27 @@ EXCEPTION WHEN OTHERS THEN
 END;
 $$ LANGUAGE plpgsql STABLE;
 
--- set_tenant_context(tenant_id) sets the connection-level tenant context for RLS.
+-- set_tenant_context(tenant_id) is the single RLS enforcement point. It MUST
+-- be called before any tenant-scoped query. It validates the tenant exists
+-- and is ACTIVE (raising P0001/P0002 otherwise) before setting the
+-- connection-level tenant context for RLS. Never call set_config('awo.tenant_id', ...)
+-- directly — that bypasses tenant existence/status validation.
 CREATE OR REPLACE FUNCTION set_tenant_context(p_tenant_id uuid) RETURNS void AS $$
+DECLARE
+    v_status text;
 BEGIN
+    SELECT status INTO v_status FROM platform_tenant WHERE id = p_tenant_id;
+
+    IF NOT FOUND THEN
+        RAISE EXCEPTION 'tenant_not_found: %', p_tenant_id
+            USING ERRCODE = 'P0001';
+    END IF;
+
+    IF v_status != 'ACTIVE' THEN
+        RAISE EXCEPTION 'tenant_not_active: % (status=%)', p_tenant_id, v_status
+            USING ERRCODE = 'P0002';
+    END IF;
+
     PERFORM set_config('awo.tenant_id', p_tenant_id::text, true);
 END;
 $$ LANGUAGE plpgsql;
