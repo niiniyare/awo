@@ -81,7 +81,7 @@ func (m *mockRepo) Get(_ context.Context, _ uuid.UUID, _ ...driver.QueryOption) 
 	return nil, errors.New("not implemented")
 }
 func (m *mockRepo) Exists(_ context.Context, _ *filter.Filter) (bool, error) { return false, nil }
-func (m *mockRepo) Count(_ context.Context, _ *filter.Filter) (int64, error)  { return 0, nil }
+func (m *mockRepo) Count(_ context.Context, _ *filter.Filter) (int64, error) { return 0, nil }
 func (m *mockRepo) Aggregate(_ context.Context, _ *filter.Filter, _ driver.AggregateSpec) (driver.AggregateResult, error) {
 	return driver.AggregateResult{}, nil
 }

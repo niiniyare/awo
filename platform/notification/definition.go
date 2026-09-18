@@ -24,10 +24,10 @@ import (
 // Definition is the platform_notification entity.
 // Each record represents one in-app notification for one user.
 var Definition = def.SystemDefinition{
-	Name:        "notification",
-	Module:      "platform",
-	Label:       "Notification",
-	LabelPlural: "Notifications",
+	Name:         "notification",
+	Module:       "platform",
+	Label:        "Notification",
+	LabelPlural:  "Notifications",
 	Description:  "In-app notification delivered to a specific user within the tenant.",
 	DisableAudit: true, // high-volume; auditing every notification write is too noisy
 

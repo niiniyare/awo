@@ -57,20 +57,20 @@ type entitySummary struct {
 
 // fieldSummary describes a single field for the entity detail response.
 type fieldSummary struct {
-	Name        string `json:"name"`
-	Label       string `json:"label"`
-	Type        string `json:"type"`
-	Required    bool   `json:"required,omitempty"`
-	Unique      bool   `json:"unique,omitempty"`
-	Immutable   bool   `json:"immutable,omitempty"`
-	Sensitive   bool   `json:"sensitive,omitempty"`
-	Searchable  bool   `json:"searchable,omitempty"`
-	ReadOnly    bool   `json:"read_only,omitempty"`
-	Hidden      bool   `json:"hidden,omitempty"`
-	MaxLen      int    `json:"max_len,omitempty"`
-	LinkTarget  string `json:"link_target,omitempty"`
+	Name        string   `json:"name"`
+	Label       string   `json:"label"`
+	Type        string   `json:"type"`
+	Required    bool     `json:"required,omitempty"`
+	Unique      bool     `json:"unique,omitempty"`
+	Immutable   bool     `json:"immutable,omitempty"`
+	Sensitive   bool     `json:"sensitive,omitempty"`
+	Searchable  bool     `json:"searchable,omitempty"`
+	ReadOnly    bool     `json:"read_only,omitempty"`
+	Hidden      bool     `json:"hidden,omitempty"`
+	MaxLen      int      `json:"max_len,omitempty"`
+	LinkTarget  string   `json:"link_target,omitempty"`
 	Options     []string `json:"options,omitempty"`
-	Description string `json:"description,omitempty"`
+	Description string   `json:"description,omitempty"`
 }
 
 // edgeSummary describes a single edge for the entity detail response.
@@ -84,28 +84,28 @@ type edgeSummary struct {
 
 // actionSummary describes a single action for the entity detail response.
 type actionSummary struct {
-	Name        string `json:"name"`
-	Label       string `json:"label"`
-	Method      string `json:"method"`
+	Name        string   `json:"name"`
+	Label       string   `json:"label"`
+	Method      string   `json:"method"`
 	Permissions []string `json:"permissions,omitempty"`
 }
 
 // entityDetail is the full entity detail response.
 type entityDetail struct {
-	Name        string        `json:"name"`
-	Module      string        `json:"module"`
-	Label       string        `json:"label"`
-	LabelPlural string        `json:"label_plural"`
-	Description string        `json:"description,omitempty"`
-	IsSystem    bool          `json:"is_system"`
-	Scope       string        `json:"scope"`
-	AllowAudit  bool          `json:"allow_audit"`
-	TableName   string        `json:"table_name,omitempty"`
-	RoutePrefix string        `json:"route_prefix"`
-	Icon        string        `json:"icon,omitempty"`
-	Fields      []fieldSummary `json:"fields"`
-	Edges       []edgeSummary  `json:"edges"`
-	Actions     []actionSummary `json:"actions"`
+	Name        string           `json:"name"`
+	Module      string           `json:"module"`
+	Label       string           `json:"label"`
+	LabelPlural string           `json:"label_plural"`
+	Description string           `json:"description,omitempty"`
+	IsSystem    bool             `json:"is_system"`
+	Scope       string           `json:"scope"`
+	AllowAudit  bool             `json:"allow_audit"`
+	TableName   string           `json:"table_name,omitempty"`
+	RoutePrefix string           `json:"route_prefix"`
+	Icon        string           `json:"icon,omitempty"`
+	Fields      []fieldSummary   `json:"fields"`
+	Edges       []edgeSummary    `json:"edges"`
+	Actions     []actionSummary  `json:"actions"`
 	Permissions permissionDetail `json:"permissions"`
 }
 

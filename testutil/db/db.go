@@ -13,7 +13,7 @@
 //
 // # Required environment variable
 //
-//	TEST_DATABASE_URL=postgres://user:pass@localhost:5432/awo_test?sslmode=disable
+//	TEST_DATABASE_URL=postgres://user:pass@localhost:5432/awo?sslmode=disable
 //
 // If unset, any test calling SetupTestDB is automatically skipped.
 //

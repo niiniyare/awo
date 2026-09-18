@@ -76,8 +76,8 @@ type Parameter struct {
 
 // RequestBody describes the request payload.
 type RequestBody struct {
-	Required bool                   `json:"required"`
-	Content  map[string]MediaType   `json:"content"`
+	Required bool                 `json:"required"`
+	Content  map[string]MediaType `json:"content"`
 }
 
 // MediaType wraps a schema for a content type.
@@ -87,8 +87,8 @@ type MediaType struct {
 
 // Response is a single response object.
 type Response struct {
-	Description string                 `json:"description"`
-	Content     map[string]MediaType   `json:"content,omitempty"`
+	Description string               `json:"description"`
+	Content     map[string]MediaType `json:"content,omitempty"`
 }
 
 // Schema is an OpenAPI/JSON Schema object.
@@ -201,7 +201,7 @@ func fiberPathToOpenAPI(path string) string {
 // buildOperation constructs an Operation for the given route.
 func buildOperation(route compiler.RouteDescriptor, es *compiler.EntitySchema) *Operation {
 	op := &Operation{
-		Tags:    []string{es.OpenAPITag},
+		Tags:     []string{es.OpenAPITag},
 		Security: []SecurityReq{{"BearerAuth": {}}},
 	}
 

@@ -83,8 +83,8 @@ func TestBulkCreateCustom_MarshalError(t *testing.T) {
 	}
 	_, err := r.bulkCreateCustom(
 		context.Background(),
-		nil,          // db — not reached because marshal fails first
-		[16]byte{},   // tenantID
+		nil,        // db — not reached because marshal fails first
+		[16]byte{}, // tenantID
 		inputs,
 		time.Now().UTC(),
 	)

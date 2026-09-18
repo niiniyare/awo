@@ -209,7 +209,6 @@ func runNewWorkflow(args []string) error {
 	return nil
 }
 
-
 func runMigrate(args []string) error {
 	sub := ""
 	if len(args) > 0 {

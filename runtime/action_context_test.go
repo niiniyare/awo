@@ -40,8 +40,8 @@ func (r *noopRepo) Get(_ context.Context, _ uuid.UUID) (*def.EntityRecord, error
 func (r *noopRepo) Query(_ context.Context, _ def.ActionFilter, _ ...def.ActionQueryOpt) ([]*def.EntityRecord, error) {
 	return nil, nil
 }
-func (r *noopRepo) Count(_ context.Context, _ def.ActionFilter) (int64, error)  { return 0, nil }
-func (r *noopRepo) Exists(_ context.Context, _ def.ActionFilter) (bool, error)  { return false, nil }
+func (r *noopRepo) Count(_ context.Context, _ def.ActionFilter) (int64, error) { return 0, nil }
+func (r *noopRepo) Exists(_ context.Context, _ def.ActionFilter) (bool, error) { return false, nil }
 func (r *noopRepo) Create(_ context.Context, _ map[string]any) (*def.EntityRecord, error) {
 	return nil, errors.New("noopRepo.Create: not implemented")
 }

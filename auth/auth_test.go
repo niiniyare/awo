@@ -234,9 +234,9 @@ func TestViewerFromContext_Panics_WhenAbsent(t *testing.T) {
 // mockValidator is a test-local SessionValidator implementation.
 // It resolves tokens from a pre-populated map; absent tokens return ErrSessionNotFound.
 type mockValidator struct {
-	sessions map[string]*Session
+	sessions    map[string]*Session
 	apiSessions map[string]*Session
-	infraErr error
+	infraErr    error
 }
 
 func (m *mockValidator) ValidateToken(_ context.Context, token string) (*Session, error) {

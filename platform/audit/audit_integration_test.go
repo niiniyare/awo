@@ -336,7 +336,7 @@ func (s *AuditSuite) TestPostgresWriter_AutoAssignsIDAndTimestamp() {
 	ctx := testdb.WithTenant(context.Background(), s.tenantID)
 
 	rec := s.makeRecord("test_auto_fields", audit.OperationCreate)
-	rec.ID = uuid.Nil         // force auto-assign
+	rec.ID = uuid.Nil           // force auto-assign
 	rec.CreatedAt = time.Time{} // force auto-assign
 
 	s.Require().NoError(s.writer.Write(ctx, rec))
@@ -439,4 +439,3 @@ func TestApply_PropagatesCritical(t *testing.T) {
 	err := audit.Apply(context.Background(), w, rec)
 	require.ErrorIs(t, err, writeErr, "Apply must propagate errors for CategoryAdmin")
 }
-

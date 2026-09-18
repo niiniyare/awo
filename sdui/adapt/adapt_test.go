@@ -505,7 +505,7 @@ type stubViewer struct {
 	roles []string
 }
 
-func (s stubViewer) TenantID() uuid.UUID        { return uuid.Nil }
+func (s stubViewer) TenantID() uuid.UUID         { return uuid.Nil }
 func (s stubViewer) UserID() uuid.UUID           { return uuid.Nil }
 func (s stubViewer) ServiceAccountID() uuid.UUID { return uuid.Nil }
 func (s stubViewer) Roles() []string             { return s.roles }

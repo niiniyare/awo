@@ -10,8 +10,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	contribpgx "awo.so/awo/contrib/pgx"
 	"awo.so/awo/compiler"
+	contribpgx "awo.so/awo/contrib/pgx"
 	"awo.so/awo/def"
 	"awo.so/awo/driver"
 	"awo.so/awo/filter"

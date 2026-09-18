@@ -26,9 +26,14 @@ import (
 	_ "awo.so/awo/platform/registry"
 	_ "awo.so/awo/platform/settings"
 	_ "awo.so/awo/platform/tenant"
-
-	// Finance module entity registration.
-	_ "awo.so/modules/finance"
+	// Business/application modules (e.g. finance, inventory) are NOT
+	// framework-native (see docs/00-overview/ARCH_OVERVIEW.md §10 "Platform
+	// Modules", which does not list Finance) and are intentionally not
+	// imported here. This binary is the framework's own reference CLI; it
+	// must build and run with only platform/* modules. An application
+	// repository that depends on awo.so/awo should provide its own cmd/
+	// entrypoint that blank-imports its business modules alongside the
+	// platform modules above. See AUDIT_REPORT.md and tasks.md Phase 0.2.
 )
 
 // globalFlags are parsed from os.Args before the sub-command is dispatched.

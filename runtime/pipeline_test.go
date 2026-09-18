@@ -40,31 +40,40 @@ type trackingHook struct {
 }
 
 func (h *trackingHook) BeforeValidate(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) BeforeCreate(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) AfterCreate(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) BeforeUpdate(_ context.Context, _, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) AfterUpdate(_ context.Context, _, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) BeforeDelete(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) AfterDelete(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) BeforeSave(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 func (h *trackingHook) AfterSave(_ context.Context, _ *def.EntityRecord) error {
-	*h.log = append(*h.log, h.label); return nil
+	*h.log = append(*h.log, h.label)
+	return nil
 }
 
 func th(label string, log *[]string) *trackingHook { return &trackingHook{label: label, log: log} }
@@ -79,7 +88,8 @@ func (h *failHook) BeforeValidate(_ context.Context, _ *def.EntityRecord) error 
 type auditCapture struct{ called bool }
 
 func (a *auditCapture) Write(_ context.Context, _ audit.AuditRecord) error {
-	a.called = true; return nil
+	a.called = true
+	return nil
 }
 
 func assertOrder(t *testing.T, got, want []string) {

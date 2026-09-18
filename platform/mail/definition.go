@@ -7,7 +7,8 @@
 // # Record lifecycle
 //
 // queued → sending → sent
-//       ↘ failed
+//
+//	↘ failed
 //
 // All transitions are written by the mail worker (Phase 10). The record is
 // created in the queued state when the caller invokes the mail service.
@@ -28,10 +29,10 @@ import (
 // RecordDefinition is the platform_mail_record entity.
 // Each record represents one outbound email, queued or sent.
 var RecordDefinition = def.SystemDefinition{
-	Name:        "mail_record",
-	Module:      "platform",
-	Label:       "Mail Record",
-	LabelPlural: "Mail Records",
+	Name:         "mail_record",
+	Module:       "platform",
+	Label:        "Mail Record",
+	LabelPlural:  "Mail Records",
 	Description:  "Durable log of every outbound email queued or sent by the platform.",
 	DisableAudit: true, // mail records are themselves an audit trail
 

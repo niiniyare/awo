@@ -5,7 +5,7 @@
 //
 // Required environment variables:
 //
-//	AWO_TEST_DATABASE_URL  postgresql://user:pass@localhost:5432/awo_test
+//	AWO_TEST_DATABASE_URL  postgresql://user:pass@localhost:5432/awo
 //	AWO_TEST_REDIS_URL     redis://localhost:6379/1
 //
 // The test database must have the pg_trgm extension and all platform

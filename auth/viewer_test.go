@@ -127,7 +127,6 @@ func TestSession_ToViewer(t *testing.T) {
 	assert.True(t, v.HasRole("role:finance.viewer"))
 }
 
-
 func TestGenerateToken_Uniqueness(t *testing.T) {
 	tokens := make(map[string]bool)
 	for i := 0; i < 100; i++ {

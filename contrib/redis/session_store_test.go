@@ -150,7 +150,6 @@ func TestRedisSessionStore_ListUserTokens_ReturnsBothTokens(t *testing.T) {
 	}
 }
 
-
 func TestRedisSessionStore_DeleteAll_RemovesAllSessions(t *testing.T) {
 	store, _ := newTestStore(t)
 	tenantID := uuid.New()

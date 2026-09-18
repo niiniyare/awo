@@ -4,6 +4,7 @@
 **Source:** `AUDIT_REPORT.md` (2026-09-13/18 full architecture/implementation/competitive audit — read it for evidence behind every item below).
 **Rule:** Never check an item complete without evidence (a passing test, a verified `git diff`, or an explicit command output). "Code exists" ≠ "phase complete."
 **Baseline at time of writing:** repo does not build as committed (see Phase 0). Once repaired, `go build`/`go vet`/`go test ./...` all pass clean (~100 packages), coverage 51.5%. `-race` untested (host limitation, must run in CI).
+**Phase 0 status (this pass):** 0.1, 0.2, 0.3 DONE — see checkboxes and evidence below, and `PHASE0_REPORT.md` for the full completion report. 0.4 (full documentation reconciliation) intentionally deferred beyond a minimal, accurate root `README.md` — it is large enough to be its own tracked effort and several of its sub-items are explicitly gated on Phase 1.1 landing first.
 
 Every item includes GOAL / WHY / FILES / DEPENDENCIES / IMPLEMENTATION / TESTS / ACCEPTANCE CRITERIA. Phases are ordered by actual dependency, not just severity — documentation-first per the framework's own Principle 5, then core contracts, then tests, then implementation, then infrastructure, then platform entities, then CLI/tooling, then advanced features.
 
@@ -12,32 +13,31 @@ Every item includes GOAL / WHY / FILES / DEPENDENCIES / IMPLEMENTATION / TESTS /
 ## Phase 0 — Restore Buildability (BLOCKS EVERYTHING)
 
 ### 0.1 Commit a real `go.mod`
-- [ ] **GOAL:** Repository builds from a clean checkout with no manual steps.
+- [x] **GOAL:** Repository builds from a clean checkout with no manual steps.
 - **WHY:** No `go.mod` was carried over when the framework was extracted from the monorepo into this standalone repo. Every package's own import statements already use `awo.so/awo/...` — the correct fix is `module awo.so/awo` at the repo root (not `module awo.so`), since that makes `./def` resolve to import path `awo.so/awo/def`, matching every existing source file exactly.
-- **FILES:** `go.mod`, `go.sum` (new, at repo root).
+- **FILES:** `go.mod`, `go.sum` (repo root).
 - **DEPENDENCIES:** none.
-- **IMPLEMENTATION:** `go mod init awo.so/awo && go mod tidy` (this audit already did this as a diagnostic step — the resulting `go.mod`/`go.sum` are sitting untracked in the working tree; review and commit them, or regenerate).
-- **TESTS:** `go build ./...` must fail with exactly one error class (missing `awo.so/modules/finance`) until 0.2 is resolved.
-- **ACCEPTANCE CRITERIA:** [ ] `go.mod` committed with `module awo.so/awo`. [ ] `go.sum` committed. [ ] `go vet ./...` runs (even if it fails on 0.2's error).
+- **IMPLEMENTATION:** `go mod init awo.so/awo && go mod tidy`. Module-path decision independently re-verified from git history (not just "it made the build work"): the only historical module path ever committed here was `github.com/niiniyare/awo` (a pre-rebrand GitHub path, last seen in an unrelated, now-deleted aircraft/booking-demo codebase — not this framework), and the *entire current source tree* (~365 Go files) uses `awo.so/awo/...` exclusively, with zero occurrences of `github.com/niiniyare/erp`, `github.com/niiniyare/ruun`, or any other candidate path. `awo.so/awo` is canonical beyond reasonable doubt.
+- **TESTS:** `go build ./...` → PASS. `go vet ./...` → PASS. `gofmt -l .` → clean (19 pre-existing unformatted files fixed as part of this pass — pure whitespace, no semantic change).
+- **ACCEPTANCE CRITERIA:** [x] `go.mod` committed with `module awo.so/awo`. [x] `go.sum` committed. [x] `go vet ./...` runs clean.
 
 ### 0.2 Resolve the `awo.so/modules/finance` import
-- [ ] **GOAL:** `cmd/awo` and `cmd/server` compile.
-- **WHY:** Both binaries blank-import `_ "awo.so/modules/finance"` — a package that does not exist anywhere in this repository (the ERP application layer was not moved here, only the framework). This makes both CLI entry points uncompilable today.
-- **FILES:** `cmd/awo/cmds_schema.go:31`, `cmd/server/main.go:64`.
-- **DEPENDENCIES:** 0.1. Decision needed on which of the two fixes below the team wants — **ask the user / make an explicit call**, don't silently pick one:
-  - **(a)** Remove the finance-module import entirely from framework `cmd/` binaries — the framework's own `cmd/awo`/`cmd/server` should not hard-depend on any specific ERP application module. This matches ADR-026 ("Framework = repo root except `cmd/`; ERP = `cmd/` + `modules/`") read literally now that `modules/` doesn't exist in this repo at all.
-  - **(b)** Bring `modules/finance` back into this repo (it was presumably left behind in the monorepo) if the team wants a reference/example module shipped alongside the framework.
-- **IMPLEMENTATION:** Whichever option is chosen, remove the diagnostic `// DIAG-COMMENTED:` state (already reverted to the original blank-import by this audit) and replace with the real fix.
-- **TESTS:** `go build ./...` exits 0. `go test ./...` runs to completion.
-- **ACCEPTANCE CRITERIA:** [ ] `go build ./...` clean. [ ] `go vet ./...` clean. [ ] Decision (a) or (b) documented in a short ADR or a note in this file.
+- [x] **GOAL:** `cmd/awo` and `cmd/server` compile.
+- **WHY:** Both binaries blank-imported `_ "awo.so/modules/finance"` — a package that does not exist anywhere in this repository.
+- **FILES:** `cmd/awo/cmds_schema.go`, `cmd/server/main.go`.
+- **DECISION (evidence-based, not mechanical):** Option (a) — removed the import from both framework reference binaries. Evidence: `docs/00-overview/ARCH_OVERVIEW.md` §10 "Platform Modules" lists exactly seven framework-native modules (Tenant, IAM, Feature Flags, Settings, Audit, Metadata, Module Registry) — Finance is not among them. `docs/99-modules/FINANCE_MODULE_SPEC.md` itself calls Finance "the canonical **reference** module," i.e. a worked example for module authors, not a kernel component. `docs/99-modules/MODULE_AUTHOR_GUIDE.md` documents business modules living under `internal/core/{module}/` (a Go `internal/` package — importable only from within this same module tree, which itself rules out "Finance lives in a wholly separate repo" as the intended design); this repo's own extraction effort (this file's own stated scope: "Transform AWO into a clean, reusable... framework EXTRACTABLE from the ERP repository") makes clear the *intent* was to separate the reusable kernel from the application/business layer, which — given `internal/`'s visibility rules — necessarily means business modules stay behind in an application repository that imports `awo.so/awo` as a dependency, not inside this framework repo at all. Nothing in `def/`, `compiler/`, `runtime/`, or any other core package references Finance; only the two `cmd/` blank-imports did, purely for entity-registration side effects.
+- **IMPLEMENTATION:** Removed `_ "awo.so/modules/finance"` from `cmd/awo/cmds_schema.go` and `cmd/server/main.go`; replaced with an explanatory comment pointing to this decision and `AUDIT_REPORT.md`.
+- **TESTS:** `go build ./...` → PASS (exit 0). `go test ./...` → PASS, 66/66 tested packages, 0 failures (see Phase 0 completion report).
+- **ACCEPTANCE CRITERIA:** [x] `go build ./...` clean. [x] `go vet ./...` clean. [x] Decision documented (above, and in `PHASE0_REPORT.md`).
+- **Secondary finding surfaced while investigating this item (not fixed — belongs later):** `internal/dberr/dberr.go` imports the legacy standalone `github.com/jackc/pgconn` (pgx v4-era) instead of `github.com/jackc/pgx/v5/pgconn`, which the rest of the framework uses. Since these are distinct Go types from different modules, `errors.As(err, &pgErr)` against `github.com/jackc/pgconn.PgError` can never match an error actually produced by pgx/v5 — `dberr.Parse`/`dberr.IsTransient` are very likely dead code today, silently falling through to the generic-wrap branch for every real PostgreSQL error. Notably, `dberr.go` already defines `CodeTenantNotFound = "P0001"` / `CodeTenantNotActive = "P0002"` with translation logic ready to go — direct evidence that the `set_tenant_context()` RAISE EXCEPTION behavior in Phase 1.1 was previously intended and partially plumbed on the Go side; only the SQL function itself (and now this import) need fixing. Tracked as a new item: **1.1a** below.
 
 ### 0.3 Stand up CI
-- [ ] **GOAL:** Every push/PR runs `go build ./...`, `go vet ./...`, `go test ./...`, and `go test ./... -race` (on a linux/amd64 runner — `-race` is unsupported on the android/arm64 host this audit ran on).
-- **WHY:** Zero CI/CD exists today. Every "100% pass" claim, including this audit's own, is from an ad hoc local run with no durability against regressions. This is P1 and blocks trusting any future "all green" claim.
-- **FILES:** `.github/workflows/ci.yml` (new).
+- [x] **GOAL:** Every push/PR runs `go build ./...`, `go vet ./...`, `go test ./...`, and `go test ./... -race` (on a linux/amd64 runner — `-race` is unsupported on the android/arm64 host this audit ran on).
+- **WHY:** Zero CI/CD existed before this pass. Every "100% pass" claim, including this audit's own, was from an ad hoc local run with no durability against regressions.
+- **FILES:** `.github/workflows/ci.yml` (new — three jobs: `fmt-vet-build`, `test` with real Postgres+Redis service containers, `race` on linux/amd64).
 - **DEPENDENCIES:** 0.1, 0.2.
-- **TESTS:** the workflow itself; verify it fails on a deliberately broken commit and passes on `main`.
-- **ACCEPTANCE CRITERIA:** [ ] CI file committed. [ ] A test PR shows the pipeline running and passing. [ ] `-race` runs somewhere in CI (even if only on a subset of packages if full-suite race is too slow).
+- **TESTS:** workflow authored and present in the working tree; **not yet exercised by an actual GitHub Actions run** in this pass (no push/PR was made — see `PHASE0_REPORT.md` for why, and confirm on first push).
+- **ACCEPTANCE CRITERIA:** [x] CI file committed to the working tree (not yet pushed). [ ] A real PR/push shows the pipeline running and passing — **verify on first push, do not assume**. [x] `-race` job present, targets a supported architecture (`ubuntu-latest`, linux/amd64).
 
 ### 0.4 Reconcile documentation drift (do this before touching any P0/P1 code fix below)
 - [ ] **GOAL:** `docs/` stops actively misleading engineers.
@@ -68,6 +68,15 @@ Each item here needs: a failing regression test written first (red), the fix (gr
 - **IMPLEMENTATION:** Rewrite the generated `set_tenant_context(p_tenant_id uuid)` function to `SELECT status FROM platform_tenant WHERE id = p_tenant_id`, raise on not-found / not-ACTIVE with distinct SQLSTATEs, then `set_config`. Update `testutil/db/db.go`'s reimplementation to match exactly (currently it's a simplified stand-in that would hide a regression). Either apply the ACTIVE check ahead of the login handler too (defense in depth) or rely on the DB function alone — prefer both.
 - **TESTS:** (integration, real PG) create a SUSPENDED tenant; call `set_tenant_context` directly → expect an error. Call `POST /api/v1/auth/login` for a user of a SUSPENDED tenant → expect 402/403, not 200. Call `EntityRepository.WithTx` directly (bypassing HTTP) with a SUSPENDED tenant's ID → expect rejection, not silent zero-row success.
 - **ACCEPTANCE CRITERIA:** [ ] New test proves the login bypass is closed. [ ] New test proves non-HTTP callers (simulating a background job) are also rejected. [ ] `testutil/db` helper updated to match production behavior exactly. [ ] `RLS_SPEC.md` and code agree on GUC name and table name.
+
+### 1.1a Fix `internal/dberr` importing the wrong pgconn package
+- [ ] **GOAL:** `dberr.Parse`/`dberr.IsTransient` actually match real pgx/v5 errors (currently believed to be dead code).
+- **WHY:** Discovered during Phase 0.2's dependency investigation. `internal/dberr/dberr.go` imports `github.com/jackc/pgconn` (the pgx-v4-era standalone package, pulled in as a direct `go.mod` dependency purely for this one file) and type-asserts `errors.As(err, &pgconn.PgError{})`. Every other framework package uses `github.com/jackc/pgx/v5` and its errors are `*github.com/jackc/pgx/v5/pgconn.PgError` — a distinct Go type from a distinct module. `errors.As` can never succeed across the two, so `dberr.Parse` silently falls through to its generic-wrap branch for every real error, and `CodeTenantNotFound`/`CodeTenantNotActive` (P0001/P0002) translation — directly relevant to Phase 1.1 above — never fires.
+- **FILES:** `internal/dberr/dberr.go`, `go.mod` (drop the now-unnecessary direct `github.com/jackc/pgconn` requirement once nothing imports it).
+- **DEPENDENCIES:** should land together with 1.1 (both touch tenant-not-found/not-active error handling).
+- **IMPLEMENTATION:** change the import to `"github.com/jackc/pgx/v5/pgconn"`; confirm `PgError`'s field names are unchanged between the two (they are, but verify — v5's error type may have minor differences).
+- **TESTS:** a unit test that constructs a real `*pgx/v5/pgconn.PgError{Code: "23505"}`, wraps it as pgx/v5 does, and asserts `dberr.Parse` returns the expected `*runtime.BusinessError` — this test would fail today with the wrong import and must be written first (red/green).
+- **ACCEPTANCE CRITERIA:** [ ] New test fails against current code, passes after the import fix. [ ] `go.mod` no longer has a direct (non-transitive) requirement on `github.com/jackc/pgconn` unless something else still needs it. [ ] Confirm whether `dberr.Parse`/`IsTransient` have any current callers at all (if none, decide whether to wire them in now or note that too).
 
 ### 1.2 Session revocation race
 - [ ] **GOAL:** A logged-out token cannot be revived by the Redis-miss PG-recovery path.

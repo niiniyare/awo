@@ -1,4 +1,5 @@
 .DS_Store
+Thumbs.db
 #log
 *.log
 
@@ -8,5 +9,31 @@ external/_examples/booktest
 # file
 logfile
 coverage.out
+coverage.*.out
+*.cover
 ./script/coverage.txt
 vendor/
+
+# Go build/test artifacts
+*.test
+*.prof
+/awo
+/server
+/migrate
+
+# Local infrastructure runtime state (never commit — these are per-developer
+# artifacts from running `redis-server`/postgres locally, not project content)
+dump.rdb
+*.rdb
+pgdata/
+*.pid
+
+# Editor/IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Environment files (may contain local secrets — see docs/18-security/SECRET_MANAGEMENT.md)
+.env
+.env.local

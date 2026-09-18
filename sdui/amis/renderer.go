@@ -1104,12 +1104,12 @@ func (r *DefaultRenderer) renderFilterBar(n *widget.Node, ctx renderer.RendererC
 	// wrapWithPanel:false prevents AMIS from wrapping the filter in a card/panel
 	// when it is embedded as crud.filter — crud provides its own container.
 	return map[string]any{
-		"type":           "form",
-		"mode":           "horizontal",
-		"body":           body,
-		"submitText":     "Search",
-		"resetText":      "Reset",
-		"wrapWithPanel":  false,
+		"type":          "form",
+		"mode":          "horizontal",
+		"body":          body,
+		"submitText":    "Search",
+		"resetText":     "Reset",
+		"wrapWithPanel": false,
 	}, nil
 }
 

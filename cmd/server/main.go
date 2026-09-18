@@ -60,8 +60,14 @@ import (
 	_ "awo.so/awo/platform/mail"
 	_ "awo.so/awo/platform/metadata"
 
-	// Finance module — registers all finance_* entities via init().
-	_ "awo.so/modules/finance"
+	// Business/application modules (e.g. finance, inventory) are NOT
+	// framework-native (see docs/00-overview/ARCH_OVERVIEW.md §10 "Platform
+	// Modules", which does not list Finance) and are intentionally not
+	// imported here. This binary is the framework's own reference server;
+	// it must build and run with only platform/* modules. An application
+	// repository that depends on awo.so/awo should provide its own cmd/
+	// entrypoint that blank-imports its business modules alongside the
+	// platform modules below. See AUDIT_REPORT.md and tasks.md Phase 0.2.
 	_ "awo.so/awo/platform/notification"
 	_ "awo.so/awo/platform/organization"
 	_ "awo.so/awo/platform/registry"

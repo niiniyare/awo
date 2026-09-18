@@ -135,4 +135,3 @@ func checkFields(f *filter.Filter, al *Allowlist) error {
 		return nil
 	}
 }
-

@@ -128,14 +128,14 @@ Air watches `*.go` files and rebuilds on save.
 Tests use a separate database. Configure in `.env.test`:
 
 ```bash
-DATABASE_URL=postgres://awo:awo_dev_password@localhost:5432/awo_test?sslmode=disable
+DATABASE_URL=postgres://awo:awo_dev_password@localhost:5432/awo?sslmode=disable
 REDIS_URL=redis://localhost:6379/1   # DB index 1 — separate from dev
 ```
 
 Create and migrate:
 
 ```bash
-createdb -h localhost -U awo awo_test
+createdb -h localhost -U awo awo
 DATABASE_URL=... make migrate-up
 # or
 make db-test-setup
