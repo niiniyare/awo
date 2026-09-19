@@ -243,6 +243,8 @@ func convertField(f def.FieldDef, es *compiler.EntitySchema) generator.FieldDef 
 		InDetail:    !f.Hidden,
 		Description: f.Description,
 		MaxLength:   f.MaxLen,
+		Min:         f.Min,
+		Max:         f.Max,
 		Placeholder: f.Placeholder,
 		Icon:        f.Icon,
 		Width:       f.Width,

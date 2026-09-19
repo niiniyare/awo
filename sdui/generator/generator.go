@@ -82,6 +82,12 @@ type FieldDef struct {
 	// MaxLength caps text input length. Zero means no limit.
 	MaxLength int
 
+	// Min and Max bound numeric field values. Projected onto the widget tree
+	// as client-side validation (server-side enforcement is authoritative and
+	// independent). nil means no bound.
+	Min *float64
+	Max *float64
+
 	// Options lists select field options (label, value pairs).
 	// Used when the select is static (not server-side).
 	Options []SelectOption
@@ -881,10 +887,37 @@ func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContex
 		Required:      f.Required,
 		ReadOnly:      readOnly || f.ReadOnly || f.Computed,
 		MaxLength:     f.MaxLength,
+		MinValue:      f.Min,
+		MaxValue:      f.Max,
 		DataSource:    f.DataSource,
 		CurrencyField: f.CurrencyField,
 		Icon:          f.Icon,
 		ClearOn:       f.ClearOn,
+	}
+
+	// Client-side validation rules projected from field bounds, so users get
+	// immediate feedback instead of discovering violations after a submit
+	// round-trip. Server-side validation remains authoritative.
+	if f.MaxLength > 0 {
+		node.Validation = append(node.Validation, widget.ValidationRule{
+			Type:    "maxLength",
+			Value:   fmt.Sprintf("%d", f.MaxLength),
+			Message: fmt.Sprintf("%s must be at most %d characters.", f.Label, f.MaxLength),
+		})
+	}
+	if f.Min != nil {
+		node.Validation = append(node.Validation, widget.ValidationRule{
+			Type:    "min",
+			Value:   fmt.Sprintf("%v", *f.Min),
+			Message: fmt.Sprintf("%s must be at least %v.", f.Label, *f.Min),
+		})
+	}
+	if f.Max != nil {
+		node.Validation = append(node.Validation, widget.ValidationRule{
+			Type:    "max",
+			Value:   fmt.Sprintf("%v", *f.Max),
+			Message: fmt.Sprintf("%s must be at most %v.", f.Label, *f.Max),
+		})
 	}
 
 	// Layout hint: ColSpan and/or Width.
