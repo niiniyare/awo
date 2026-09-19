@@ -87,11 +87,21 @@ func (r *Repository) Query(ctx context.Context, f *filter.Filter, opts ...driver
 		sb.WriteString(` WHERE ` + where.Clause)
 	}
 	if qo.SortField != "" {
+		// SortField ultimately originates from the HTTP ?orderBy= query
+		// parameter (api/handler/crud.go) with no upstream validation, so
+		// it must be checked against the entity's real columns here — the
+		// same allowlist WHERE-clause fields are checked against — before
+		// use. It is not enough to quote it: unlike quoteIdent (used for
+		// every WHERE-clause field), a naively interpolated identifier
+		// lets a value containing `"` break out of the quotes entirely.
+		if err := sqlbuild.NewAllowlist(r.schema).Check(qo.SortField); err != nil {
+			return nil, driver.PageInfo{}, fmt.Errorf("%s.Query: sort field: %w", r.schema.TableName, err)
+		}
 		dir := "DESC"
 		if qo.SortAsc {
 			dir = "ASC"
 		}
-		sb.WriteString(fmt.Sprintf(` ORDER BY "%s" %s`, qo.SortField, dir))
+		sb.WriteString(fmt.Sprintf(` ORDER BY %s %s`, sqlbuild.QuoteIdent(qo.SortField), dir))
 	}
 	pageSize := qo.PageSize
 	offset := 0

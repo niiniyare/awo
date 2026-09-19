@@ -197,9 +197,23 @@ func (s *AuthService) Login(ctx context.Context, input LoginInput) (*LoginResult
 		return nil, fmt.Errorf("iam: login: commit: %w", err)
 	}
 
+	// Every other authenticated route reaches its handler through
+	// TenantResolver middleware, which embeds a tenant.TenantContext into
+	// the request context before anything else runs. POST /api/v1/auth/login
+	// is registered outside that middleware group (see platform/iam/module.go)
+	// — it is how a session is obtained in the first place, so nothing has
+	// resolved a tenant for it yet at the HTTP layer. The credential check
+	// above already independently confirmed input.TenantID is a real, ACTIVE
+	// tenant (via set_tenant_context), so Login embeds that same tenant into
+	// ctx itself before calling anything that depends on it being present:
+	// EntityRepository.WithTx (loadUserRoles, auditLogin) requires a
+	// TenantContext to activate RLS for its transaction, and
+	// EntityRepository.Create/Update require one to know which tenant to
+	// stamp on the row they write — without this, WithTx silently proceeds
+	// with RLS inactive (wrong, empty results) and Create panics outright.
+	ctx = tenant.WithContext(ctx, tenant.TenantContext{TenantID: input.TenantID})
+
 	// Phase 2: Load user roles via EntityRepository.
-	// WithTx establishes tenant RLS context from TenantContext already in ctx
-	// (injected by TenantResolver middleware before Login was called).
 	// Session model ADR-004: roles are baked into sessions; role changes only
 	// take effect after the user re-authenticates. Stale roles in the window
 	// between credential commit and role load are acceptable.

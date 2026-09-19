@@ -377,6 +377,17 @@ func TestAuthService_Login_NonexistentTenant_Rejected(t *testing.T) {
 	assert.Contains(t, err.Error(), "tenant")
 }
 
+// TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds is also the
+// regression test for a second bug found while writing it: Login is called
+// with a plain context.Background() by the real HTTP handler (its route is
+// registered outside the TenantResolver-gated group, which is the only
+// thing that normally embeds a tenant.TenantContext into the request
+// context). Every downstream call in this test — loadUserRoles, storeSession,
+// auditLogin — must work correctly from that same bare context, exactly as
+// production does, not from a context a test helper pre-seeded with tenant
+// info. Before the fix, loadUserRoles silently ran with RLS inactive
+// (returning zero roles instead of erroring), and auditLogin's session-record
+// write panicked outright.
 func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) {
 	svc, _, tenantID := setupIAMWithTenantLifecycle(t, "ACTIVE")
 
@@ -386,6 +397,11 @@ func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) 
 		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', 'dana@example.com', '%s', 'active')`,
 		userID, tenantID, pwHash,
+	))
+	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
+		`INSERT INTO iam_user_roles (id, tenant_id, user_id, role_name)
+		 VALUES (gen_random_uuid(), '%s', '%s', 'role:finance.viewer')`,
+		tenantID, userID,
 	))
 
 	result, err := svc.Login(context.Background(), iam.LoginInput{
@@ -397,6 +413,17 @@ func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) 
 		"the tenant-lifecycle fix must not break the legitimate path")
 	assert.Equal(t, tenantID, result.Session.TenantID)
 	assert.Equal(t, userID, result.Session.UserID)
+	assert.Equal(t, []string{"role:finance.viewer"}, result.Session.Roles,
+		"the role assigned to this user must actually be loaded — an RLS-inactive "+
+			"role query would silently return zero roles instead of failing")
+
+	// auditLogin's session-record write must have actually landed (it
+	// previously panicked before reaching this point).
+	var sessionCount int
+	require.NoError(t, testdb.QueryRowSQL(t, svc.DB,
+		`SELECT count(*) FROM iam_sessions WHERE token_hash = $1`, sha256hex(result.Token),
+	).Scan(&sessionCount))
+	assert.Equal(t, 1, sessionCount, "the best-effort SQL session record must be written, not skipped")
 }
 
 // ── Session fallback tests ────────────────────────────────────────────────────

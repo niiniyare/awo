@@ -16,15 +16,14 @@ CREATE TABLE IF NOT EXISTS platform_feature_flag (
 -- platform_flag_tenant_override: per-tenant flag overrides.
 -- RLS enabled — tenant-scoped.
 --
--- Phase 1 fix: this table previously had NO tenant_id column and a RLS
--- policy of "USING (true)" — i.e. RLS was nominally "enabled" but enforced
--- nothing at all; every tenant could read and write every other tenant's
--- feature-flag overrides. TenantOverrideDefinition (platform/flags/definition.go)
--- has no explicit Scope, so it defaults to ScopeTenant (ADR-022) and the
--- generator (generator/generator.go generateEntitySQL) would emit a real
--- tenant_id column + "tenant_id = current_tenant_id()" policy for it — this
--- hand-written migration had drifted out of sync with that contract. See
--- AUDIT_REPORT.md / tasks.md Phase 1 for the finding.
+-- This table used to have NO tenant_id column and a RLS policy of
+-- "USING (true)" — i.e. RLS was nominally "enabled" but enforced nothing at
+-- all; every tenant could read and write every other tenant's feature-flag
+-- overrides. TenantOverrideDefinition (platform/flags/definition.go) has no
+-- explicit Scope, so it defaults to ScopeTenant (ADR-022) and the generator
+-- (generator/generator.go generateEntitySQL) would emit a real tenant_id
+-- column + "tenant_id = current_tenant_id()" policy for it — this
+-- hand-written migration had drifted out of sync with that contract.
 CREATE TABLE IF NOT EXISTS platform_flag_tenant_override (
     id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id   uuid NOT NULL REFERENCES platform_tenant (id),

@@ -14,9 +14,9 @@
 -- It MUST be called before any tenant-scoped query — contrib/pgx's driver calls
 -- it via "SELECT set_tenant_context($1)" inside WithTx, before any DML.
 --
--- Phase 1 fix: prior to this migration, no set_tenant_context() function
--- existed anywhere in the embedded (production-default) migration path at
--- all — contrib/pgx's "SELECT set_tenant_context($1)" call would fail with
+-- Before this migration existed, no set_tenant_context() function existed
+-- anywhere in the embedded (production-default) migration path at all —
+-- contrib/pgx's "SELECT set_tenant_context($1)" call would fail with
 -- "function set_tenant_context(uuid) does not exist" on any freshly
 -- bootstrapped database. Where a compatible-signature version existed
 -- elsewhere (generator/generator.go's template, the orphaned top-level
@@ -24,8 +24,7 @@
 -- existence or ACTIVE status, contradicting the "MUST reject non-ACTIVE
 -- tenants" normative requirement and leaving zero defense-in-depth for any
 -- caller other than the one HTTP middleware (api/middleware/tenant.go) that
--- happened to check status itself. See AUDIT_REPORT.md §4/§9 S1 and
--- tasks.md Phase 1.1.
+-- happened to check status itself.
 --
 -- This function is created before platform_tenant exists in migration
 -- ordering (platform/tenant/migrations DependsOn "bootstrap", so it applies
@@ -65,10 +64,15 @@ COMMENT ON FUNCTION set_tenant_context(uuid) IS
 -- Only ever set via set_tenant_context() above — never call SET/set_config
 -- directly, since that bypasses tenant existence/status validation.
 --
--- Returns NULL (not an error) when no tenant is set — platform-wide queries
--- (e.g. reading platform_tenant from a platform-admin context) operate without
--- a tenant filter. Row-level security policies must use USING (tenant_id = current_tenant_id())
--- rather than asserting non-null, so platform-admin bypass works correctly.
+-- Returns NULL (not an error) when no tenant context has been set. This is
+-- NOT a platform-admin bypass: every tenant-scoped policy compares
+-- tenant_id = current_tenant_id(), and in SQL, x = NULL is never true, so a
+-- NULL tenant context sees zero rows on every tenant-scoped table (fail
+-- closed). Tables with no per-row tenant column at all (platform_tenant
+-- itself, other genuinely global tables) are simply not RLS-scoped by
+-- tenant_id in the first place — that is why platform-wide reads of those
+-- specific tables work with no tenant context set, not because
+-- current_tenant_id() returning NULL grants any access.
 CREATE OR REPLACE FUNCTION current_tenant_id() RETURNS uuid
     LANGUAGE sql STABLE SECURITY DEFINER
     SET search_path = public AS
@@ -77,8 +81,9 @@ $$
 $$;
 
 COMMENT ON FUNCTION current_tenant_id() IS
-    'Returns the tenant UUID set by set_tenant_context() for the current transaction. '
-    'Used in all tenant-scoped RLS policies. Returns NULL for platform-admin connections.';
+    'Returns the tenant UUID set by set_tenant_context() for the current transaction, '
+    'or NULL if no tenant context is set. Used in all tenant-scoped RLS policies; a '
+    'NULL result matches zero rows (fail closed), it is not a bypass.';
 
 -- ── Auto updated_at ──────────────────────────────────────────────────────────
 
