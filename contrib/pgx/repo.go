@@ -48,23 +48,31 @@ var _ driver.EntityRepository[*def.EntityRecord] = (*Repository)(nil)
 // Get fetches a single record by primary key.
 func (r *Repository) Get(ctx context.Context, id uuid.UUID, opts ...driver.QueryOption) (*def.EntityRecord, error) {
 	qo := driver.ResolveOptions(opts)
-	conn := connFromContext(ctx, r.pool)
 
-	cols, scan := r.columnsAndScanner()
-	sql := fmt.Sprintf(
-		`SELECT %s FROM "%s" WHERE "id" = $1 LIMIT 1`,
-		cols, r.schema.TableName,
-	)
-	if qo.ForUpdate {
-		sql += " FOR UPDATE"
-	}
-
-	rec, err := scan(conn.db().QueryRow(ctx, sql, id))
-	if err != nil {
-		if err == pgxlib.ErrNoRows {
-			return nil, &runtime.NotFoundError{EntityName: r.schema.TableName, ID: id.String()}
+	var rec *def.EntityRecord
+	err := r.withReadTx(ctx, func(txCtx context.Context) error {
+		conn := connFromContext(txCtx, r.pool)
+		cols, scan := r.columnsAndScanner()
+		sql := fmt.Sprintf(
+			`SELECT %s FROM "%s" WHERE "id" = $1 LIMIT 1`,
+			cols, r.schema.TableName,
+		)
+		if qo.ForUpdate {
+			sql += " FOR UPDATE"
 		}
-		return nil, dberr.Parse(err, r.schema.TableName+".Get")
+
+		got, err := scan(conn.db().QueryRow(txCtx, sql, id))
+		if err != nil {
+			if err == pgxlib.ErrNoRows {
+				return &runtime.NotFoundError{EntityName: r.schema.TableName, ID: id.String()}
+			}
+			return dberr.Parse(err, r.schema.TableName+".Get")
+		}
+		rec = got
+		return nil
+	})
+	if err != nil {
+		return nil, err
 	}
 	return rec, nil
 }
@@ -72,104 +80,132 @@ func (r *Repository) Get(ctx context.Context, id uuid.UUID, opts ...driver.Query
 // Query returns records matching f with pagination and sorting.
 func (r *Repository) Query(ctx context.Context, f *filter.Filter, opts ...driver.QueryOption) ([]*def.EntityRecord, driver.PageInfo, error) {
 	qo := driver.ResolveOptions(opts)
-	conn := connFromContext(ctx, r.pool)
-
-	where, err := sqlbuild.Build(f, 0)
-	if err != nil {
-		return nil, driver.PageInfo{}, fmt.Errorf("%s.Query: build filter: %w", r.schema.TableName, err)
-	}
-
-	cols, scan := r.columnsAndScanner()
-
-	var sb strings.Builder
-	sb.WriteString(fmt.Sprintf(`SELECT %s FROM "%s"`, cols, r.schema.TableName))
-	if where.Clause != "" {
-		sb.WriteString(` WHERE ` + where.Clause)
-	}
-	if qo.SortField != "" {
-		// SortField ultimately originates from the HTTP ?orderBy= query
-		// parameter (api/handler/crud.go) with no upstream validation, so
-		// it must be checked against the entity's real columns here — the
-		// same allowlist WHERE-clause fields are checked against — before
-		// use. It is not enough to quote it: unlike quoteIdent (used for
-		// every WHERE-clause field), a naively interpolated identifier
-		// lets a value containing `"` break out of the quotes entirely.
-		if err := sqlbuild.NewAllowlist(r.schema).Check(qo.SortField); err != nil {
-			return nil, driver.PageInfo{}, fmt.Errorf("%s.Query: sort field: %w", r.schema.TableName, err)
-		}
-		dir := "DESC"
-		if qo.SortAsc {
-			dir = "ASC"
-		}
-		sb.WriteString(fmt.Sprintf(` ORDER BY %s %s`, sqlbuild.QuoteIdent(qo.SortField), dir))
-	}
-	pageSize := qo.PageSize
-	offset := 0
-	if qo.Page > 1 {
-		offset = (qo.Page - 1) * pageSize
-	}
-	// Fetch pageSize+1 to detect HasNextPage without a separate COUNT.
-	sb.WriteString(fmt.Sprintf(` LIMIT %d OFFSET %d`, pageSize+1, offset))
-
-	rows, err := conn.db().Query(ctx, sb.String(), where.Args...)
-	if err != nil {
-		return nil, driver.PageInfo{}, dberr.Parse(err, r.schema.TableName+".Query")
-	}
-	defer rows.Close()
 
 	var records []*def.EntityRecord
-	for rows.Next() {
-		rec, err := scan(rows)
-		if err != nil {
-			return nil, driver.PageInfo{}, dberr.Parse(err, r.schema.TableName+".Query.scan")
-		}
-		records = append(records, rec)
-	}
-	if rows.Err() != nil {
-		return nil, driver.PageInfo{}, dberr.Parse(rows.Err(), r.schema.TableName+".Query.rows")
-	}
-
-	hasNext := len(records) > pageSize
-	if hasNext {
-		records = records[:pageSize]
-	}
 	info := driver.PageInfo{
-		HasNextPage: hasNext,
 		HasPrevPage: qo.Page > 1,
 		Page:        qo.Page,
-		PageSize:    pageSize,
+		PageSize:    qo.PageSize,
 		Total:       -1, // skipped by default
 	}
 
-	if !qo.SkipCount {
-		count, err := r.Count(ctx, f)
-		if err == nil {
-			info.Total = count
-		}
-	}
+	err := r.withReadTx(ctx, func(txCtx context.Context) error {
+		conn := connFromContext(txCtx, r.pool)
 
+		where, err := sqlbuild.Build(f, 0)
+		if err != nil {
+			return fmt.Errorf("%s.Query: build filter: %w", r.schema.TableName, err)
+		}
+
+		cols, scan := r.columnsAndScanner()
+
+		var sb strings.Builder
+		sb.WriteString(fmt.Sprintf(`SELECT %s FROM "%s"`, cols, r.schema.TableName))
+		if where.Clause != "" {
+			sb.WriteString(` WHERE ` + where.Clause)
+		}
+		if qo.SortField != "" {
+			// SortField ultimately originates from the HTTP ?orderBy= query
+			// parameter (api/handler/crud.go) with no upstream validation, so
+			// it must be checked against the entity's real columns here — the
+			// same allowlist WHERE-clause fields are checked against — before
+			// use. It is not enough to quote it: unlike quoteIdent (used for
+			// every WHERE-clause field), a naively interpolated identifier
+			// lets a value containing `"` break out of the quotes entirely.
+			if err := sqlbuild.NewAllowlist(r.schema).Check(qo.SortField); err != nil {
+				return fmt.Errorf("%s.Query: sort field: %w", r.schema.TableName, err)
+			}
+			dir := "DESC"
+			if qo.SortAsc {
+				dir = "ASC"
+			}
+			sb.WriteString(fmt.Sprintf(` ORDER BY %s %s`, sqlbuild.QuoteIdent(qo.SortField), dir))
+		}
+		pageSize := qo.PageSize
+		offset := 0
+		if qo.Page > 1 {
+			offset = (qo.Page - 1) * pageSize
+		}
+		// Fetch pageSize+1 to detect HasNextPage without a separate COUNT.
+		sb.WriteString(fmt.Sprintf(` LIMIT %d OFFSET %d`, pageSize+1, offset))
+
+		rows, err := conn.db().Query(txCtx, sb.String(), where.Args...)
+		if err != nil {
+			return dberr.Parse(err, r.schema.TableName+".Query")
+		}
+		defer rows.Close()
+
+		for rows.Next() {
+			rec, err := scan(rows)
+			if err != nil {
+				return dberr.Parse(err, r.schema.TableName+".Query.scan")
+			}
+			records = append(records, rec)
+		}
+		if rows.Err() != nil {
+			return dberr.Parse(rows.Err(), r.schema.TableName+".Query.rows")
+		}
+
+		hasNext := len(records) > pageSize
+		if hasNext {
+			records = records[:pageSize]
+		}
+		info.HasNextPage = hasNext
+		info.PageSize = pageSize
+
+		if !qo.SkipCount {
+			// Same transaction/connection as the query above — countLocked
+			// (not the public Count) so this doesn't try to open a second
+			// read transaction on top of the one withReadTx already holds.
+			count, err := r.countLocked(txCtx, f)
+			if err == nil {
+				info.Total = count
+			}
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, driver.PageInfo{}, err
+	}
 	return records, info, nil
 }
 
 // Exists reports whether any record matches f.
 func (r *Repository) Exists(ctx context.Context, f *filter.Filter) (bool, error) {
-	conn := connFromContext(ctx, r.pool)
-	where, err := sqlbuild.Build(f, 0)
-	if err != nil {
-		return false, fmt.Errorf("%s.Exists: %w", r.schema.TableName, err)
-	}
-	sql := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM "%s"`, r.schema.TableName)
-	if where.Clause != "" {
-		sql += ` WHERE ` + where.Clause
-	}
-	sql += `)`
 	var exists bool
-	err = conn.db().QueryRow(ctx, sql, where.Args...).Scan(&exists)
-	return exists, dberr.Parse(err, r.schema.TableName+".Exists")
+	err := r.withReadTx(ctx, func(txCtx context.Context) error {
+		conn := connFromContext(txCtx, r.pool)
+		where, err := sqlbuild.Build(f, 0)
+		if err != nil {
+			return fmt.Errorf("%s.Exists: %w", r.schema.TableName, err)
+		}
+		sql := fmt.Sprintf(`SELECT EXISTS(SELECT 1 FROM "%s"`, r.schema.TableName)
+		if where.Clause != "" {
+			sql += ` WHERE ` + where.Clause
+		}
+		sql += `)`
+		return dberr.Parse(conn.db().QueryRow(txCtx, sql, where.Args...).Scan(&exists), r.schema.TableName+".Exists")
+	})
+	return exists, err
 }
 
 // Count returns the number of matching rows.
 func (r *Repository) Count(ctx context.Context, f *filter.Filter) (int64, error) {
+	var count int64
+	err := r.withReadTx(ctx, func(txCtx context.Context) error {
+		var err error
+		count, err = r.countLocked(txCtx, f)
+		return err
+	})
+	return count, err
+}
+
+// countLocked runs the COUNT query directly against whatever connection ctx
+// already carries — a transaction that has already had tenant context
+// established, either by withReadTx (called from Count) or by Query's own
+// withReadTx block reusing it for the paginated result's Total. Never call
+// this with a ctx that hasn't already gone through withReadTx/WithTx.
+func (r *Repository) countLocked(ctx context.Context, f *filter.Filter) (int64, error) {
 	conn := connFromContext(ctx, r.pool)
 	where, err := sqlbuild.Build(f, 0)
 	if err != nil {
@@ -186,67 +222,71 @@ func (r *Repository) Count(ctx context.Context, f *filter.Filter) (int64, error)
 
 // Aggregate runs an aggregation query against matching rows.
 func (r *Repository) Aggregate(ctx context.Context, f *filter.Filter, spec driver.AggregateSpec) (driver.AggregateResult, error) {
-	conn := connFromContext(ctx, r.pool)
-	where, err := sqlbuild.Build(f, 0)
-	if err != nil {
-		return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
-	}
+	var result driver.AggregateResult
+	err := r.withReadTx(ctx, func(txCtx context.Context) error {
+		conn := connFromContext(txCtx, r.pool)
+		where, err := sqlbuild.Build(f, 0)
+		if err != nil {
+			return fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
+		}
 
-	al := sqlbuild.NewAllowlist(r.schema)
-	exprs := make([]string, len(spec.Functions))
-	for i, fn := range spec.Functions {
-		if !isValidAggregateFn(fn.Fn) {
-			return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: unsupported aggregate function %q", r.schema.TableName, fn.Fn)
-		}
-		alias := fn.Alias
-		if alias == "" {
-			alias = fmt.Sprintf("%s_%s", fn.Fn, fn.Field)
-		}
-		if fn.Fn == driver.AggregateFnCount {
-			exprs[i] = fmt.Sprintf(`COUNT(*) AS %s`, sqlbuild.QuoteIdent(alias))
-		} else {
-			if err := al.Check(fn.Field); err != nil {
-				return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
+		al := sqlbuild.NewAllowlist(r.schema)
+		exprs := make([]string, len(spec.Functions))
+		for i, fn := range spec.Functions {
+			if !isValidAggregateFn(fn.Fn) {
+				return fmt.Errorf("%s.Aggregate: unsupported aggregate function %q", r.schema.TableName, fn.Fn)
 			}
-			exprs[i] = fmt.Sprintf(`%s(%s) AS %s`, strings.ToUpper(string(fn.Fn)), sqlbuild.QuoteIdent(fn.Field), sqlbuild.QuoteIdent(alias))
+			alias := fn.Alias
+			if alias == "" {
+				alias = fmt.Sprintf("%s_%s", fn.Fn, fn.Field)
+			}
+			if fn.Fn == driver.AggregateFnCount {
+				exprs[i] = fmt.Sprintf(`COUNT(*) AS %s`, sqlbuild.QuoteIdent(alias))
+			} else {
+				if err := al.Check(fn.Field); err != nil {
+					return fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
+				}
+				exprs[i] = fmt.Sprintf(`%s(%s) AS %s`, strings.ToUpper(string(fn.Fn)), sqlbuild.QuoteIdent(fn.Field), sqlbuild.QuoteIdent(alias))
+			}
 		}
-	}
 
-	sql := fmt.Sprintf(`SELECT %s FROM "%s"`, strings.Join(exprs, ", "), r.schema.TableName)
-	if where.Clause != "" {
-		sql += ` WHERE ` + where.Clause
-	}
-	if spec.GroupBy != "" {
-		if err := al.Check(spec.GroupBy); err != nil {
-			return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: group by: %w", r.schema.TableName, err)
+		sql := fmt.Sprintf(`SELECT %s FROM "%s"`, strings.Join(exprs, ", "), r.schema.TableName)
+		if where.Clause != "" {
+			sql += ` WHERE ` + where.Clause
 		}
-		sql += fmt.Sprintf(` GROUP BY %s`, sqlbuild.QuoteIdent(spec.GroupBy))
-	}
+		if spec.GroupBy != "" {
+			if err := al.Check(spec.GroupBy); err != nil {
+				return fmt.Errorf("%s.Aggregate: group by: %w", r.schema.TableName, err)
+			}
+			sql += fmt.Sprintf(` GROUP BY %s`, sqlbuild.QuoteIdent(spec.GroupBy))
+		}
 
-	rows, err := conn.db().Query(ctx, sql, where.Args...)
-	if err != nil {
-		return driver.AggregateResult{}, dberr.Parse(err, r.schema.TableName+".Aggregate")
-	}
-	defer rows.Close()
+		rows, err := conn.db().Query(txCtx, sql, where.Args...)
+		if err != nil {
+			return dberr.Parse(err, r.schema.TableName+".Aggregate")
+		}
+		defer rows.Close()
 
-	result := driver.AggregateResult{Values: make(map[string]any)}
-	if !rows.Next() {
-		return result, rows.Err()
-	}
-	vals, err := rows.Values()
-	if err != nil {
-		return result, dberr.Parse(err, r.schema.TableName+".Aggregate.scan")
-	}
-	for i, fn := range spec.Functions {
-		alias := fn.Alias
-		if alias == "" {
-			alias = fmt.Sprintf("%s_%s", fn.Fn, fn.Field)
+		result = driver.AggregateResult{Values: make(map[string]any)}
+		if !rows.Next() {
+			return rows.Err()
 		}
-		if i < len(vals) {
-			result.Values[alias] = vals[i]
+		vals, err := rows.Values()
+		if err != nil {
+			return dberr.Parse(err, r.schema.TableName+".Aggregate.scan")
 		}
-	}
-	return result, nil
+		for i, fn := range spec.Functions {
+			alias := fn.Alias
+			if alias == "" {
+				alias = fmt.Sprintf("%s_%s", fn.Fn, fn.Field)
+			}
+			if i < len(vals) {
+				result.Values[alias] = vals[i]
+			}
+		}
+		return nil
+	})
+	return result, err
 }
 
 // isValidAggregateFn reports whether fn is one of the SQL aggregate functions
@@ -686,6 +726,105 @@ func (r *Repository) WithTx(ctx context.Context, fn func(ctx context.Context) er
 		if err := setTenantContext(txCtx, conn.db(), tc.TenantID.String()); err != nil {
 			return fmt.Errorf("set_tenant_context: %w", err)
 		}
+	}
+
+	if err := fn(txCtx); err != nil {
+		return err
+	}
+
+	if err := pgxTx.Commit(ctx); err != nil {
+		return err
+	}
+	committed = true
+	return nil
+}
+
+// withReadTx executes fn — a read-only operation (Get/Query/Exists/Count/
+// Aggregate) — on a connection that has correctly established the caller's
+// tenant context, without weakening RLS and without depending on any
+// ambient/previous state on a pooled connection (Phase 2 Step 7a).
+//
+// # Why this exists
+//
+// The production set_tenant_context() (migration/bootstrap/002_utilities.up.sql)
+// sets the "awo.tenant_id" RLS GUC with set_config(..., true) — PostgreSQL's
+// SET LOCAL semantics: the value is scoped to whichever single transaction
+// set it, and is gone the instant that transaction ends. WithTx already
+// gets this right for mutations: it opens a transaction, calls
+// setTenantContext inside it, then runs its callback in that same
+// transaction. Get/Query/Exists/Count/Aggregate, when called standalone
+// (i.e. ctx carries no existing transaction — the common case for
+// EntityService.Get/Query/Count/Exists, the HTTP GET/list handlers, and
+// EntityService.Update/Delete's own opening Get), previously ran directly
+// against the bare pool (pgx's own per-statement auto-commit) with no
+// transaction of their own to carry that GUC into — meaning current_tenant_id()
+// read NULL, and RLS's `tenant_id = current_tenant_id()` was never true for
+// any row. Under RLS this fails closed (empty results), never leaks another
+// tenant's data — but it also hides the caller's OWN, correctly-scoped
+// records, which is a live correctness/availability defect, not just a
+// theoretical one (empirically reproduced against the real, transaction-
+// scoped production function with a multi-connection pool).
+//
+// # What this does
+//
+//   - If ctx already carries an active transaction (fn is being called from
+//     inside WithTx, or a nested withReadTx/WithTx call, or a custom
+//     action's own Tx) — run fn directly on it. Tenant context was already
+//     established by whoever opened that transaction; opening a second one
+//     here would be redundant and would NOT share the first one's GUC value
+//     regardless (transactions don't nest their SET LOCAL scope).
+//   - Otherwise, if ctx carries a tenant.TenantContext, open a short-lived
+//     transaction, call setTenantContext inside it (exactly as WithTx does),
+//     run fn, then commit — mirroring WithTx's own panic-safe
+//     commit/rollback pattern so a panic in fn cannot leak the checked-out
+//     connection.
+//   - Otherwise (no tenant context at all — a genuinely tenant-less/system
+//     call), run fn directly against the bare pool, unchanged from prior
+//     behavior: current_tenant_id() reads NULL and RLS fails closed (zero
+//     rows) for every tenant-scoped table — this is the existing, already-
+//     tested "no ambient tenant → nothing visible, never everything visible"
+//     contract (missing_tenant_context_test.go), preserved exactly, not
+//     reinterpreted as "run the query for every tenant."
+//
+// This never trusts a caller-supplied tenant ID from request/record data —
+// it only ever uses tenant.TryFromContext(ctx), the same authenticated
+// context source WithTx already trusts. RLS remains the sole security
+// boundary; this method only ensures the GUC RLS reads is actually set
+// before the query that depends on it runs, on the same connection, within
+// the same transaction — it does not add, remove, or duplicate any
+// tenant_id predicate of its own.
+func (r *Repository) withReadTx(ctx context.Context, fn func(ctx context.Context) error) error {
+	existing := connFromContext(ctx, r.pool)
+	if existing.InTx() {
+		return fn(ctx)
+	}
+
+	tc, ok := tenant.TryFromContext(ctx)
+	if !ok {
+		return fn(ctx)
+	}
+
+	pgxTx, err := r.pool.BeginTx(ctx, pgxlib.TxOptions{})
+	if err != nil {
+		return fmt.Errorf("begin read transaction: %w", err)
+	}
+
+	// Same panic-safety pattern as WithTx (see its own comment): the defer
+	// runs on panic unwinding regardless of recover(), so the connection is
+	// always released back to the pool; it never recovers, so a panic in fn
+	// still propagates to the caller as a panic.
+	committed := false
+	defer func() {
+		if !committed {
+			_ = pgxTx.Rollback(ctx)
+		}
+	}()
+
+	conn := &pgConn{pool: r.pool, txn: pgxTx}
+	txCtx := tx.WithConn(ctx, conn)
+
+	if err := setTenantContext(txCtx, conn.db(), tc.TenantID.String()); err != nil {
+		return fmt.Errorf("set_tenant_context: %w", err)
 	}
 
 	if err := fn(txCtx); err != nil {
