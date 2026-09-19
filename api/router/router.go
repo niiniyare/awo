@@ -34,6 +34,7 @@ import (
 	contribredis "awo.so/awo/contrib/redis"
 	"awo.so/awo/def"
 	"awo.so/awo/driver"
+	"awo.so/awo/events"
 	"awo.so/awo/runtime"
 	sdui_engine "awo.so/awo/sdui/engine"
 )
@@ -70,6 +71,14 @@ type RegisterOptions struct {
 	// In production, pass a *audit.PoolQueryer backed by the pool, or the
 	// *audit.PostgresWriter (which implements both AuditWriter and Queryer).
 	AuditQueryer audit.Queryer
+
+	// EventPublisher writes durable domain events to the transactional
+	// outbox for every Create/Update/Delete mutation (PHASE2_ARCHITECTURE_PLAN.md
+	// §6, ADR-025 §5). When nil, events.NoopPublisher{} is used automatically
+	// (no events published — matches this option's existing degraded-mode
+	// conventions for AuditWriter/Temporal). In production, pass
+	// events/outbox.NewWriter(pool).
+	EventPublisher events.Publisher
 }
 
 // Register mounts the full auto-generated API onto app under /api/v1/entities/.
@@ -110,9 +119,15 @@ func Register(app *fiber.App, schema *compiler.CompiledSchema, opts RegisterOpti
 		aq = audit.NoopQueryer{}
 	}
 
+	// Resolve the event publisher once; shared across all entity services.
+	pub := opts.EventPublisher
+	if pub == nil {
+		pub = events.NoopPublisher{}
+	}
+
 	for _, es := range schema.Entities {
 		repo := contrib.NewRepository(opts.Pool, es)
-		svc := service.NewEntityService(es, repo, pipeline, opts.Temporal)
+		svc := service.NewEntityService(es, repo, pipeline, opts.Temporal).WithPublisher(pub)
 		h := handler.NewEntityHandler(es, svc)
 
 		// RoutePrefix is already the full path "/api/v1/{module}/{resource}".

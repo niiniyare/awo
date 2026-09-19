@@ -289,6 +289,7 @@ func main() {
 		AuditWriter:        auditWriter,
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
+		EventPublisher:     outbox.NewWriter(result.Pool),
 	})
 
 	// Static file serving — amis SDK assets.

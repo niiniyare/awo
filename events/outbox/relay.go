@@ -102,7 +102,7 @@ func (r *Relay) poll(ctx context.Context) error {
 	defer conn.Exec(ctx, "SELECT pg_advisory_unlock($1)", advisoryLockID) //nolint:errcheck
 
 	rows, err := conn.Query(ctx, fmt.Sprintf(
-		`SELECT id, tenant_id, type, entity_name, record_id, actor_id, action_name, payload, occurred_at
+		`SELECT id, tenant_id, type, entity_name, record_id, actor_id, system_actor, action_name, correlation_id, payload, occurred_at
 		 FROM %s
 		 WHERE delivered_at IS NULL AND attempts < $1
 		 ORDER BY occurred_at ASC
@@ -121,20 +121,26 @@ func (r *Relay) poll(ctx context.Context) error {
 	for rows.Next() {
 		var e events.DomainEvent
 		var tenantIDStr, recordIDStr, actorIDStr string
-		var actionName *string
+		var systemActor, actionName, correlationID *string
 		var payload []byte
 
 		if err := rows.Scan(
 			&e.ID, &tenantIDStr, &e.Type, &e.EntityName,
-			&recordIDStr, &actorIDStr, &actionName, &payload, &e.OccurredAt,
+			&recordIDStr, &actorIDStr, &systemActor, &actionName, &correlationID, &payload, &e.OccurredAt,
 		); err != nil {
 			return fmt.Errorf("outbox.poll: scan: %w", err)
 		}
 		e.TenantID, _ = uuid.Parse(tenantIDStr)
 		e.RecordID, _ = uuid.Parse(recordIDStr)
 		e.ActorID, _ = uuid.Parse(actorIDStr)
+		if systemActor != nil {
+			e.SystemActor = *systemActor
+		}
 		if actionName != nil {
 			e.ActionName = *actionName
+		}
+		if correlationID != nil {
+			e.CorrelationID = *correlationID
 		}
 		e.Payload = payload
 
@@ -240,12 +246,12 @@ func (w *OutboxWriter) Publish(ctx context.Context, e events.DomainEvent) error 
 	}
 
 	_, err := q.ExecSQL(ctx, fmt.Sprintf(
-		`INSERT INTO %s (id, tenant_id, type, entity_name, record_id, actor_id, action_name, payload, occurred_at, attempts)
-		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)`,
+		`INSERT INTO %s (id, tenant_id, type, entity_name, record_id, actor_id, system_actor, action_name, correlation_id, payload, occurred_at, attempts)
+		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, 0)`,
 		outboxTable,
 	),
 		e.ID, e.TenantID, string(e.Type), e.EntityName,
-		e.RecordID, e.ActorID, nilIfEmpty(e.ActionName), payloadArg, e.OccurredAt,
+		e.RecordID, e.ActorID, nilIfEmpty(e.SystemActor), nilIfEmpty(e.ActionName), nilIfEmpty(e.CorrelationID), payloadArg, e.OccurredAt,
 	)
 	if err != nil {
 		return fmt.Errorf("outbox.Publish: insert: %w", err)

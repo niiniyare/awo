@@ -51,8 +51,23 @@ type DomainEvent struct {
 	// ActorID is the user who caused the event. Zero value for system events.
 	ActorID uuid.UUID `json:"actor_id,omitempty"`
 
+	// SystemActor identifies a non-human execution context that caused this
+	// event, in the same string form as ADR-015's audit.SystemActor (e.g.
+	// "system:outbox-relay"). Empty for events caused by a human or
+	// service-account actor (see ActorID). Plain string, not audit.SystemActor
+	// itself — events does not import audit (package doc: "events → def
+	// only"); callers populate this from an audit.SystemActor value they
+	// already hold via string(...) conversion.
+	SystemActor string `json:"system_actor,omitempty"`
+
 	// ActionName is non-empty for EventActionFired events.
 	ActionName string `json:"action_name,omitempty"`
+
+	// CorrelationID is an opaque tracing identifier propagated from the
+	// originating request (audit.RequestContext.RequestID when present) or
+	// left empty for background-originated events. Not a validated UUID —
+	// request IDs are arbitrary client/middleware-supplied strings.
+	CorrelationID string `json:"correlation_id,omitempty"`
 
 	// Payload is the serialized record snapshot at event time.
 	// Format: JSON-encoded map[string]any.
