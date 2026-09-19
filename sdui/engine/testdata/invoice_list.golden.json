@@ -116,6 +116,17 @@
       "type": "crud"
     }
   ],
+  "crumb": {
+    "items": [
+      {
+        "href": "/",
+        "label": "Home"
+      },
+      {
+        "label": "Invoices"
+      }
+    ]
+  },
   "title": "Invoices",
   "type": "page"
 }

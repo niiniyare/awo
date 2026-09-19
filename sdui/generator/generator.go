@@ -439,6 +439,10 @@ func (g *EntityGenerator) Generate(schema EntitySchema, ctx sduictx.GeneratorCon
 		return nil, err
 	}
 
+	if root != nil && root.Kind == widget.NodePage {
+		root.Breadcrumb = buildBreadcrumb(schema, ctx)
+	}
+
 	// Stage 5: Post-generation plugin transforms.
 	if g.pipeline != nil {
 		root, err = g.pipeline.RunTreeTransforms(plugins.ExtPostGeneration, root, ctx)
@@ -1324,6 +1328,28 @@ func fieldTypeToColumnNodeKind(fieldType string, f FieldDef) widget.NodeKind {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// buildBreadcrumb constructs the navigation trail for a NodePage: Home > the
+// entity's list page > the current view (omitted for the list view itself,
+// since it is the trail's own destination).
+func buildBreadcrumb(schema EntitySchema, ctx sduictx.GeneratorContext) []widget.BreadcrumbItem {
+	trail := []widget.BreadcrumbItem{
+		{Label: "Home", Href: "/"},
+		{Label: schema.PluralTitle, Href: schema.UIPrefix},
+	}
+	switch ctx.ViewMode {
+	case sduictx.ViewModeList:
+		// The list page is the trail's own destination — drop its own href.
+		trail[len(trail)-1].Href = ""
+	case sduictx.ViewModeCreate:
+		trail = append(trail, widget.BreadcrumbItem{Label: "New " + schema.Title})
+	case sduictx.ViewModeEdit:
+		trail = append(trail, widget.BreadcrumbItem{Label: "Edit"})
+	case sduictx.ViewModeDetail:
+		trail = append(trail, widget.BreadcrumbItem{Label: schema.Title})
+	}
+	return trail
+}
 
 func indexFieldsBySection(schema EntitySchema) map[string][]FieldDef {
 	idx := make(map[string][]FieldDef)

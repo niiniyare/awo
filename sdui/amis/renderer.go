@@ -406,6 +406,17 @@ func (r *DefaultRenderer) renderPage(n *widget.Node, ctx renderer.RendererContex
 	if len(body) > 0 {
 		out["body"] = body
 	}
+	if len(n.Breadcrumb) > 0 {
+		items := make([]map[string]any, len(n.Breadcrumb))
+		for i, b := range n.Breadcrumb {
+			item := map[string]any{"label": sanitizeText(b.Label)}
+			if b.Href != "" {
+				item["href"] = b.Href
+			}
+			items[i] = item
+		}
+		out["crumb"] = map[string]any{"items": items}
+	}
 	if acts, err := r.renderActions(n.Actions); err != nil {
 		return nil, err
 	} else if len(acts) > 0 {

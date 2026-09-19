@@ -65,6 +65,21 @@
       "type": "form"
     }
   ],
+  "crumb": {
+    "items": [
+      {
+        "href": "/",
+        "label": "Home"
+      },
+      {
+        "href": "/ui/finance/invoices",
+        "label": "Invoices"
+      },
+      {
+        "label": "Invoice"
+      }
+    ]
+  },
   "title": "Invoice",
   "type": "page"
 }
