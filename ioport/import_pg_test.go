@@ -132,7 +132,7 @@ func setupIOPGService(t *testing.T) (*service.EntityService, *compiler.EntitySch
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)

@@ -174,7 +174,7 @@ func setupPGService(t *testing.T, entityName string, category audit.EventCategor
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
 
-	svc := service.NewEntityService(es, repo, pipeline, nil).
+	svc := service.NewEntityService(es, repo, pipeline).
 		WithPublisher(outbox.NewWriter(pool))
 
 	return &pgServiceHarness{pool: pool, svc: svc, es: es}
@@ -291,7 +291,7 @@ func TestEntityService_PG_Create_HookFailure_RollsBackMutationAuditAndOutbox(t *
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)

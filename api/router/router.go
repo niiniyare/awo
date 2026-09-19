@@ -18,7 +18,6 @@ import (
 	goredis "github.com/go-redis/redis/v8"
 	"github.com/gofiber/fiber/v2"
 	pgxlib "github.com/jackc/pgx/v5/pgxpool"
-	temporalclient "go.temporal.io/sdk/client"
 
 	"awo.so/awo/api/authz"
 	"awo.so/awo/api/handler"
@@ -46,10 +45,16 @@ type RegisterOptions struct {
 	// IAM provides session and API token validation. The interface type keeps
 	// the router decoupled from the concrete *iam.AuthService implementation,
 	// which is important for framework extraction readiness.
-	IAM      middleware.SessionValidator                // required for RequireAuth
-	Tenants  driver.EntityRepository[*def.EntityRecord] // required for TenantResolver
-	Authz    auth.PolicyEvaluator                       // nil = RBAC disabled (dev/test)
-	Temporal temporalclient.Client                      // nil = degraded mode (no workflow starts)
+	IAM     middleware.SessionValidator                // required for RequireAuth
+	Tenants driver.EntityRepository[*def.EntityRecord] // required for TenantResolver
+	Authz   auth.PolicyEvaluator                       // nil = RBAC disabled (dev/test)
+	// Note: there is deliberately no Temporal field here (Phase 2 Step 6).
+	// EntityService never calls Temporal directly — a WorkflowTrigger firing
+	// publishes a durable workflow-start intent through EventPublisher below,
+	// dispatched independently by the outbox relay's WorkflowTriggerSubscriber,
+	// which is wired at process bootstrap directly against the relay, not
+	// through this router.
+	//
 	// AuditWriter is the production audit implementation. When nil, auditing is
 	// disabled and audit.NoopAuditWriter{} is used automatically. In production,
 	// pass audit.NewTransactionalWriter(contrib.NewPoolQuerier(pool)).
@@ -72,12 +77,13 @@ type RegisterOptions struct {
 	// *audit.PostgresWriter (which implements both AuditWriter and Queryer).
 	AuditQueryer audit.Queryer
 
-	// EventPublisher writes durable domain events to the transactional
-	// outbox for every Create/Update/Delete mutation (PHASE2_ARCHITECTURE_PLAN.md
-	// §6, ADR-025 §5). When nil, events.NoopPublisher{} is used automatically
-	// (no events published — matches this option's existing degraded-mode
-	// conventions for AuditWriter/Temporal). In production, pass
-	// events/outbox.NewWriter(pool).
+	// EventPublisher writes durable domain events — lifecycle events AND
+	// workflow-trigger intents (Phase 2 Step 6) — to the transactional
+	// outbox for every Create/Update/Delete/CreateBatch mutation
+	// (PHASE2_ARCHITECTURE_PLAN.md §6, ADR-025 §5/§10/§14). When nil,
+	// events.NoopPublisher{} is used automatically (no events published —
+	// matches this option's existing degraded-mode convention for
+	// AuditWriter). In production, pass events/outbox.NewWriter(pool).
 	EventPublisher events.Publisher
 }
 
@@ -136,7 +142,7 @@ func Register(app *fiber.App, schema *compiler.CompiledSchema, opts RegisterOpti
 
 	for _, es := range schema.Entities {
 		repo := contrib.NewRepository(opts.Pool, es)
-		svc := service.NewEntityService(es, repo, pipeline, opts.Temporal).WithPublisher(pub)
+		svc := service.NewEntityService(es, repo, pipeline).WithPublisher(pub)
 		actionRuntimes.Register(svc)
 		h := handler.NewEntityHandler(es, svc, actionRuntimes)
 

@@ -239,7 +239,7 @@ The authorization interface embedded in `context.Context` by the middleware pipe
 The intermediate representation (IR) between the SDUI generator and the amis renderer. A tree of `widget.Node` values, each with a `NodeKind` constant describing the semantic widget type. The amis renderer converts `*widget.Node` trees to `map[string]any` amis JSON. See ADR-006.
 
 **WorkflowOutbox**
-The `workflow_outbox` PostgreSQL table. Every `StartWorkflow()` call writes a record here within the entity's transaction. An outbox worker dispatches to Temporal after commit, with exponential backoff retry. See ADR-007.
+Historical term (ADR-007) for a dedicated workflow-dispatch table — superseded by ADR-025 (Phase 2). `StartWorkflow()` calls (and `WorkflowTrigger`-matching mutations) write a `workflow.trigger_fired` `events.DomainEvent` into the single `events_outbox` table instead — see [`events_outbox`](#) and `docs/adr/ADR-025-transactional-events-and-workflow-durability.md`. The `events/outbox.Relay`'s `WorkflowTriggerSubscriber` dispatches these to Temporal after commit, with exponential backoff retry — no separate table or worker exists.
 
 **WorkflowTrigger**
 A declaration on `EntityDefinition` that binds a Temporal workflow start to an entity lifecycle event (`EventOnCreate`, `EventOnUpdate`, `EventOnDelete`, `EventOnSubmit`, etc.). The `InputBuilder` function produces the workflow input from the `EntityRecord` and `TriggerContext`.

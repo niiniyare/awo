@@ -95,7 +95,7 @@ func TestEntityService_PG_CreateBatch_ValidationFailure_SkipInvalidFalse_AbortsW
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)
@@ -146,7 +146,7 @@ func TestEntityService_PG_CreateBatch_ValidationFailure_SkipInvalidTrue_ValidRow
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)
@@ -204,7 +204,7 @@ func TestEntityService_PG_CreateBatch_AfterCreateHookFailure_RollsBackWholeFlush
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)
@@ -308,7 +308,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON `+entityName+` TO awo_app;
 	auditWriter := audit.NewPostgresWriter(contribpgx.NewPoolQuerier(pool))
 	pipeline := runtime.NewPipeline(schema, auditWriter)
 	repo := contribpgx.NewRepository(pool, es)
-	svc := service.NewEntityService(es, repo, pipeline, nil).WithPublisher(outbox.NewWriter(pool))
+	svc := service.NewEntityService(es, repo, pipeline).WithPublisher(outbox.NewWriter(pool))
 
 	tenantID := testdb.CreateTenant(t, pool, "ACTIVE")
 	testdb.ActivateTenant(t, pool, tenantID)

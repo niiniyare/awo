@@ -7,9 +7,16 @@
 //	  → repo.WithTx:
 //	      PERSIST → RunAuditRecord (audit, ADR-017 policy) → RunAfterCreate
 //	      (after hooks) → publishLifecycleEvent (durable outbox write,
-//	      unconditional — ADR-025 §6)
+//	      unconditional — ADR-025 §6) → publishWorkflowIntents (durable
+//	      workflow-start intent(s) for any matching WorkflowTrigger, same
+//	      transaction, same publisher — ADR-025 §4.D/§10/§14, Phase 2 Step 6)
 //	  → COMMIT
-//	  → workflow start (outside TX, best-effort — durability fix is Step 6)
+//	  → (independently, after commit) outbox relay → WorkflowTriggerSubscriber
+//	    → Temporal
+//
+// EntityService never calls Temporal directly. A workflow trigger firing is
+// represented purely as a durable outbox event, exactly like a lifecycle
+// event — there is no separate, non-durable, post-commit dispatch step.
 //
 // Module authors do not call this package directly. Handlers call it;
 // custom actions receive pre-wired repositories via ActionContext.
@@ -22,7 +29,6 @@ import (
 	"log/slog"
 
 	"github.com/google/uuid"
-	temporalclient "go.temporal.io/sdk/client"
 
 	"awo.so/awo/audit"
 	"awo.so/awo/compiler"
@@ -39,9 +45,8 @@ type EntityService struct {
 	schema    *compiler.EntitySchema
 	repo      driver.EntityRepository[*def.EntityRecord]
 	pipeline  *runtime.Pipeline
-	temporal  temporalclient.Client // may be nil (degraded mode)
-	publisher events.Publisher      // durable outbox write for Create/Update/Delete
-	sanitizer *audit.Sanitizer      // redacts Sensitive fields from outbox payloads
+	publisher events.Publisher // durable outbox write for lifecycle events and workflow intents
+	sanitizer *audit.Sanitizer // redacts Sensitive fields from outbox payloads
 }
 
 // Compile-time assertion that *EntityService satisfies ioport's own,
@@ -52,23 +57,26 @@ type EntityService struct {
 var _ ioport.EntityBatchMutator = (*EntityService)(nil)
 
 // NewEntityService creates an EntityService.
-// temporal may be nil; workflow starts will fail gracefully if so.
 // The event publisher defaults to events.NoopPublisher{} (no outbox writes)
 // and the sanitizer to audit.NewSanitizer() (compile-time Sensitive-field
 // redaction, no runtime DB overrides) — override either via WithPublisher /
-// WithSanitizer. This matches this constructor's existing degraded-mode
-// convention for temporal (nil is accepted, not required).
+// WithSanitizer.
+//
+// There is no Temporal client parameter (Phase 2 Step 6): EntityService
+// never calls Temporal directly — a matching WorkflowTrigger instead causes
+// a durable workflow-start intent published through the same publisher
+// lifecycle events use. Whatever dispatches those intents to Temporal (the
+// outbox relay's WorkflowTriggerSubscriber) is wired independently, at
+// process bootstrap, against the relay — not against EntityService.
 func NewEntityService(
 	schema *compiler.EntitySchema,
 	repo driver.EntityRepository[*def.EntityRecord],
 	pipeline *runtime.Pipeline,
-	temporal temporalclient.Client,
 ) *EntityService {
 	return &EntityService{
 		schema:    schema,
 		repo:      repo,
 		pipeline:  pipeline,
-		temporal:  temporal,
 		publisher: events.NoopPublisher{},
 		sanitizer: audit.NewSanitizer(),
 	}
@@ -100,8 +108,9 @@ func (s *EntityService) WithSanitizer(sz *audit.Sanitizer) *EntityService {
 // Create runs the full create lifecycle:
 //  1. RunBeforeCreate (validation, defaults, before hooks)
 //  2. repo.WithTx: INSERT + RunAuditRecord + RunAfterCreate + durable outbox
-//     event, all inside the same transaction (ADR-025 §5)
-//  3. StartWorkflow (outside TX, best-effort)
+//     lifecycle event + durable workflow intent(s) for any matching
+//     WorkflowTrigger, all inside the same transaction (ADR-025 §5, §10, §14
+//     — Phase 2 Step 6: no direct Temporal call is ever made from this path)
 func (s *EntityService) Create(ctx context.Context, data map[string]any, actor *def.Actor) (*def.EntityRecord, error) {
 	pctx := &runtime.CreateContext{
 		Ctx:        ctx,
@@ -132,13 +141,13 @@ func (s *EntityService) Create(ctx context.Context, data map[string]any, actor *
 		if txErr = s.pipeline.RunAfterCreate(txCtx, created); txErr != nil {
 			return txErr
 		}
-		return s.publishLifecycleEvent(txCtx, events.EventCreated, created, actor)
+		if txErr = s.publishLifecycleEvent(txCtx, events.EventCreated, created, actor); txErr != nil {
+			return txErr
+		}
+		return s.publishWorkflowIntents(txCtx, def.EventOnCreate, created, actor)
 	}); err != nil {
 		return nil, err
 	}
-
-	// Start workflow triggers outside the transaction.
-	s.startWorkflows(ctx, def.EventOnCreate, created, actor)
 
 	return created, nil
 }
@@ -147,7 +156,8 @@ func (s *EntityService) Create(ctx context.Context, data map[string]any, actor *
 //  1. Get current record
 //  2. RunBeforeUpdate (immutability, validation, before hooks)
 //  3. repo.WithTx: UPDATE + RunAuditRecord + RunAfterUpdate + durable outbox
-//     event, all inside the same transaction (ADR-025 §5)
+//     lifecycle event + durable workflow intent(s) for any matching
+//     WorkflowTrigger, all inside the same transaction (ADR-025 §5, §10, §14)
 func (s *EntityService) Update(ctx context.Context, id uuid.UUID, data map[string]any, actor *def.Actor) (*def.EntityRecord, error) {
 	current, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -182,7 +192,10 @@ func (s *EntityService) Update(ctx context.Context, id uuid.UUID, data map[strin
 		if txErr = s.pipeline.RunAfterUpdate(txCtx, updated, current); txErr != nil {
 			return txErr
 		}
-		return s.publishLifecycleEvent(txCtx, events.EventUpdated, updated, actor)
+		if txErr = s.publishLifecycleEvent(txCtx, events.EventUpdated, updated, actor); txErr != nil {
+			return txErr
+		}
+		return s.publishWorkflowIntents(txCtx, def.EventOnUpdate, updated, actor)
 	}); err != nil {
 		return nil, err
 	}
@@ -194,7 +207,8 @@ func (s *EntityService) Update(ctx context.Context, id uuid.UUID, data map[strin
 //  1. Get current record
 //  2. RunBeforeDelete
 //  3. repo.WithTx: DELETE + RunAuditRecord + RunAfterDelete + durable outbox
-//     event, all inside the same transaction (ADR-025 §5)
+//     lifecycle event + durable workflow intent(s) for any matching
+//     WorkflowTrigger, all inside the same transaction (ADR-025 §5, §10, §14)
 func (s *EntityService) Delete(ctx context.Context, id uuid.UUID, actor *def.Actor) error {
 	current, err := s.repo.Get(ctx, id)
 	if err != nil {
@@ -217,8 +231,12 @@ func (s *EntityService) Delete(ctx context.Context, id uuid.UUID, actor *def.Act
 		}
 		// current is the last known state — there is no "after" snapshot for
 		// a deleted record, matching RunAuditRecord's own before/after=nil
-		// convention for Delete above.
-		return s.publishLifecycleEvent(txCtx, events.EventDeleted, current, actor)
+		// convention for Delete above. The same "before" snapshot is what a
+		// matching WorkflowTrigger's InputBuilder receives, for the same reason.
+		if err := s.publishLifecycleEvent(txCtx, events.EventDeleted, current, actor); err != nil {
+			return err
+		}
+		return s.publishWorkflowIntents(txCtx, def.EventOnDelete, current, actor)
 	})
 }
 
@@ -276,19 +294,22 @@ func (s *EntityService) WithTx(ctx context.Context, fn func(context.Context) err
 //  2. ONE repo.WithTx wraps repo.BulkCreate (the existing fast multi-row
 //     INSERT — unchanged, still hookless on its own) for every row that
 //     passed step 1, followed by RunAuditRecord + RunAfterCreate +
-//     publishLifecycleEvent for EACH row BulkCreate returns — one audit
-//     record and one outbox event per row, not one summary per flush.
-//     repo.BulkCreate's own internal WithTx call joins this already-open
-//     transaction rather than starting a second one (repo.WithTx is
-//     reentrant — verified by contrib/pgx's own nested-transaction tests),
-//     so the batch INSERT and every row's audit/after-hook/outbox write
-//     commit or roll back together: per-flush atomicity, matching
-//     BulkCreate's own pre-existing "all succeed or all fail" contract,
-//     now extended to cover the canonical pipeline stages instead of a raw
-//     INSERT with nothing else.
-//  3. StartWorkflow triggers fire once per successfully committed record,
-//     after the transaction commits — identical timing to Create's own
-//     startWorkflows call.
+//     publishLifecycleEvent + publishWorkflowIntents for EACH row
+//     BulkCreate returns — one audit record, one lifecycle outbox event,
+//     and any matching workflow-intent outbox event(s), per row, not one
+//     summary per flush. repo.BulkCreate's own internal WithTx call joins
+//     this already-open transaction rather than starting a second one
+//     (repo.WithTx is reentrant — verified by contrib/pgx's own
+//     nested-transaction tests), so the batch INSERT and every row's
+//     audit/after-hook/outbox/workflow-intent write commit or roll back
+//     together: per-flush atomicity, matching BulkCreate's own pre-existing
+//     "all succeed or all fail" contract, now extended to cover the
+//     canonical pipeline stages instead of a raw INSERT with nothing else.
+//     No Temporal call is ever made from this method (Phase 2 Step 6) — a
+//     workflow trigger firing for an imported row produces a durable outbox
+//     event exactly like it does for Create, dispatched later, independently,
+//     by the outbox relay. There is deliberately no per-row (or per-batch)
+//     external workflow-execution loop here.
 //
 // Tenant identity is never taken from row data: every row in the batch is
 // persisted under the single TenantContext already active in ctx (the same
@@ -350,33 +371,47 @@ func (s *EntityService) CreateBatch(ctx context.Context, rows []map[string]any, 
 			if err := s.publishLifecycleEvent(txCtx, events.EventCreated, rec, actor); err != nil {
 				return err
 			}
+			if err := s.publishWorkflowIntents(txCtx, def.EventOnCreate, rec, actor); err != nil {
+				return err
+			}
 		}
 		return nil
 	}); err != nil {
 		return &def.BatchCreateResult{Skipped: skipped}, err
 	}
 
-	for _, rec := range created {
-		s.startWorkflows(ctx, def.EventOnCreate, rec, actor)
-	}
-
 	return &def.BatchCreateResult{Created: created, Skipped: skipped}, nil
 }
 
-// startWorkflows fires Temporal workflows for matching triggers.
-// Runs outside the database transaction — failure does not roll back the record.
-// In production, the outbox pattern provides retry guarantees.
-func (s *EntityService) startWorkflows(ctx context.Context, event def.EventType, record *def.EntityRecord, actor *def.Actor) {
+// publishWorkflowIntents publishes a durable events.EventWorkflowTriggerFired
+// event for every WorkflowTrigger on s.schema matching event, through the
+// SAME transaction-bound publisher publishLifecycleEvent uses (ADR-025
+// §4.D, §10, §14 — Phase 2 Step 6). EntityService never calls Temporal
+// directly; a matching trigger's actual dispatch happens independently,
+// after commit, via the outbox relay's WorkflowTriggerSubscriber.
+//
+// Must be called from inside the mutation's own repo.WithTx callback
+// (txCtx passed as ctx here), exactly like publishLifecycleEvent — so a
+// committed mutation always has its workflow intent(s) durable, and a
+// rolled-back mutation never leaves an orphaned intent behind.
+//
+// Two failure categories are deliberately treated differently:
+//
+//   - t.InputBuilder returning an error, or the resulting
+//     def.ActionWorkflowSpec failing to marshal as JSON, is a
+//     misconfigured-trigger problem (a bug in that specific WorkflowTrigger
+//     declaration) — not a durability concern. It is logged and that one
+//     trigger is skipped; it does NOT fail the mutation. This preserves the
+//     pre-Step-6 behavior for this specific failure mode (previously
+//     "skip and log", never "fail the Create").
+//   - The outbox Publish call itself failing IS a durability concern —
+//     exactly the same ADR-025 §6 unconditional-failure policy
+//     publishLifecycleEvent already applies. It propagates, failing the
+//     whole transaction: mutation, audit, lifecycle event, and every
+//     workflow intent in it roll back together.
+func (s *EntityService) publishWorkflowIntents(ctx context.Context, event def.EventType, record *def.EntityRecord, actor *def.Actor) error {
 	for _, t := range s.schema.WorkflowTriggers {
 		if t.On != event {
-			continue
-		}
-		if s.temporal == nil {
-			slog.Warn("temporal client not configured — skipping workflow start",
-				"entity", s.schema.QualifiedName,
-				"event", event,
-				"workflow", t.WorkflowFn,
-			)
 			continue
 		}
 
@@ -387,8 +422,9 @@ func (s *EntityService) startWorkflows(ctx context.Context, event def.EventType,
 
 		input, err := t.InputBuilder(record, tc)
 		if err != nil {
-			slog.Error("workflow input builder failed",
+			slog.Error("workflow input builder failed — skipping this trigger; mutation still proceeds",
 				"entity", s.schema.QualifiedName,
+				"event", event,
 				"workflow", t.WorkflowFn,
 				"record_id", record.ID,
 				"err", err,
@@ -396,25 +432,46 @@ func (s *EntityService) startWorkflows(ctx context.Context, event def.EventType,
 			continue
 		}
 
-		workflowID := workflowIDFor(t, record)
-		_, err = s.temporal.ExecuteWorkflow(ctx,
-			temporalclient.StartWorkflowOptions{
-				ID:        workflowID,
-				TaskQueue: t.TaskQueue,
-			},
-			t.WorkflowFn,
-			input,
-		)
+		spec := def.ActionWorkflowSpec{
+			WorkflowFn: t.WorkflowFn,
+			TaskQueue:  t.TaskQueue,
+			WorkflowID: workflowIDFor(t, record),
+			Input:      input,
+		}
+		payload, err := json.Marshal(spec)
 		if err != nil {
-			slog.Error("workflow start failed — will retry via outbox",
+			slog.Error("workflow intent input not JSON-serialisable — skipping this trigger; mutation still proceeds",
 				"entity", s.schema.QualifiedName,
+				"event", event,
 				"workflow", t.WorkflowFn,
-				"workflow_id", workflowID,
+				"record_id", record.ID,
 				"err", err,
 			)
-			// TODO: write to outbox table for guaranteed retry.
+			continue
+		}
+
+		var actorID uuid.UUID
+		if actor != nil {
+			actorID = actor.UserID
+		}
+		var correlationID string
+		if rc, ok := audit.RequestContextFromContext(ctx); ok {
+			correlationID = rc.RequestID
+		}
+
+		if err := s.publisher.Publish(ctx, events.DomainEvent{
+			TenantID:      record.TenantID,
+			Type:          events.EventWorkflowTriggerFired,
+			EntityName:    s.schema.QualifiedName,
+			RecordID:      record.ID,
+			ActorID:       actorID,
+			CorrelationID: correlationID,
+			Payload:       payload,
+		}); err != nil {
+			return fmt.Errorf("entity service: publish workflow intent (workflow=%s): %w", t.WorkflowFn, err)
 		}
 	}
+	return nil
 }
 
 // publishLifecycleEvent constructs and publishes a durable domain event for a

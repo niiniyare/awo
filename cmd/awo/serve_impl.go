@@ -294,7 +294,6 @@ func startServer(cfg ServeConfig) error {
 		IAM:                iamAuth,
 		Tenants:            tenants,
 		Authz:              evaluator,
-		Temporal:           temporalClient,
 		AuditWriter:        auditWriter,
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
