@@ -20,17 +20,27 @@ package pgx_test
 // does not touch those columns, so the current, already-live schema shape is
 // sufficient to test it.
 //
-// Per ADR-025 §7/§21 and the orphaned migration's own comment ("global — no
-// RLS"), events_outbox is a global table with no row-level security: tenant
-// isolation for delivery is the relay's responsibility (restoring tenant
-// context before dispatch, Step 3B), not a PostgreSQL policy on this table.
-// TestOutboxWriter_Publish_TenantIdentityNotCrossContaminated below tests
-// this table's actual invariant (correct tenant_id attribution per
-// transaction) rather than an RLS policy this table does not and should not
-// have at this step.
+// Per ADR-025 §7/§21, events_outbox is a global table with no row-level
+// security: tenant isolation for delivery is the relay's responsibility
+// (restoring tenant context before dispatch, Step 3B), not a PostgreSQL
+// policy on this table. TestOutboxWriter_Publish_TenantIdentityNotCrossContaminated
+// below tests this table's actual invariant (correct tenant_id attribution
+// per transaction) rather than an RLS policy this table does not and should
+// not have at this step.
+//
+// Phase 2 Step 2 note: these tests apply the real, production
+// events_outbox migration (events/outbox/migrations) directly via its
+// exported SQLFS, rather than maintaining a second, hand-written copy of the
+// schema — so this suite exercises the actual migration-defined table, not
+// an approximation of it. Before Step 2 landed, this file defined its own
+// eventsOutboxTestDDL constant as a placeholder (documented at the time as
+// "not a substitute for Step 2"); that constant is removed now that the real
+// migration exists.
 import (
 	"context"
 	"encoding/json"
+	"io/fs"
+	"strings"
 	"testing"
 
 	"github.com/google/uuid"
@@ -41,37 +51,39 @@ import (
 	"awo.so/awo/driver"
 	"awo.so/awo/events"
 	"awo.so/awo/events/outbox"
+	outboxmigrations "awo.so/awo/events/outbox/migrations"
 	"awo.so/awo/runtime/tenant"
 	testdb "awo.so/awo/testutil/db"
 )
 
-const eventsOutboxTestDDL = `
-CREATE TABLE events_outbox (
-    id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
-    tenant_id     uuid,
-    type          text NOT NULL,
-    entity_name   text NOT NULL,
-    record_id     uuid,
-    actor_id      uuid,
-    action_name   text,
-    payload       jsonb,
-    occurred_at   timestamptz NOT NULL,
-    delivered_at  timestamptz,
-    attempts      int NOT NULL DEFAULT 0,
-    last_error    text
-);
-
-GRANT SELECT, INSERT, UPDATE, DELETE ON events_outbox TO awo_app;
-`
+// readOutboxMigrationSQL reads the real, production events_outbox
+// migration's up-direction SQL directly from its embedded source
+// (events/outbox/migrations.SQLFS), so these tests exercise the actual
+// migration-defined schema rather than a second, hand-maintained copy of it.
+func readOutboxMigrationSQL(t *testing.T) string {
+	t.Helper()
+	fsys := outboxmigrations.SQLFS()
+	entries, err := fs.ReadDir(fsys, ".")
+	require.NoError(t, err)
+	for _, e := range entries {
+		if strings.HasSuffix(e.Name(), ".up.sql") {
+			b, err := fs.ReadFile(fsys, e.Name())
+			require.NoError(t, err)
+			return string(b)
+		}
+	}
+	t.Fatal("readOutboxMigrationSQL: no .up.sql file found in events/outbox/migrations")
+	return ""
+}
 
 // setupOutboxWriterTest mirrors setupPoolTest (connection_pool_test.go) but
-// additionally installs the events_outbox test fixture table.
+// additionally applies the real events_outbox migration.
 func setupOutboxWriterTest(t *testing.T) *pgxpool.Pool {
 	t.Helper()
 	pool := testdb.SetupTestDB(t)
 	testdb.InstallTenantLifecycle(t, pool)
 	testdb.ApplySQL(t, pool, testEntityDDL)
-	testdb.ApplySQL(t, pool, eventsOutboxTestDDL)
+	testdb.ApplySQL(t, pool, readOutboxMigrationSQL(t))
 	return pool
 }
 
