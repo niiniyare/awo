@@ -224,6 +224,29 @@ func (s *EntityService) Query(ctx context.Context, f *filter.Filter, opts ...dri
 	return s.repo.Query(ctx, f, opts...)
 }
 
+// Count delegates to the repository. Added alongside Exists/WithTx (Phase 2
+// Step 4) so AsActionRepo can expose the full def.ActionEntityRepo surface
+// without reaching around EntityService into the raw repository directly.
+func (s *EntityService) Count(ctx context.Context, f *filter.Filter) (int64, error) {
+	return s.repo.Count(ctx, f)
+}
+
+// Exists delegates to the repository.
+func (s *EntityService) Exists(ctx context.Context, f *filter.Filter) (bool, error) {
+	return s.repo.Exists(ctx, f)
+}
+
+// WithTx delegates to the repository's transaction boundary. Exposed so
+// runtime.ActionContext's TxFn (Phase 2 Step 4) can open a transaction using
+// the exact same mechanism — and, when already inside one (the
+// InTx() short-circuit), the exact same transaction — every other mutation
+// on this entity uses. This is not a second transaction-ownership
+// mechanism; it is the same one, reached through EntityService instead of
+// the raw repository.
+func (s *EntityService) WithTx(ctx context.Context, fn func(context.Context) error) error {
+	return s.repo.WithTx(ctx, fn)
+}
+
 // startWorkflows fires Temporal workflows for matching triggers.
 // Runs outside the database transaction — failure does not roll back the record.
 // In production, the outbox pattern provides retry guarantees.

@@ -257,15 +257,12 @@ Level 5 — Runtime (depends on all lower levels)
 
 ### `awo/runtime` — Pipeline Execution
 
-**One responsibility:** Execute the hook pipeline for every mutation and wire all framework services into `DefaultActionRuntime`.
+**One responsibility:** Execute the hook pipeline for every mutation and wire all framework services into `ActionContext`, the canonical implementation of `def.ActionRuntime`.
 
 **Exports (interfaces only; implementations are internal):**
 - `Pipeline` struct — executes the 9 pipeline stages
-- `RuntimeFactory` — constructs `DefaultActionRuntime` per request
-- `EntityDriver` interface — the store layer adapter (pgx implementation is internal)
-- `WorkflowRuntime` interface — the Temporal adapter
-- `NotificationService` interface — the notification adapter
-- `CacheInvalidator` interface — the SDUI cache invalidation adapter
+- `ActionContext` — the canonical `def.ActionRuntime` implementation, constructed per action invocation via `api/service.ActionContextFactory`
+- `ActionContextConfig` — wires `ActionContext`'s transaction, repo, and publish behavior to real infrastructure
 
 **Imports within awo/\*:** `def`, `auth`, `compiler`, `naming`, `cache`, `outbox`, `audit`.
 

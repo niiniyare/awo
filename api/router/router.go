@@ -125,10 +125,20 @@ func Register(app *fiber.App, schema *compiler.CompiledSchema, opts RegisterOpti
 		pub = events.NoopPublisher{}
 	}
 
+	// One ActionContextFactory shared across every entity's handler — it
+	// wires runtime.ActionContext's TxFn/RepoFn/Publish to real
+	// infrastructure (Phase 2 Step 4), so def.ActionContext.Runtime is
+	// non-nil and genuinely functional for every real action invocation.
+	// Every entity's EntityService is registered on it below before any
+	// route can be reached, so any action can reach any other entity via
+	// Repo(entityName), not just the entity its own route is declared on.
+	actionRuntimes := service.NewActionContextFactory(pub)
+
 	for _, es := range schema.Entities {
 		repo := contrib.NewRepository(opts.Pool, es)
 		svc := service.NewEntityService(es, repo, pipeline, opts.Temporal).WithPublisher(pub)
-		h := handler.NewEntityHandler(es, svc)
+		actionRuntimes.Register(svc)
+		h := handler.NewEntityHandler(es, svc, actionRuntimes)
 
 		// RoutePrefix is already the full path "/api/v1/{module}/{resource}".
 		// Fiber groups interpret the path relative to the app, not the parent group,

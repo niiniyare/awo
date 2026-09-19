@@ -17,7 +17,7 @@ A custom HTTP endpoint declared on an `EntityDefinition` via `ActionDef`. Action
 The parameter injected into every `ActionHandlerFunc`. Contains the request `context.Context`, the target `RecordID`, the `Actor`, the raw request `Body`, and the `ActionRuntime`. The framework constructs this before the handler is called. Declared in `awo/def`.
 
 **ActionRuntime**
-The service interface injected into every action handler. Provides: `Repo()`, `Tx()`, `Publish()`, `StartWorkflow()`, `Notify()`, `InvalidateCache()`, `Cache()`, `Clock()`, `Logger()`, `TenantID()`, `Actor()`. Declared in `awo/def`. The concrete implementation is `runtime.DefaultActionRuntime` (internal).
+The service interface injected into every action handler. Provides: `Repo()`, `Tx()`, `Publish()`, `StartWorkflow()`, `Notify()`, `InvalidateCache()`, `Cache()`, `Clock()`, `Logger()`, `TenantID()`, `Actor()`. Declared in `awo/def`. The canonical concrete implementation is `runtime.ActionContext` (`runtime/runtime_action_context.go`), constructed per action invocation by `api/service.ActionContextFactory`.
 
 **Actor**
 The authenticated principal who initiated an operation. Contains `UserID`, `ServiceAccountID`, `TenantID`, and `Roles`. Exactly one of `UserID` or `ServiceAccountID` is non-nil. `IsPlatformAdmin()` is a method that checks `Roles`, not a boolean field. Declared in `awo/def`. See ADR-003.

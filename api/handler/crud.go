@@ -22,13 +22,18 @@ import (
 
 // EntityHandler handles CRUD + action operations for a single entity type.
 type EntityHandler struct {
-	schema *compiler.EntitySchema
-	svc    *service.EntityService
+	schema  *compiler.EntitySchema
+	svc     *service.EntityService
+	actions *service.ActionContextFactory
 }
 
-// NewEntityHandler creates a handler for the given entity schema.
-func NewEntityHandler(schema *compiler.EntitySchema, svc *service.EntityService) *EntityHandler {
-	return &EntityHandler{schema: schema, svc: svc}
+// NewEntityHandler creates a handler for the given entity schema. actions is
+// the shared, router-wide factory that constructs the canonical
+// runtime.ActionContext for every action invocation (Phase 2 Step 4) — the
+// same factory instance is passed to every entity's handler so any action
+// can reach any other registered entity via Repo(entityName).
+func NewEntityHandler(schema *compiler.EntitySchema, svc *service.EntityService, actions *service.ActionContextFactory) *EntityHandler {
+	return &EntityHandler{schema: schema, svc: svc, actions: actions}
 }
 
 // List handles GET /api/v1/entities/:entity
@@ -156,11 +161,24 @@ func (h *EntityHandler) Action(c *fiber.Ctx) error {
 		}))
 	}
 
+	actor := actorFromContext(c)
+	rt, err := h.actions.New(c.UserContext(), h.schema.QualifiedName, id, actor)
+	if err != nil {
+		slog.Error("failed to construct action runtime",
+			"entity", h.schema.QualifiedName, "action", actionName, "err", err)
+		return c.Status(fiber.StatusInternalServerError).JSON(response.Wrap(&runtime.BusinessError{
+			Code:    "action.runtime_unavailable",
+			Message: "Action runtime could not be constructed",
+			Status:  500,
+		}))
+	}
+
 	actx := &def.ActionContext{
 		Ctx:      c.UserContext(),
 		RecordID: id,
-		Actor:    actorFromContext(c),
+		Actor:    actor,
 		Body:     c.Body(),
+		Runtime:  rt,
 	}
 	result, err := actionDef.HandlerFunc(actx)
 	if err != nil {

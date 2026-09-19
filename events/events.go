@@ -27,6 +27,14 @@ const (
 
 	// Action events — emitted by action handlers.
 	EventActionFired EventType = "entity.action"
+
+	// EventWorkflowTriggerFired carries a durable workflow-start intent
+	// (ADR-025 §10). Payload is the JSON-marshaled def.ActionWorkflowSpec
+	// (WorkflowFn, TaskQueue, WorkflowID, Input). Published by
+	// runtime.ActionContext.StartWorkflow instead of calling Temporal
+	// directly from a transaction-bound mutation path; dispatched, strictly
+	// after commit, by events/outbox.WorkflowTriggerSubscriber.
+	EventWorkflowTriggerFired EventType = "workflow.trigger_fired"
 )
 
 // DomainEvent is the canonical event envelope written to the outbox table.
