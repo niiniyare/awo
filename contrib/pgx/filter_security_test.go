@@ -58,6 +58,57 @@ func TestQuery_SortField_RejectsSQLInjectionAttempt(t *testing.T) {
 		"(no error) because the comment swallows the syntax break")
 }
 
+// TestQuery_SortField_AdversarialPayloads_AllRejected enumerates the wider
+// attack-shape catalogue for the ORDER BY allowlist fix — function calls,
+// subqueries, expression injection, comment injection, quoted-identifier
+// breakout, case/whitespace variants, and a stacked-statement attempt. Every
+// one of these is expected to be rejected the same way: sqlbuild.Allowlist.Check
+// is an exact map-membership test against the entity's declared field names,
+// so any string that isn't byte-for-byte "name" or "code" fails identically
+// — but each shape is exercised individually against a real Query() call
+// rather than inferred, since the goal is to prove the *behavior*, not the
+// mechanism.
+func TestQuery_SortField_AdversarialPayloads_AllRejected(t *testing.T) {
+	pool := testdb.SetupTestDB(t)
+	testdb.ApplySQL(t, pool, testEntityDDL)
+
+	tenantID := testdb.RawTenantID()
+	testdb.ActivateTenant(t, pool, tenantID)
+	ctx := testdb.WithTenant(context.Background(), tenantID)
+	repo := newRepo(pool)
+
+	_, err := repo.Create(ctx, driver.CreateInput{Data: map[string]any{"name": "row1", "code": "c1"}})
+	require.NoError(t, err)
+
+	payloads := map[string]string{
+		"function call":                 `pg_sleep(5)`,
+		"function call wrapping column": `lower(name)`,
+		"subquery":                      `(SELECT password_hash FROM iam_users LIMIT 1)`,
+		"expression injection":          `name || code`,
+		"comment injection":             `name --`,
+		"comment injection block":       `name /*`,
+		"quoted identifier breakout":    `name" = 'x'; --`,
+		"stacked statement attempt":     `name; DROP TABLE test_entity; --`,
+		"case variant":                  `NAME`,
+		"leading whitespace":            ` name`,
+		"trailing whitespace":           `name `,
+		"comma-separated multi-field":   `name, code`,
+		"embedded direction syntax":     `name ASC`,
+		"embedded direction lowercase":  `name desc`,
+		"leading dash (rails-style)":    `-name`,
+		"unicode homoglyph":             "namе", // Cyrillic 'е' instead of Latin 'e'
+		"null byte":                     "name\x00",
+		"nested quotes":                 `na""me`,
+		"empty after trim look-alike":   `  `,
+	}
+	for label, payload := range payloads {
+		t.Run(label, func(t *testing.T) {
+			_, _, err := repo.Query(ctx, nil, driver.WithSort(payload, true))
+			assert.Error(t, err, "sort field payload (%s) %q must be rejected, not reach SQL", label, payload)
+		})
+	}
+}
+
 // TestQuery_SortField_UnknownColumn_Rejected proves the fix is a real
 // allowlist against the entity's actual columns, not merely quote-escaping:
 // a syntactically-clean but nonexistent/undeclared column name must also be

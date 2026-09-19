@@ -211,7 +211,47 @@ These tables MUST be read-only for the application role (the role used by Awo). 
 
 ---
 
-## 10. Normative Requirements
+## 10. Identifier Validation for Dynamic SQL (Sorting, Grouping, Field Patches)
+
+RLS enforces which *rows* a query can see. It says nothing about which
+*column* a piece of client-controlled input may reference when that input
+has to become part of the SQL text itself — sort fields, group-by fields,
+and the field names in a partial update all fall outside what a
+parameterized `$1` placeholder can express, because the placeholder
+mechanism only protects *values*, never *identifiers*.
+
+`contrib/pgx.Repository` handles every one of these cases the same way:
+client-controlled input that will become a column or function-name token in
+the SQL text is checked against a fixed allowlist derived from the compiled
+entity schema before it is used, never merely quoted:
+
+- **Sorting** (`?orderBy=` → `Repository.Query`'s `ORDER BY`) and
+  **grouping** (`Repository.Aggregate`'s `GROUP BY`) are checked against
+  `sqlbuild.NewAllowlist`, which permits the entity's own declared fields
+  plus the standard framework columns (`id`, `tenant_id`, `created_at`,
+  `updated_at`, `deleted_at`) — sorting/grouping by those is legitimate.
+- **Partial updates** (`PATCH` body → `Repository.Update`/`BulkUpdate`'s
+  `SET` clause) are checked against the entity's own declared fields only
+  (`r.schema.FieldsByName`/`Fields`), deliberately excluding the standard
+  framework columns — a patch must never be able to reassign a record's
+  `tenant_id` or primary key, regardless of whether RLS's own `WITH CHECK`
+  clause would also reject the resulting row.
+- **Aggregate function names** (`SUM`/`AVG`/`COUNT`/`MIN`/`MAX`) are checked
+  against that fixed set — a function name can't be identifier-quoted the
+  way a column name can, since quoting would turn it into a column
+  reference instead of a function call, so an exact-match check is the only
+  defense available for that position.
+
+An identifier that passes its allowlist check is still passed through
+`sqlbuild.QuoteIdent` (which doubles any embedded `"` character) before
+being written into the SQL string — the allowlist check is the
+authorization boundary (is this a real, intended column), and the quoting
+is the escaping boundary (can this string break out of its identifier
+position); a correct fix needs both, not one or the other.
+
+---
+
+## 11. Normative Requirements
 
 - Every tenant-scoped table MUST have `ENABLE ROW LEVEL SECURITY`.
 - Every tenant-scoped table MUST have `FORCE ROW LEVEL SECURITY`.
@@ -220,6 +260,10 @@ These tables MUST be read-only for the application role (the role used by Awo). 
 - The stored procedure form MUST be used — not raw `SET LOCAL`.
 - PgBouncer MUST operate in transaction mode.
 - Application code MUST NOT use `WHERE tenant_id = ?` clauses.
+- Any client-controlled input that becomes part of SQL as an identifier
+  (a sort field, a group-by field, a patch's field names, an aggregate
+  function name) MUST be checked against a fixed allowlist derived from the
+  compiled entity schema before use — quoting alone is not sufficient.
 
 ---
 

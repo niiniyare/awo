@@ -197,7 +197,8 @@ See [`14-api/ERROR_RESPONSE_FORMAT.md`](ERROR_RESPONSE_FORMAT.md) for the full e
 |-----------|------|-------------|
 | `limit` | integer | Maximum records to return (default: 20, max: 500) |
 | `offset` | integer | Number of records to skip (default: 0) |
-| `order` | string | Sort expression: `field_name ASC` or `field_name DESC` |
+| `orderBy` | string | A single field name to sort by. Must exactly match one of the entity's declared fields (or `id`/`tenant_id`/`created_at`/`updated_at`/`deleted_at`) — any other value, including one containing an expression, function call, or raw SQL fragment, is rejected with a validation error, never passed through. There is no supported syntax for sorting by more than one field, and direction is never embedded in this parameter — see `orderDir` below. |
+| `orderDir` | string | `asc` or `desc`. Any value other than exactly `desc` (including omitting the parameter) is treated as ascending. |
 | `q` | string | Full-text search (applies to `Searchable` fields) |
 | `{field_name}` | varies | Field filter: `status=Draft` or `status[]=Draft&status[]=Submitted` |
 
