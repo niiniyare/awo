@@ -48,8 +48,8 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON test_entity_unique TO awo_app;
 // does not construct a pgconn.PgError by hand, it triggers a real one from
 // real PostgreSQL through the exact code path a production request takes
 // (contrib/pgx.Repository.Create, which calls dberr.Parse on every error
-// return — see contrib/pgx/repo.go). Before the Phase 1 fix (dberr.go
-// importing the legacy github.com/jackc/pgconn instead of
+// return — see contrib/pgx/repo.go). Before dberr.go's import was fixed
+// (it imported the legacy github.com/jackc/pgconn instead of
 // github.com/jackc/pgx/v5/pgconn), this test failed: errors.As could not
 // match pgx/v5's real error type, and the caller received a generic wrapped
 // error instead of a typed, HTTP-mappable *runtime.BusinessError.

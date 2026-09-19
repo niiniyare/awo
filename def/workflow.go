@@ -3,10 +3,16 @@ package def
 import "github.com/google/uuid"
 
 // WorkflowTrigger binds a Temporal workflow start to an entity lifecycle
-// event. The framework starts the workflow OUTSIDE the database transaction,
-// after the transaction commits. If the workflow start fails, the failure is
-// recorded in the retry queue for re-attempt — the entity record is not
-// rolled back.
+// event. The framework never calls Temporal directly from the mutation path
+// (ADR-025 §4.D, §10, §14 — Phase 2 Step 6): a matching trigger instead
+// causes a durable workflow-start intent (events.EventWorkflowTriggerFired)
+// to be published through the SAME database transaction as the mutation and
+// its audit record. If that transaction rolls back, no intent survives; if
+// it commits, the intent is durable and is dispatched to Temporal
+// independently, after commit, by the outbox relay's WorkflowTriggerSubscriber
+// — at-least-once, never exactly-once. A misconfigured trigger (InputBuilder
+// error, or a non-JSON-serialisable Input) is logged and that one trigger is
+// skipped; it does not fail the causing mutation.
 //
 // Workflow ID convention: "{tenant-uuid}.{entity-name}.{record-id}.{event}"
 // e.g. "abc123.finance_invoice.inv456.on_submit"

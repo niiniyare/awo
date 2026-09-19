@@ -81,6 +81,18 @@ If `pool_mode = session` → immediate reconfiguration required (data isolation 
 2. Reduce `DB_POOL_MAX` per pod
 3. Increase `max_connections` in PostgreSQL (requires restart)
 
+### A Panic Inside a Transaction Callback Cannot Leak the Connection
+
+`contrib/pgx.Repository.WithTx` releases its connection (via commit or
+rollback) from a `defer` that runs even when the transaction callback
+panics — it does not call `recover()`, so the panic still propagates to the
+caller normally; it just guarantees the rollback happens first. If you see
+`idle in transaction` connections that never clear, look for a panic in
+application code running inside a *different* transaction wrapper (this
+framework has exactly one `WithTx`, in `contrib/pgx`) rather than assuming
+it's this path — this class of leak is covered by
+`contrib/pgx/withtx_panic_safety_test.go`.
+
 ---
 
 ## Symptom: Replication Lag (Read Replicas)

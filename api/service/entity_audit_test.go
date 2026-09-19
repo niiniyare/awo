@@ -146,7 +146,7 @@ func buildTestService(t *testing.T, aw audit.AuditWriter) (*service.EntityServic
 	pipeline := runtime.NewPipeline(schema, writer)
 	repo := &stubRepo{entityName: svcEntityName}
 
-	svc := service.NewEntityService(es, repo, pipeline, nil)
+	svc := service.NewEntityService(es, repo, pipeline)
 	return svc, rw, repo
 }
 
@@ -269,7 +269,7 @@ func TestEntityService_Create_AuditFailurePropagate(t *testing.T) {
 	pipeline := runtime.NewPipeline(schema, &audit.FailingWriter{Err: sentinel})
 	es := schema.ByName[entityName]
 	repo := &stubRepo{entityName: entityName}
-	svc := service.NewEntityService(es, repo, pipeline, nil)
+	svc := service.NewEntityService(es, repo, pipeline)
 
 	actor := &def.Actor{UserID: uuid.New(), TenantID: uuid.New()}
 	_, err := svc.Create(context.Background(), map[string]any{}, actor)
@@ -317,7 +317,7 @@ func TestEntityService_Create_HookOrderPreserved(t *testing.T) {
 	pipeline := runtime.NewPipeline(schema, rw)
 	es := schema.ByName["svc_hook_order"]
 	repo := &stubRepo{entityName: "svc_hook_order"}
-	svc := service.NewEntityService(es, repo, pipeline, nil)
+	svc := service.NewEntityService(es, repo, pipeline)
 
 	// Wire the recording writer to also record its call order.
 	// We can inspect: audit write happens first, then AfterCreate hook.

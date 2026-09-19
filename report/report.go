@@ -41,7 +41,13 @@ type ReportField struct {
 	Name string
 
 	// Expr is a raw SQL expression (e.g. "SUM(total_amount)", "COALESCE(name,'—')").
-	// When Name is empty and Expr is non-empty, Expr is used verbatim.
+	// When Name is empty and Expr is non-empty, Expr is used verbatim — with
+	// no validation and no allowlist check, unlike every other field on
+	// ReportDefinition. This is intentional: it is the escape hatch for
+	// computed columns the Name-based path can't express. It is only safe
+	// because a ReportDefinition is Go-code-constructed by whoever defines
+	// the report, the same trust level as writing the SQL by hand — it MUST
+	// NEVER be populated from end-user or API-request input.
 	// Expressions must use column names without table qualifiers.
 	Expr string
 
@@ -203,8 +209,19 @@ func GenerateSQL(def ReportDefinition, schema *compiler.CompiledSchema) (*Genera
 		if agg.Alias == "" {
 			return nil, fmt.Errorf("report %q: aggregate on field %q requires an alias", def.Name, agg.Field)
 		}
+		if !isValidAggregateFunc(agg.Func) {
+			// agg.Func is interpolated as a bare SQL function-name token, not
+			// an identifier — it cannot be quote()'d the way a column name
+			// can (quoting would turn it into a column reference instead of
+			// a function call), so this exact-match check against the known
+			// set is the only thing standing between it and arbitrary SQL.
+			return nil, fmt.Errorf("report %q: unsupported aggregate function %q", def.Name, agg.Func)
+		}
 		fieldRef := agg.Field
 		if fieldRef != "*" {
+			if _, ok := es.FieldsByName[fieldRef]; !ok {
+				return nil, fmt.Errorf("report %q: aggregate field %q not found on entity %q", def.Name, fieldRef, def.Entity)
+			}
 			fieldRef = tableAlias + "." + quote(fieldRef)
 		}
 		expr := string(agg.Func) + "(" + fieldRef + ") AS " + quote(agg.Alias)
@@ -276,11 +293,31 @@ func GenerateSQL(def ReportDefinition, schema *compiler.CompiledSchema) (*Genera
 		argN += len(wArgs)
 	}
 
+	// knownOutputName reports whether name is either a real entity field or
+	// one of the aliases already projected in the SELECT clause above —
+	// GroupBy and OrderBy may reference either (per their doc comments).
+	// quote() already prevents identifier-quote breakout (it strips embedded
+	// quote characters before wrapping), so this check is an authorization
+	// gate, not the injection defense — but a caller should not be able to
+	// GROUP BY / ORDER BY a column that isn't actually part of this report
+	// just because quote() would render some syntactically valid SQL for it.
+	knownColumns := make(map[string]bool, len(es.FieldsByName)+len(columns))
+	for name := range es.FieldsByName {
+		knownColumns[name] = true
+	}
+	for _, c := range columns {
+		knownColumns[c] = true
+	}
+	knownOutputName := func(name string) bool { return knownColumns[name] }
+
 	// ── GROUP BY ──────────────────────────────────────────────────────────────
 	var groupClause string
 	if len(def.GroupBy) > 0 {
 		quoted := make([]string, len(def.GroupBy))
 		for i, g := range def.GroupBy {
+			if !knownOutputName(g) {
+				return nil, fmt.Errorf("report %q: group by field %q not found on entity %q or its output columns", def.Name, g, def.Entity)
+			}
 			quoted[i] = quote(g)
 		}
 		groupClause = strings.Join(quoted, ", ")
@@ -301,6 +338,9 @@ func GenerateSQL(def ReportDefinition, schema *compiler.CompiledSchema) (*Genera
 	// ── ORDER BY ──────────────────────────────────────────────────────────────
 	var orderClauses []string
 	for _, o := range def.OrderBy {
+		if !knownOutputName(o.Field) {
+			return nil, fmt.Errorf("report %q: order by field %q not found on entity %q or its output columns", def.Name, o.Field, def.Entity)
+		}
 		dir := "ASC"
 		if o.Desc {
 			dir = "DESC"
@@ -358,6 +398,17 @@ func quote(id string) string {
 	// Reject identifiers with double-quotes to prevent injection via identifier names.
 	// Entity/field names are compiler-validated and should never contain quotes.
 	return `"` + strings.ReplaceAll(id, `"`, ``) + `"`
+}
+
+// isValidAggregateFunc reports whether fn is one of the SQL aggregate
+// functions GenerateSQL knows how to emit.
+func isValidAggregateFunc(fn AggregateFunc) bool {
+	switch fn {
+	case AggregateSUM, AggregateAVG, AggregateCOUNT, AggregateMAX, AggregateMIN:
+		return true
+	default:
+		return false
+	}
 }
 
 // buildFilterSQL translates a *filter.Filter into SQL and positional args,

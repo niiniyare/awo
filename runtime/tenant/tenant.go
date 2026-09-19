@@ -79,11 +79,18 @@ func IDFromContext(ctx context.Context) uuid.UUID {
 }
 
 // SystemContext returns a context that carries a sentinel TenantContext with
-// TenantID == uuid.Nil, indicating a platform-level (cross-tenant) operation.
-// Use for background jobs that operate on platform data, not tenant data.
+// TenantID == uuid.Nil, marking the operation as platform-level rather than
+// belonging to a real tenant.
 //
-// Repository operations in a SystemContext bypass RLS via the
-// set_tenant_context() stored procedure with a special platform admin token.
+// This does NOT bypass RLS. contrib/pgx.Repository.WithTx calls
+// set_tenant_context(uuid.Nil) for any TenantContext it finds in ctx, and the
+// real set_tenant_context() (migration/bootstrap/002_utilities.up.sql)
+// requires a matching row in platform_tenant — uuid.Nil never has one, so
+// that call fails with "tenant_not_found" (P0001) rather than proceeding.
+// There is no "platform admin token" or other bypass path anywhere in
+// set_tenant_context(); a SystemContext currently cannot be used to read or
+// write tenant-scoped data through contrib/pgx.Repository at all. As of this
+// writing nothing in the codebase calls SystemContext.
 func SystemContext(ctx context.Context) context.Context {
 	return WithContext(ctx, TenantContext{
 		TenantID: uuid.Nil,

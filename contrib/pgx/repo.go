@@ -87,11 +87,21 @@ func (r *Repository) Query(ctx context.Context, f *filter.Filter, opts ...driver
 		sb.WriteString(` WHERE ` + where.Clause)
 	}
 	if qo.SortField != "" {
+		// SortField ultimately originates from the HTTP ?orderBy= query
+		// parameter (api/handler/crud.go) with no upstream validation, so
+		// it must be checked against the entity's real columns here — the
+		// same allowlist WHERE-clause fields are checked against — before
+		// use. It is not enough to quote it: unlike quoteIdent (used for
+		// every WHERE-clause field), a naively interpolated identifier
+		// lets a value containing `"` break out of the quotes entirely.
+		if err := sqlbuild.NewAllowlist(r.schema).Check(qo.SortField); err != nil {
+			return nil, driver.PageInfo{}, fmt.Errorf("%s.Query: sort field: %w", r.schema.TableName, err)
+		}
 		dir := "DESC"
 		if qo.SortAsc {
 			dir = "ASC"
 		}
-		sb.WriteString(fmt.Sprintf(` ORDER BY "%s" %s`, qo.SortField, dir))
+		sb.WriteString(fmt.Sprintf(` ORDER BY %s %s`, sqlbuild.QuoteIdent(qo.SortField), dir))
 	}
 	pageSize := qo.PageSize
 	offset := 0
@@ -182,16 +192,23 @@ func (r *Repository) Aggregate(ctx context.Context, f *filter.Filter, spec drive
 		return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
 	}
 
+	al := sqlbuild.NewAllowlist(r.schema)
 	exprs := make([]string, len(spec.Functions))
 	for i, fn := range spec.Functions {
+		if !isValidAggregateFn(fn.Fn) {
+			return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: unsupported aggregate function %q", r.schema.TableName, fn.Fn)
+		}
 		alias := fn.Alias
 		if alias == "" {
 			alias = fmt.Sprintf("%s_%s", fn.Fn, fn.Field)
 		}
 		if fn.Fn == driver.AggregateFnCount {
-			exprs[i] = fmt.Sprintf(`COUNT(*) AS "%s"`, alias)
+			exprs[i] = fmt.Sprintf(`COUNT(*) AS %s`, sqlbuild.QuoteIdent(alias))
 		} else {
-			exprs[i] = fmt.Sprintf(`%s("%s") AS "%s"`, strings.ToUpper(string(fn.Fn)), fn.Field, alias)
+			if err := al.Check(fn.Field); err != nil {
+				return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: %w", r.schema.TableName, err)
+			}
+			exprs[i] = fmt.Sprintf(`%s(%s) AS %s`, strings.ToUpper(string(fn.Fn)), sqlbuild.QuoteIdent(fn.Field), sqlbuild.QuoteIdent(alias))
 		}
 	}
 
@@ -200,7 +217,10 @@ func (r *Repository) Aggregate(ctx context.Context, f *filter.Filter, spec drive
 		sql += ` WHERE ` + where.Clause
 	}
 	if spec.GroupBy != "" {
-		sql += fmt.Sprintf(` GROUP BY "%s"`, spec.GroupBy)
+		if err := al.Check(spec.GroupBy); err != nil {
+			return driver.AggregateResult{}, fmt.Errorf("%s.Aggregate: group by: %w", r.schema.TableName, err)
+		}
+		sql += fmt.Sprintf(` GROUP BY %s`, sqlbuild.QuoteIdent(spec.GroupBy))
 	}
 
 	rows, err := conn.db().Query(ctx, sql, where.Args...)
@@ -227,6 +247,23 @@ func (r *Repository) Aggregate(ctx context.Context, f *filter.Filter, spec drive
 		}
 	}
 	return result, nil
+}
+
+// isValidAggregateFn reports whether fn is one of the SQL aggregate functions
+// Aggregate knows how to emit. driver.AggregateFn is a plain string type, not
+// a compiler-enforced enum, so a caller can construct any value — fn is
+// interpolated directly into the SQL as a bare function-name token (it can't
+// be identifier-quoted the way a column name can, since quoting would make
+// it a column reference instead of a function call), so this exact-match
+// check against the known set is the only defense against it carrying
+// arbitrary SQL.
+func isValidAggregateFn(fn driver.AggregateFn) bool {
+	switch fn {
+	case driver.AggregateFnCount, driver.AggregateFnSum, driver.AggregateFnAvg, driver.AggregateFnMin, driver.AggregateFnMax:
+		return true
+	default:
+		return false
+	}
 }
 
 // -------------------------------------------------------------------------
@@ -315,8 +352,11 @@ func (r *Repository) updateSystem(ctx context.Context, db execer, id uuid.UUID, 
 	sets := []string{`"updated_at" = $1`}
 	args := []any{now}
 	for field, val := range input.Data {
+		if err := r.checkWritableField(field); err != nil {
+			return nil, fmt.Errorf("%s.Update: %w", r.schema.TableName, err)
+		}
 		args = append(args, val)
-		sets = append(sets, fmt.Sprintf(`"%s" = $%d`, field, len(args)))
+		sets = append(sets, fmt.Sprintf(`%s = $%d`, sqlbuild.QuoteIdent(field), len(args)))
 	}
 	if len(input.CustomFields) > 0 {
 		cfJSON, err := json.Marshal(input.CustomFields)
@@ -336,6 +376,35 @@ func (r *Repository) updateSystem(ctx context.Context, db execer, id uuid.UUID, 
 		return nil, &runtime.NotFoundError{EntityName: r.schema.TableName, ID: id.String()}
 	}
 	return r.getWithDB(ctx, db, id)
+}
+
+// checkWritableField reports an error unless field is one of the entity's own
+// declared business fields (r.schema.FieldsByName).
+//
+// This is deliberately narrower than sqlbuild.NewAllowlist, which also
+// permits the standard framework columns (id, tenant_id, created_at,
+// updated_at, deleted_at) — that is correct for a read context (ORDER BY,
+// GROUP BY: sorting/grouping by tenant_id or created_at is legitimate), but
+// wrong for a write context. updateSystem/BulkUpdate build their SET clause
+// directly from client-supplied map keys (input.Data / patch.Set — for
+// Update, that map ultimately originates from the raw JSON body of
+// PATCH /api/v1/entities/:entity/:id with no key restriction upstream), so
+// letting "tenant_id" or "id" through this check would let a caller
+// reassign a record's tenant or primary key via a normal field update,
+// regardless of whether the identifier itself is safely quoted. Excluding
+// them here removes that as a possibility structurally, rather than relying
+// solely on RLS's WITH CHECK to reject the resulting cross-tenant row after
+// the fact.
+func (r *Repository) checkWritableField(field string) error {
+	if _, ok := r.schema.FieldsByName[field]; ok {
+		return nil
+	}
+	for _, f := range r.schema.Fields {
+		if f.Name == field {
+			return nil
+		}
+	}
+	return fmt.Errorf("field %q is not a writable field on entity %q", field, r.schema.QualifiedName)
 }
 
 func (r *Repository) updateCustom(ctx context.Context, db execer, id uuid.UUID, input driver.UpdateInput, now time.Time) (*def.EntityRecord, error) {
@@ -540,8 +609,11 @@ func (r *Repository) BulkUpdate(ctx context.Context, f *filter.Filter, patch dri
 		sets := []string{`"updated_at" = $1`}
 		args := []any{now}
 		for field, val := range patch.Set {
+			if err := r.checkWritableField(field); err != nil {
+				return 0, fmt.Errorf("%s.BulkUpdate: %w", r.schema.TableName, err)
+			}
 			args = append(args, val)
-			sets = append(sets, fmt.Sprintf(`"%s" = $%d`, field, len(args)))
+			sets = append(sets, fmt.Sprintf(`%s = $%d`, sqlbuild.QuoteIdent(field), len(args)))
 		}
 		// Shift where args after the SET args.
 		whereArgs := make([]any, len(where.Args))
@@ -587,21 +659,44 @@ func (r *Repository) WithTx(ctx context.Context, fn func(ctx context.Context) er
 		return fmt.Errorf("begin transaction: %w", err)
 	}
 
+	// committed guards the deferred rollback below. BeginTx checked out a
+	// physical connection from the pool that only pgxTx.Commit or
+	// pgxTx.Rollback returns to it (pgxpool's Tx wraps Release internally) —
+	// if fn panics (e.g. tenant.FromContext's intentional panic on a missing
+	// TenantContext, or any other caller bug), neither of the two explicit
+	// call sites below would ever run, and the connection would stay
+	// checked out forever, invisible to everything else using this pool.
+	// This defer runs during panic unwinding regardless of whether it
+	// recovers anything, so the rollback (which releases the connection)
+	// always happens; because it does not call recover(), the panic
+	// continues propagating normally afterward — this is deliberate: a
+	// panic here means a real bug, and the caller should still see it as a
+	// panic, not have it silently downgraded to an error return.
+	committed := false
+	defer func() {
+		if !committed {
+			_ = pgxTx.Rollback(ctx)
+		}
+	}()
+
 	conn := &pgConn{pool: r.pool, txn: pgxTx}
 	txCtx := tx.WithConn(ctx, conn)
 
 	if tc, ok := tenant.TryFromContext(ctx); ok {
 		if err := setTenantContext(txCtx, conn.db(), tc.TenantID.String()); err != nil {
-			_ = pgxTx.Rollback(ctx)
 			return fmt.Errorf("set_tenant_context: %w", err)
 		}
 	}
 
 	if err := fn(txCtx); err != nil {
-		_ = pgxTx.Rollback(ctx)
 		return err
 	}
-	return pgxTx.Commit(ctx)
+
+	if err := pgxTx.Commit(ctx); err != nil {
+		return err
+	}
+	committed = true
+	return nil
 }
 
 // -------------------------------------------------------------------------
