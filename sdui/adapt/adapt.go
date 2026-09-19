@@ -266,6 +266,9 @@ func convertField(f def.FieldDef, es *compiler.EntitySchema) generator.FieldDef 
 			})
 		}
 	}
+	if len(f.OptionColors) > 0 {
+		gf.OptionColors = f.OptionColors
+	}
 
 	// Link / LinkList: wire DataSource from compiled lookup.
 	if lookup, ok := es.FieldLookups[f.Name]; ok {

@@ -62,6 +62,14 @@ type FieldDef struct {
 	// FieldTypeMultiSelect. The compiler generates a SQL CHECK constraint.
 	Options []string
 
+	// OptionColors optionally maps an Options value to a semantic color token
+	// ("success", "warning", "danger", "info", "default") used when rendering
+	// this field as a status badge in list and detail views. Values absent
+	// from the map render with the "default" color. Empty means no color
+	// annotation — the field renders as a plain select/text value.
+	// Example: {"active": "success", "suspended": "warning", "archived": "default"}
+	OptionColors map[string]string
+
 	// LinkTarget is the entity name (e.g. "finance_customer") that this
 	// FieldTypeLink or FieldTypeLinkList references. The compiler generates a
 	// FK constraint.

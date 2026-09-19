@@ -201,6 +201,12 @@ type Node struct {
 	// Mutually exclusive with DataSource: DataSource takes precedence when set.
 	Options []StaticOption
 
+	// OptionColors optionally maps a select/badge option value to a semantic
+	// color token ("success", "warning", "danger", "info", "default"). Used
+	// by NodeBadge to render a status column with per-value coloring instead
+	// of a single flat color. Values absent from the map render "default".
+	OptionColors map[string]string
+
 	// FilterBar is an optional filter form node for NodeList nodes.
 	// When non-nil, the renderer wires this as the list's search/filter bar.
 	// Only meaningful for NodeList — ignored for all other NodeKind values.

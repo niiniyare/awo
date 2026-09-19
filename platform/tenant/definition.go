@@ -53,6 +53,12 @@ var Definition = def.SystemDefinition{
 			Type:    def.FieldTypeSelect,
 			Label:   "Status",
 			Options: []string{"PENDING", "ACTIVE", "SUSPENDED", "ARCHIVED"},
+			OptionColors: map[string]string{
+				"PENDING":   "info",
+				"ACTIVE":    "success",
+				"SUSPENDED": "warning",
+				"ARCHIVED":  "default",
+			},
 			Default: func() any { return "PENDING" },
 		},
 		{

@@ -92,6 +92,12 @@ type FieldDef struct {
 	// Used when the select is static (not server-side).
 	Options []SelectOption
 
+	// OptionColors optionally maps an option value to a semantic color token
+	// ("success", "warning", "danger", "info", "default"). When non-empty,
+	// the list column for this field renders as a colored status badge
+	// instead of a plain select value.
+	OptionColors map[string]string
+
 	// DataSource configures remote data fetching (list, select, lookup).
 	DataSource *widget.DataSource
 
@@ -957,11 +963,19 @@ func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContex
 // Column nodes are lightweight — name and label only, plus type for column rendering.
 func (g *EntityGenerator) buildColumnNode(f FieldDef, ctx sduictx.GeneratorContext) *widget.Node {
 	kind := fieldTypeToColumnNodeKind(f.FieldType, f)
-	return &widget.Node{
+	node := &widget.Node{
 		Kind:  kind,
 		Name:  f.Name,
 		Label: f.Label,
 	}
+	if kind == widget.NodeBadge {
+		node.Options = make([]widget.StaticOption, len(f.Options))
+		for i, opt := range f.Options {
+			node.Options[i] = widget.StaticOption{Label: opt.Label, Value: opt.Value}
+		}
+		node.OptionColors = f.OptionColors
+	}
+	return node
 }
 
 // ── Action builders ───────────────────────────────────────────────────────────
@@ -1275,7 +1289,12 @@ func fieldTypeToColumnNodeKind(fieldType string, f FieldDef) widget.NodeKind {
 		return widget.NodeDateTime
 	case "bool", "boolean":
 		return widget.NodeSwitch
-	case "select", "multi_select", "link", "tree_link":
+	case "select":
+		if len(f.OptionColors) > 0 {
+			return widget.NodeBadge
+		}
+		return widget.NodeSelect
+	case "multi_select", "link", "tree_link":
 		return widget.NodeSelect
 	case "file", "image", "attach":
 		return widget.NodeFileUpload
