@@ -406,6 +406,17 @@ func (r *DefaultRenderer) renderPage(n *widget.Node, ctx renderer.RendererContex
 	if len(body) > 0 {
 		out["body"] = body
 	}
+	if len(n.Breadcrumb) > 0 {
+		items := make([]map[string]any, len(n.Breadcrumb))
+		for i, b := range n.Breadcrumb {
+			item := map[string]any{"label": sanitizeText(b.Label)}
+			if b.Href != "" {
+				item["href"] = b.Href
+			}
+			items[i] = item
+		}
+		out["crumb"] = map[string]any{"items": items}
+	}
 	if acts, err := r.renderActions(n.Actions); err != nil {
 		return nil, err
 	} else if len(acts) > 0 {
@@ -943,16 +954,34 @@ func (r *DefaultRenderer) renderBadge(n *widget.Node) (map[string]any, error) {
 		"info":    "info",
 		"default": "default",
 	}
-	color := "default"
-	if c, ok := colorMap[n.BadgeColor]; ok {
-		color = c
+	badgeSpan := func(color, text string) string {
+		c := "default"
+		if v, ok := colorMap[color]; ok {
+			c = v
+		}
+		return "<span class=\"label label-" + c + "\">" + text + "</span>"
 	}
+
+	mapping := map[string]any{}
+
+	// Per-value option colors take precedence: each declared option gets its
+	// own colored badge using its display label, so status/enum columns read
+	// the same way the legacy hand-authored pages did.
+	if len(n.OptionColors) > 0 || len(n.Options) > 0 {
+		for _, opt := range n.Options {
+			label := opt.Label
+			if label == "" {
+				label = opt.Value
+			}
+			mapping[opt.Value] = badgeSpan(n.OptionColors[opt.Value], sanitizeText(label))
+		}
+	}
+	mapping["*"] = badgeSpan(n.BadgeColor, "${value}")
+
 	out := map[string]any{
 		"type": "mapping",
 		"name": n.Name,
-		"map": map[string]any{
-			"*": "<span class=\"label label-" + color + "\">${value}</span>",
-		},
+		"map":  mapping,
 	}
 	if n.Label != "" {
 		out["label"] = sanitizeText(n.Label)

@@ -201,10 +201,31 @@ type Node struct {
 	// Mutually exclusive with DataSource: DataSource takes precedence when set.
 	Options []StaticOption
 
+	// OptionColors optionally maps a select/badge option value to a semantic
+	// color token ("success", "warning", "danger", "info", "default"). Used
+	// by NodeBadge to render a status column with per-value coloring instead
+	// of a single flat color. Values absent from the map render "default".
+	OptionColors map[string]string
+
 	// FilterBar is an optional filter form node for NodeList nodes.
 	// When non-nil, the renderer wires this as the list's search/filter bar.
 	// Only meaningful for NodeList — ignored for all other NodeKind values.
 	FilterBar *Node
+
+	// Breadcrumb is the navigation trail shown above a NodePage's content
+	// (e.g. Home > Invoices > New). Only meaningful for NodePage — ignored
+	// for all other NodeKind values. Empty means no breadcrumb.
+	Breadcrumb []BreadcrumbItem
+}
+
+// BreadcrumbItem is a single entry in a NodePage's navigation trail.
+type BreadcrumbItem struct {
+	// Label is the display text for this trail entry.
+	Label string
+
+	// Href is the link target. Empty means this entry is not clickable
+	// (used for the current/last entry in the trail).
+	Href string
 }
 
 // StaticOption is a label/value pair for a static select or multi-select field.

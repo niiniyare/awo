@@ -92,6 +92,12 @@ type FieldDef struct {
 	// Used when the select is static (not server-side).
 	Options []SelectOption
 
+	// OptionColors optionally maps an option value to a semantic color token
+	// ("success", "warning", "danger", "info", "default"). When non-empty,
+	// the list column for this field renders as a colored status badge
+	// instead of a plain select value.
+	OptionColors map[string]string
+
 	// DataSource configures remote data fetching (list, select, lookup).
 	DataSource *widget.DataSource
 
@@ -271,6 +277,12 @@ type EntitySchema struct {
 	// The generator emits a NodeWorkflowPanel in detail view when true.
 	// The workflow state data source URL is expected to be at {DetailURL}/workflow-state.
 	HasWorkflow bool
+
+	// HasAudit is true when the framework writes audit records for mutations
+	// to this entity (def.EntityDefinition.AllowAudit()). The generator emits
+	// a NodeActivity timeline in detail view when true, querying the iam
+	// audit_log entity's own SDUI list endpoint filtered to this record.
+	HasAudit bool
 }
 
 // DashboardPanel carries metadata for one panel on a dashboard page.
@@ -425,6 +437,10 @@ func (g *EntityGenerator) Generate(schema EntitySchema, ctx sduictx.GeneratorCon
 	}
 	if err != nil {
 		return nil, err
+	}
+
+	if root != nil && root.Kind == widget.NodePage {
+		root.Breadcrumb = buildBreadcrumb(schema, ctx)
 	}
 
 	// Stage 5: Post-generation plugin transforms.
@@ -673,6 +689,20 @@ func (g *EntityGenerator) buildDetail(schema EntitySchema, ctx sduictx.Generator
 		},
 	}
 	pageChildren = append(pageChildren, detailForm)
+
+	// Activity/audit timeline — auto-emitted when the framework audits
+	// mutations to this entity. Queries the iam audit_log entity's own SDUI
+	// list endpoint, filtered to this entity and record.
+	if schema.HasAudit {
+		pageChildren = append(pageChildren, &widget.Node{
+			Kind:  widget.NodeActivity,
+			Label: "Activity",
+			DataSource: &widget.DataSource{
+				URL:    "/api/v1/ui/iam/audit_log?filter[entity_name][eq]=" + schema.Name + "&filter[record_id][eq]=${id}",
+				Method: "GET",
+			},
+		})
+	}
 
 	// Related lists from edge definitions.
 	for _, rel := range schema.Relations {
@@ -957,11 +987,19 @@ func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContex
 // Column nodes are lightweight — name and label only, plus type for column rendering.
 func (g *EntityGenerator) buildColumnNode(f FieldDef, ctx sduictx.GeneratorContext) *widget.Node {
 	kind := fieldTypeToColumnNodeKind(f.FieldType, f)
-	return &widget.Node{
+	node := &widget.Node{
 		Kind:  kind,
 		Name:  f.Name,
 		Label: f.Label,
 	}
+	if kind == widget.NodeBadge {
+		node.Options = make([]widget.StaticOption, len(f.Options))
+		for i, opt := range f.Options {
+			node.Options[i] = widget.StaticOption{Label: opt.Label, Value: opt.Value}
+		}
+		node.OptionColors = f.OptionColors
+	}
+	return node
 }
 
 // ── Action builders ───────────────────────────────────────────────────────────
@@ -1275,7 +1313,12 @@ func fieldTypeToColumnNodeKind(fieldType string, f FieldDef) widget.NodeKind {
 		return widget.NodeDateTime
 	case "bool", "boolean":
 		return widget.NodeSwitch
-	case "select", "multi_select", "link", "tree_link":
+	case "select":
+		if len(f.OptionColors) > 0 {
+			return widget.NodeBadge
+		}
+		return widget.NodeSelect
+	case "multi_select", "link", "tree_link":
 		return widget.NodeSelect
 	case "file", "image", "attach":
 		return widget.NodeFileUpload
@@ -1285,6 +1328,28 @@ func fieldTypeToColumnNodeKind(fieldType string, f FieldDef) widget.NodeKind {
 }
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
+
+// buildBreadcrumb constructs the navigation trail for a NodePage: Home > the
+// entity's list page > the current view (omitted for the list view itself,
+// since it is the trail's own destination).
+func buildBreadcrumb(schema EntitySchema, ctx sduictx.GeneratorContext) []widget.BreadcrumbItem {
+	trail := []widget.BreadcrumbItem{
+		{Label: "Home", Href: "/"},
+		{Label: schema.PluralTitle, Href: schema.UIPrefix},
+	}
+	switch ctx.ViewMode {
+	case sduictx.ViewModeList:
+		// The list page is the trail's own destination — drop its own href.
+		trail[len(trail)-1].Href = ""
+	case sduictx.ViewModeCreate:
+		trail = append(trail, widget.BreadcrumbItem{Label: "New " + schema.Title})
+	case sduictx.ViewModeEdit:
+		trail = append(trail, widget.BreadcrumbItem{Label: "Edit"})
+	case sduictx.ViewModeDetail:
+		trail = append(trail, widget.BreadcrumbItem{Label: schema.Title})
+	}
+	return trail
+}
 
 func indexFieldsBySection(schema EntitySchema) map[string][]FieldDef {
 	idx := make(map[string][]FieldDef)

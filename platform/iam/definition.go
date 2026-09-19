@@ -47,6 +47,11 @@ var UserDefinition = def.SystemDefinition{
 			Type:    def.FieldTypeSelect,
 			Label:   "Status",
 			Options: []string{"active", "inactive", "locked"},
+			OptionColors: map[string]string{
+				"active":   "success",
+				"inactive": "default",
+				"locked":   "danger",
+			},
 			Default: func() any { return "active" },
 		},
 		{

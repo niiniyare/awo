@@ -43,6 +43,18 @@ func Fingerprint(s *CompiledSchema) string {
 				sort.Strings(opts)
 				fmt.Fprintf(h, "field:%s:options:%s\n", f.Name, strings.Join(opts, ","))
 			}
+			if len(f.OptionColors) > 0 {
+				keys := make([]string, 0, len(f.OptionColors))
+				for k := range f.OptionColors {
+					keys = append(keys, k)
+				}
+				sort.Strings(keys)
+				pairs := make([]string, len(keys))
+				for i, k := range keys {
+					pairs[i] = k + "=" + f.OptionColors[k]
+				}
+				fmt.Fprintf(h, "field:%s:optioncolors:%s\n", f.Name, strings.Join(pairs, ","))
+			}
 			if f.LinkTarget != "" {
 				fmt.Fprintf(h, "field:%s:link:%s\n", f.Name, f.LinkTarget)
 			}

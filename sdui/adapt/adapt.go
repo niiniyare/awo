@@ -68,6 +68,7 @@ func FromCompiled(es *compiler.EntitySchema) generator.EntitySchema {
 		UIPrefix:    "/ui/" + es.Module + "/" + es.APIResource,
 		Permissions: permissionsMap(es.Permissions),
 		HasWorkflow: len(es.WorkflowTriggers) > 0,
+		HasAudit:    es.AllowAudit,
 	}
 
 	// Fields.
@@ -265,6 +266,9 @@ func convertField(f def.FieldDef, es *compiler.EntitySchema) generator.FieldDef 
 				Value: opt,
 			})
 		}
+	}
+	if len(f.OptionColors) > 0 {
+		gf.OptionColors = f.OptionColors
 	}
 
 	// Link / LinkList: wire DataSource from compiled lookup.
