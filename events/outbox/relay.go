@@ -13,7 +13,8 @@
 // only reader; multiple relay instances use a PostgreSQL advisory lock to
 // prevent duplicate delivery in multi-instance deployments.
 //
-// Dependency: outbox → events, driver interfaces, pgx pool.
+// Dependency: outbox → events, driver interfaces, pgx pool, tx (for
+// transaction-bound writes — see OutboxWriter.Publish).
 package outbox
 
 import (
@@ -27,6 +28,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"awo.so/awo/events"
+	"awo.so/awo/tx"
 )
 
 const (
@@ -185,6 +187,10 @@ func (r *Relay) deliver(ctx context.Context, e events.DomainEvent) error {
 
 // OutboxWriter writes events to the outbox table inside the caller's transaction.
 // Implements events.Publisher.
+//
+// pool is retained for construction-time compatibility with New/NewWriter's
+// existing shared-pool wiring; Publish itself no longer uses it directly
+// (see Publish's doc comment) — only Relay.poll needs pool access.
 type OutboxWriter struct {
 	pool *pgxpool.Pool
 }
@@ -197,6 +203,21 @@ func NewWriter(pool *pgxpool.Pool) *OutboxWriter {
 var _ events.Publisher = (*OutboxWriter)(nil)
 
 // Publish writes e to the outbox within the transaction in ctx.
+//
+// The caller's context must carry an active transaction-bound connection —
+// the same one contrib/pgx.Repository.WithTx embeds into ctx for every
+// mutation. Publish resolves it via tx.QuerierFromContext and executes the
+// INSERT through it, exactly as audit/pg_writer.go and
+// audit/transactional_writer.go already do for the audit write — never by
+// acquiring a separate connection from pool. If ctx carries no active
+// transaction, Publish returns an error rather than silently succeeding via
+// an auto-commit connection, per this method's events.Publisher contract.
+//
+// e.Payload must already be valid JSON (or nil/empty — a valid, omitted
+// state per the field's own json:"payload,omitempty" contract). Publish
+// stores the bytes verbatim; it does not re-encode them. A non-nil value
+// that is not syntactically valid JSON is rejected rather than silently
+// stored as an arbitrary string.
 func (w *OutboxWriter) Publish(ctx context.Context, e events.DomainEvent) error {
 	if e.ID == uuid.Nil {
 		e.ID = uuid.New()
@@ -205,24 +226,26 @@ func (w *OutboxWriter) Publish(ctx context.Context, e events.DomainEvent) error 
 		e.OccurredAt = time.Now().UTC()
 	}
 
-	payload, err := json.Marshal(e.Payload)
-	if err != nil {
-		return fmt.Errorf("outbox.Publish: marshal payload: %w", err)
+	q, ok := tx.QuerierFromContext(ctx)
+	if !ok {
+		return fmt.Errorf("outbox.Publish: no active transaction in context")
 	}
 
-	conn, err := w.pool.Acquire(ctx)
-	if err != nil {
-		return fmt.Errorf("outbox.Publish: acquire: %w", err)
+	var payloadArg any
+	if len(e.Payload) > 0 {
+		if !json.Valid(e.Payload) {
+			return fmt.Errorf("outbox.Publish: payload is not valid JSON")
+		}
+		payloadArg = e.Payload
 	}
-	defer conn.Release()
 
-	_, err = conn.Exec(ctx, fmt.Sprintf(
+	_, err := q.ExecSQL(ctx, fmt.Sprintf(
 		`INSERT INTO %s (id, tenant_id, type, entity_name, record_id, actor_id, action_name, payload, occurred_at, attempts)
 		 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, 0)`,
 		outboxTable,
 	),
 		e.ID, e.TenantID, string(e.Type), e.EntityName,
-		e.RecordID, e.ActorID, nilIfEmpty(e.ActionName), payload, e.OccurredAt,
+		e.RecordID, e.ActorID, nilIfEmpty(e.ActionName), payloadArg, e.OccurredAt,
 	)
 	if err != nil {
 		return fmt.Errorf("outbox.Publish: insert: %w", err)
