@@ -121,7 +121,19 @@ authorization/exposure gap. Logged as new `tasks.md` item 1.13.
 
 ## 11. Item 1.9 — Organisation-scope RLS security boundary (new this pass)
 
-**STATUS: PASS (verification only — `OrganizationService` intentionally left stubbed).**
+**STATUS CORRECTED by a later forensic pass — see `PHASE1_SECURITY_CLOSURE_REPORT.md`'s
+"org_id RLS composition gap" finding. The PASS claim below was true of the test as
+originally written, but that test's DDL fixture only created the `org_isolation` policy
+and omitted the `tenant_isolation` policy every real non-System-scope entity also
+receives. Once corrected to include both (matching `generator.go`'s actual output), the
+same test proves organisation isolation does NOT currently hold: PostgreSQL combines
+multiple PERMISSIVE policies with OR, so `tenant_isolation` alone (satisfied by every row
+in the tenant) makes `org_isolation` a no-op. This is a real, critical, currently-dormant
+finding (zero entities use `ScopeOrganization` today) — see the security closure report
+and `tasks.md` for the full writeup and reproduction. Left here unedited below as the
+historical record of what this pass originally believed and tested; do not treat "PASS"
+in the paragraph below as still accurate.**
+
 Re-confirmed via source read that all ~19 `OrganizationService` methods still return
 `"not implemented"`. Per explicit scope instruction, tested the actual security boundary
 (the generated `ScopeOrganization` RLS policy, `org_id = current_org_id()`) directly via raw
@@ -129,7 +141,8 @@ SQL mirroring `generator.go`'s emitted DDL exactly, rather than building out the
 Required extracting `generator.OrgContextSQL()` (mirroring the existing `TenantContextSQL()`
 pattern) since `testutil/db.SetupTestDB` only installed the tenant-context pair by default.
 **Evidence:** `TestOrganizationRLS_SiblingOrgsIsolated`, `TestOrganizationRLS_NoOrgContext_SeesNothing`
-— both PASS. (Both required wrapping `set_org_context` + the dependent statement in one explicit
+— both PASS **against an incomplete DDL fixture; see the correction above.** (Both required
+wrapping `set_org_context` + the dependent statement in one explicit
 transaction — `set_org_context`'s GUC is transaction-local, same as `set_tenant_context`'s, so a
 bare auto-commit statement never sees its own context on the next statement. This is documented
 in the test file, not worked around silently.)
@@ -312,6 +325,18 @@ this session. Re-runs after restart were clean both times.
 
 ## 23. Final recommendation
 
+**SUPERSEDED — do not treat "proceed to Phase 2" below as current guidance.** This
+recommendation was written before the security-closure passes that followed found (a) a
+live, remotely-exploitable `ORDER BY` SQL injection plus a more severe live write-path
+injection in `updateSystem`/`BulkUpdate`, both now fixed and regression-tested (see
+`PHASE1_SECURITY_CLOSURE_REPORT.md`), and (b) a CRITICAL organisation-scope RLS gap
+(`tasks.md` 1.18) that must block Phase 3, not Phase 2 — but the general principle of
+"finish verifying before moving on" applies here too: Phase 2 has NOT started, and per the
+current governing instructions should not start until directed. The two SQL-injection-class
+vulnerabilities discovered after this paragraph was originally written are exactly the kind
+of regression this final recommendation should have anticipated finding — a reminder that
+"full test suite green" was never sufficient evidence of "secure" on its own.
+
 Phase 1's originally-scoped P0 items (1.1, 1.2, 1.6) are complete and test-proven. Two P0s
 remain deliberately deferred as separately tracked (1.3, 1.4) plus one from the original list
 not addressed this pass (1.5) — none of these three are regressions or newly discovered; all
@@ -321,6 +346,6 @@ primary contribution beyond closing 1.6's test gap was proactive security verifi
 re-verification, background-context audit) that surfaced one more real, fixed vulnerability
 (the `ORDER BY` SQL injection) and three new, accurately-scoped findings for future work
 (outbox tenant-context restoration, `WithTx` panic safety, `sqlbuild.Allowlist` non-adoption).
-Recommend proceeding to Phase 2 (architecture/dependency gaps) once the user reviews and
-decides on commit/push for this pass's changes — no commit or push has been performed, per the
-standing instruction for this continuation.
+~~Recommend proceeding to Phase 2 (architecture/dependency gaps) once the user reviews and
+decides on commit/push for this pass's changes~~ — superseded, see above. No push has been
+performed, per the standing instruction.

@@ -22,13 +22,17 @@ package pgx_test
 // columns handled by dedicated code paths, never entity FieldsByName
 // entries — before the key ever reaches the SQL string.
 import (
+	"context"
 	"testing"
 
+	"github.com/google/uuid"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"awo.so/awo/driver"
 	"awo.so/awo/filter"
+	"awo.so/awo/runtime"
+	"awo.so/awo/runtime/tenant"
 	testdb "awo.so/awo/testutil/db"
 )
 
@@ -107,6 +111,69 @@ func TestUpdate_LegitimateField_StillWorks(t *testing.T) {
 	assert.Equal(t, "A1", updated.Data["code"], "fields absent from the patch must be left untouched")
 }
 
+// TestUpdate_CreateInputCannotSmuggleTenantID proves Create is structurally
+// immune to the class of bug Update had: createSystem builds its column
+// list from r.sortedFieldNames() (the schema's own declared fields) and
+// looks up values FROM that list, rather than iterating input.Data's own
+// keys — so a "tenant_id" key in the Data map is never even looked at, let
+// alone written. TenantID always comes from tenant.FromContext(ctx), never
+// from client-supplied data, on the Create path.
+func TestUpdate_CreateInputCannotSmuggleTenantID(t *testing.T) {
+	pool, tenantID, ctx := setupRepoTest(t)
+	repo := newRepo(pool)
+
+	otherTenant := testdb.RawTenantID()
+	rec, err := repo.Create(ctx, driver.CreateInput{
+		Data: map[string]any{"name": "Alpha", "code": "A1", "tenant_id": otherTenant.String()},
+	})
+	require.NoError(t, err, "Create must not error just because the client-supplied map contains an "+
+		"extraneous 'tenant_id' key — it must simply be ignored")
+	assert.Equal(t, tenantID, rec.TenantID, "the record's real tenant_id must come from ctx, "+
+		"never from the attempted 'tenant_id' key in the Data map")
+}
+
+// TestUpdate_CrossTenantByID_RejectedAsNotFound proves that Tenant A cannot
+// use Update to modify a record it can name the ID of but that actually
+// belongs to Tenant B — RLS filters Repository.Update's
+// UPDATE ... WHERE "id" = $N down to zero affected rows for a foreign
+// tenant's record, and Repository.Update surfaces that as NotFoundError,
+// not as a silent no-op success or, worse, a cross-tenant write.
+func TestUpdate_CrossTenantByID_RejectedAsNotFound(t *testing.T) {
+	pool := setupPoolTest(t)
+	repo := newRepo(pool)
+
+	tenantA := testdb.CreateTenant(t, pool, "ACTIVE")
+	tenantB := testdb.CreateTenant(t, pool, "ACTIVE")
+	switchToAppRole(t, pool)
+
+	ctxA := tenant.WithContext(context.Background(), tenant.TenantContext{TenantID: tenantA})
+	var victimID uuid.UUID
+	require.NoError(t, repo.WithTx(ctxA, func(txCtx context.Context) error {
+		rec, err := repo.Create(txCtx, driver.CreateInput{Data: map[string]any{"name": "A-owned"}})
+		victimID = rec.ID
+		return err
+	}))
+
+	ctxB := tenant.WithContext(context.Background(), tenant.TenantContext{TenantID: tenantB})
+	err := repo.WithTx(ctxB, func(txCtx context.Context) error {
+		_, err := repo.Update(txCtx, victimID, driver.UpdateInput{Data: map[string]any{"name": "HACKED-BY-B"}})
+		return err
+	})
+	require.Error(t, err, "Tenant B must not be able to update a record belonging to Tenant A, even "+
+		"knowing its exact ID")
+	var nf *runtime.NotFoundError
+	assert.ErrorAs(t, err, &nf, "the failure must be surfaced as NotFoundError (RLS made the row "+
+		"invisible to the UPDATE's WHERE clause), not some other error shape")
+
+	// Confirm as superuser that Tenant A's row is genuinely unmodified.
+	// test_entity (see entitySchema/testEntityDDL) is a "system" entity with
+	// real typed columns, not a jsonb blob — "name" is queried directly.
+	row := testdb.QueryRowSQL(t, pool, "SELECT name FROM test_entity WHERE id = $1", victimID)
+	var name string
+	require.NoError(t, row.Scan(&name))
+	assert.Equal(t, "A-owned", name, "Tenant A's record must be completely unmodified by Tenant B's rejected attempt")
+}
+
 func TestBulkUpdate_MaliciousFieldName_RejectedNotInjected(t *testing.T) {
 	pool, _, ctx := setupRepoTest(t)
 	repo := newRepo(pool)
@@ -136,6 +203,46 @@ func TestBulkUpdate_LegitimateField_StillWorks(t *testing.T) {
 	})
 	require.NoError(t, err)
 	assert.Equal(t, int64(1), n)
+}
+
+// TestUpdate_UpdatedAtInPatchBody_Rejected proves updated_at specifically —
+// not just tenant_id/id/custom_fields — is rejected. updated_at is always
+// set by Repository.Update itself (the hardcoded `"updated_at" = $1` in
+// every SET clause); a client-supplied value for it must never reach the
+// SQL at all, let alone override the server-computed timestamp.
+func TestUpdate_UpdatedAtInPatchBody_Rejected(t *testing.T) {
+	pool, _, ctx := setupRepoTest(t)
+	repo := newRepo(pool)
+
+	rec, err := repo.Create(ctx, driver.CreateInput{Data: map[string]any{"name": "Alpha", "code": "A1"}})
+	require.NoError(t, err)
+
+	_, err = repo.Update(ctx, rec.ID, driver.UpdateInput{
+		Data: map[string]any{"updated_at": "2099-01-01T00:00:00Z"},
+	})
+	require.Error(t, err, `"updated_at" is a framework-managed column, not a declared entity field, and `+
+		"must be rejected — Repository.Update already sets it itself on every call")
+}
+
+// TestUpdate_DeletedAtInPatchBody_Rejected proves deleted_at — a standard
+// column generator.go emits on every non-System table (see
+// generateEntitySQL) even though no repository method currently implements
+// soft-delete against it — cannot be set via a generic patch either. It is
+// not a declared entity field (same reasoning as tenant_id/id/created_at:
+// it is part of the hardcoded standard-columns block, never added to
+// es.Fields/FieldsByName), so checkWritableField excludes it the same way.
+func TestUpdate_DeletedAtInPatchBody_Rejected(t *testing.T) {
+	pool, _, ctx := setupRepoTest(t)
+	repo := newRepo(pool)
+
+	rec, err := repo.Create(ctx, driver.CreateInput{Data: map[string]any{"name": "Alpha", "code": "A1"}})
+	require.NoError(t, err)
+
+	_, err = repo.Update(ctx, rec.ID, driver.UpdateInput{
+		Data: map[string]any{"deleted_at": "2020-01-01T00:00:00Z"},
+	})
+	require.Error(t, err, `"deleted_at" is a framework-managed standard column, not a declared entity `+
+		"field, and must be rejected even though no repository method currently acts on it")
 }
 
 // ── Aggregate ─────────────────────────────────────────────────────────────────

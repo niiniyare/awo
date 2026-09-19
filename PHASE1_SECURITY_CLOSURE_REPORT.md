@@ -459,7 +459,9 @@ remain mandatory roadmap items exactly as before this pass.
 
 ## 22. Security closure decision
 
-**SECURITY CLOSED.**
+**SECURITY CLOSED — see the ADDENDUM below for a required qualification found
+during a subsequent forensic pass (§A10 has the final, complete decision;
+read it before treating this section alone as the full picture).**
 
 Both P0s (the live `ORDER BY` injection and the live, more severe
 `updateSystem`/`BulkUpdate` write-path injection/privilege-escalation bug
@@ -475,3 +477,302 @@ pre-existing P0s explicitly out of this pass's scope (bulk-import audit
 bypass, workflow-outbox durability) remain correctly tracked, unresolved,
 and undisturbed in `tasks.md`. No new unresolved SQL-injection-class
 vulnerability is known to exist in the codebase as of this report.
+
+---
+
+# ADDENDUM — Final Forensic Verification Pass
+
+A second, deliberately adversarial pass over everything above, specifically
+looking for anything the first pass missed, false-positive tests, and
+untracked artifacts. This pass found one new, genuinely important
+CRITICAL-severity finding (§A2 below) and corrected two tests that had been
+silently passing against an inaccurate fixture. Nothing above this line was
+reverted or redone — this addendum extends it.
+
+## A1. Untracked `Makefile` investigation
+
+An untracked `Makefile` sits at the repository root. Investigated via `git
+log --all --oneline -- Makefile`, which revealed this repository's git
+history contains two unrelated projects: 172 commits (commit `562a7db`
+through `e5af9c5`) belonging to an entirely different, earlier personal
+project (a flight/airline-booking system built with sqlc, gRPC, buf, goa —
+commit messages like "ailrne company impilmented", "moved from
+Database/sql to pgx", "monte carlo and inspirational booking schema"), then
+commit `e5af9c5` ("deleted") removed that project's tracked files, and the
+very next commit, `6ee6557` ("moved awo framework here"), is where Awo
+itself begins.
+
+The untracked `Makefile` is **not byte-identical** to that old project's own
+tracked Makefile (compared directly via `git show e5af9c5^:Makefile`) — it
+has been partially adapted: rebranded "AWO ERP" in its header, given
+`DB_NAME ?= awo` (matching this project's actual conventions, not the old
+project's `flight` database), but still references paths that do not exist
+in this repository at all (`internal/core`, `internal/shared`,
+`internal/adapters`, `framework/db/migrations`) and a `REQUIRED_TOOLS` list
+including `awoctl` (plausibly this project's own CLI, `cmd/awo/`) alongside
+tools from the old project (`sqlc`, `mockgen`). It defines only 3 targets —
+`help`, `check-tools`, `status` — and stops there; it does not yet implement
+`infra-up`, `migrate-up`, `run`, or `db-test-setup`, all of which
+`docs/20-devops/LOCAL_DEVELOPMENT.md` already documents as the expected
+local-development workflow (`docs/20-devops/LOCAL_DEVELOPMENT.md:100-141`).
+No credentials or dangerous commands were found — `DB_USER ?= admin` /
+`DB_PSSWD ?= admin` are the same well-known local-dev placeholder values
+used throughout this session's own test fixtures, not a real secret.
+
+**Conclusion: legitimate, intended, but unfinished Awo infrastructure (not
+an unrelated artifact)** — an incomplete draft of the Makefile the project's
+own documentation already assumes exists, built starting from the old
+project's Makefile as a structural template. Not deleted, not modified, not
+staged. The user should decide whether to finish it, discard it, or leave it
+as a local scratch file — that decision was not made here.
+
+## A2. CRITICAL, newly-discovered finding: `ScopeOrganization` RLS provides no actual isolation
+
+While re-verifying the organisation-RLS tests from item 1.9 with the
+*complete*, accurate DDL shape `generator.go` actually emits (the original
+test fixture only created the `org_isolation` policy — `org_id =
+current_org_id()` — and omitted the `tenant_isolation` policy every
+non-System-scope entity, `ScopeOrganization` included, also always
+receives), both previously-"passing" isolation tests failed. Root cause,
+confirmed directly against real PostgreSQL with a minimal reproduction
+outside any test framework:
+
+```sql
+CREATE POLICY t_tenant_isolation ON t USING (tenant_id = current_tenant_id());
+CREATE POLICY t_org_isolation    ON t USING (org_id = current_org_id());
+```
+
+Both `CREATE POLICY` statements above are **PERMISSIVE** (the default —
+neither is declared `AS RESTRICTIVE`). PostgreSQL combines multiple
+permissive policies applicable to the same command with **OR**, not AND: a
+row is visible/writable if it satisfies **at least one** applicable
+permissive policy, not all of them. Reproduced directly via `psql` (non-superuser
+`awo_app` role, real RLS-forced table):
+
+- **INSERT**: a row with the caller's own `tenant_id` but an `org_id`
+  belonging to an organisation the caller has no context for **succeeds**
+  (`INSERT 0 1`) — `tenant_isolation`'s check alone is sufficient.
+- **UPDATE**: reassigning an existing row's `org_id` to a foreign
+  organisation, while leaving `tenant_id` correct, **succeeds** (`UPDATE
+  1`) — same reason.
+- **SELECT**: with both policies present, a caller in Org A's context sees
+  **both** Org A's and Org B's rows within the same tenant — `org_isolation`
+  is not merely bypassable for writes, it provides **zero** read isolation
+  either, because `tenant_isolation`'s `USING` clause alone already
+  satisfies the OR-combined check for every row in the tenant.
+
+In short: **for any entity using `ScopeOrganization`/`ScopeOrganizationTree`,
+the org-scoping RLS policy is currently a complete no-op** the moment the
+(always-present) tenant-isolation policy is also in effect — which is
+always, for every real entity. This is not a narrow edge case; it is the
+normal, only-possible configuration for this scope type as currently
+generated.
+
+**Not closed by `Repository.checkWritableField`** (the fix for
+`updateSystem`/`BulkUpdate`'s injection, §9 above): that check excludes
+fields absent from the entity's `FieldsByName`/`Fields`, but `org_id` is
+**not** an implicit standard column the way `tenant_id` is —
+`generator.go`'s `generateEntitySQL` hardcodes `id`, `tenant_id`,
+`created_at`, `updated_at`, `deleted_at` unconditionally, but has no
+equivalent unconditional `org_id UUID` column for `ScopeOrganization`/
+`ScopeOrganizationTree` entities at all. An entity author would have to
+declare `org_id` as an ordinary field themselves for the column to exist —
+meaning `checkWritableField` would treat it exactly like any other
+business field and allow it through a generic patch, compounding the RLS
+gap with a write-path gap too, unless the entity author separately marks it
+`Immutable: true` (which nothing currently enforces or even suggests).
+
+**Exploitability: zero today.** Confirmed via exhaustive source search that
+**no entity in this codebase declares `ScopeOrganization` or
+`ScopeOrganizationTree`** — the only references are the framework's own
+generator/RLS-helper code, never a real `def.EntityDefinition`. Consistent
+with `platform/organization.OrganizationService` being 100% stubbed. This is
+a landmine, not a live incident, in the same category as the
+`Repository.Aggregate`/`report.GenerateSQL` findings (§8) — but far more
+severe in *kind*, since it defeats an entire RLS scope's isolation
+guarantee outright rather than lacking input validation on top of a sound
+boundary.
+
+**Recorded, not fixed, in this pass** — deliberately: the correct fix is a
+genuine RLS-architecture decision (candidates: declare `org_isolation` `AS
+RESTRICTIVE` so it ANDs with the permissive `tenant_isolation` policy;
+combine both conditions into a single policy expression, `USING (tenant_id
+= current_tenant_id() AND org_id = current_org_id())`; or make `org_id` a
+generator-managed standard column excluded from `FieldsByName` the same way
+`tenant_id` is) and deserves its own dedicated review, not a rushed change
+inside an already-large verification pass. Logged as a new `tasks.md` item
+(1.18) with CRITICAL severity and an explicit block on any real
+`ScopeOrganization` usage or Phase 3 (organisation hierarchy) work until
+resolved.
+
+**Regression tests** (`contrib/pgx/organization_security_test.go`):
+`TestOrganizationRLS_SiblingOrgsIsolated` and
+`TestOrganizationRLS_NoOrgContext_SeesNothing` were corrected to assert the
+real, current (broken) behavior against the accurate two-policy DDL, with
+extensive comments explaining the correction and stating that a future fix
+must flip these assertions back, not delete them. A new test,
+`TestOrganizationRLS_KnownGap_MultiplePermissivePoliciesAllowOrgReassignment`,
+directly proves the INSERT and UPDATE cross-organisation writes described
+above. All three pass (i.e., correctly document current reality).
+
+## A3. Full write-path trace (Part 2 of this pass)
+
+Traced `PATCH /api/v1/entities/:entity/:id` end-to-end: routes are
+registered once per **compiled** entity (`for _, es := range
+schema.Entities` in `api/router/router.go`, each bound to its own
+`*compiler.EntitySchema` and `contrib.NewRepository` instance at startup) —
+there is no runtime table-name resolution from a client-supplied string, so
+an attacker cannot target an unregistered table via the URL. Confirmed both
+production entrypoints (`cmd/server/main.go`, `cmd/awo/serve_impl.go`) wire
+real, non-nil `IAM`/`Tenants`/`Authz` into `RegisterOptions`, so
+`TenantResolver` → `RequireAuth` → per-method RBAC are all genuinely active
+in front of every entity route (they are each individually conditional on
+these options being non-nil in `router.Register`'s implementation — worth
+knowing if a future caller ever constructs `RegisterOptions` incompletely,
+but not a defect today). `Repository.checkWritableField` lives at the
+lowest common layer (inside `Repository.Update`/`BulkUpdate` themselves),
+so every caller — the generated CRUD handler, any future custom `ActionDef`
+handler that happens to call `Repository.Update`, any internal service —
+automatically inherits the protection; there is no parallel code path that
+writes to a system entity's typed columns while bypassing the repository.
+The one custom `ActionDef.HandlerFunc` that exists in the codebase today
+(`platform/notification`'s `mark_read`) is a no-op stub that never touches
+the request body or the repository, so this is a described trust boundary
+for future module authors, not a currently-realized gap. The audit-write
+path (`RunAuditRecord` → `audit.pg_writer`/`transactional_writer`) stores
+`BeforeData`/`AfterData` as JSON-marshaled blobs, never as dynamic SQL
+identifiers — confirmed no injection surface there either.
+
+## A4. Protected/system field taxonomy (Part 3 of this pass)
+
+Determined from actual generator/compiler source, not assumed:
+
+| Field | Mechanism | Client-writable via generic PATCH? |
+|---|---|---|
+| `id`, `tenant_id`, `created_at`, `updated_at` | Hardcoded standard columns in `generateEntitySQL`; never added to `es.Fields`/`FieldsByName` | No — excluded by `checkWritableField` structurally (proven by test) |
+| `deleted_at` | Same as above — emitted unconditionally, but no repository method currently implements soft-delete against it | No — same exclusion (proven by test), though currently inert either way |
+| `custom_fields` | System-managed JSONB column, merged only via `UpdateInput.CustomFields`'s dedicated path | No — excluded (proven by test); a `custom_fields` key inside `Data` is rejected, not silently accepted |
+| `org_id` (`ScopeOrganization`/`ScopeOrganizationTree`) | **Not** an implicit standard column — must be declared as an ordinary field by the entity author | **Yes**, unless the author separately marks it `Immutable: true` — nothing currently prompts or enforces that. Moot today (§A2 — no entity uses this scope), but a real gap the moment one does |
+| `created_by`/`updated_by`/`deleted_by`/`version`/`revision` | Do not exist as framework concepts anywhere (`def`/`compiler`/`generator`) | N/A — would need to be declared as ordinary fields, subject to the same `Immutable: true` responsibility as any other business field |
+| `status` / lifecycle fields | Ordinary `FieldTypeSelect` fields with a DB `CHECK` constraint on declared `Options`; no built-in transition/state-machine validation | Yes, by design — transition rules are the entity author's responsibility via `BeforeUpdate`/`BeforeSave` hooks, the framework's existing and correct extension point |
+| Ordinary declared business fields | `es.Fields`/`FieldsByName`, optionally `Immutable: true` | Yes, unless `Immutable: true` (checked by `runtime/pipeline.go`'s `RunBeforeUpdate`, a layer above and independent of `checkWritableField`) |
+
+New regression tests added: `TestUpdate_UpdatedAtInPatchBody_Rejected`,
+`TestUpdate_DeletedAtInPatchBody_Rejected` (explicit, named coverage for
+two more fields from the requested checklist, beyond the
+`tenant_id`/`id`/`custom_fields`/generic-undeclared-column tests already in
+place).
+
+## A5. Tenant-boundary regression (Part 4 of this pass)
+
+Two new tests added, both against real PostgreSQL with the non-superuser
+`awo_app` role: `TestUpdate_CreateInputCannotSmuggleTenantID` (proves
+`Create` is structurally immune to the class of bug `Update` had —
+`createSystem` looks up values from its own known field list rather than
+iterating the client map's keys, so a `"tenant_id"` key in `CreateInput.Data`
+is silently ignored, never written) and
+`TestUpdate_CrossTenantByID_RejectedAsNotFound` (Tenant B cannot `Update` a
+record it can name the exact ID of but that belongs to Tenant A — RLS
+filters the `UPDATE ... WHERE "id" = $N` to zero affected rows, surfaced as
+`*runtime.NotFoundError`; confirmed via a direct superuser query afterward
+that Tenant A's row is byte-for-byte unmodified). Combined with the
+already-existing `TestFilterSecurity_BulkUpdate_CannotCrossTenant` and
+`TestFilterSecurity_Delete_CannotCrossTenant`, and the corrected §A2
+findings, tenant-level RLS remains fully sound and RLS remains the final
+enforcement boundary for **tenant** isolation specifically — the boundary
+proven broken in this addendum is the separate, currently-unused
+**organisation** dimension.
+
+## A6. WithTx rollback-error safety (Part 7 of this pass) — confirmed from pgx's own source, not a live simulation
+
+The one remaining unverified item from the original panic-safety analysis —
+"what if `Rollback` itself fails?" — was answered definitively by reading
+`pgxpool`'s own source rather than attempting a fragile live simulation:
+
+```go
+// github.com/jackc/pgx/v5/pgxpool/tx.go
+func (tx *Tx) Rollback(ctx context.Context) error {
+	err := tx.t.Rollback(ctx)
+	if tx.c != nil {
+		tx.c.Release()   // unconditional — runs even if the line above returned an error
+		tx.c = nil
+	}
+	return err
+}
+```
+
+And `pgxpool.Conn.Release()` itself: if the connection is closed, busy, or
+not in the idle transaction state (`TxStatus() != 'I'` — exactly the state
+a failed Rollback would leave it in), `Release()` calls `res.Destroy()` and
+triggers a pool health check, rather than returning a potentially-corrupted
+connection for reuse. This gives an unconditional, library-level guarantee
+covering the scenario a live test could only ever probabilistically
+approximate: whether `Rollback`'s own wire operation succeeds or fails, the
+connection is either safely returned to the pool or safely destroyed and
+replaced — never left in permanent limbo, and never handed to another
+tenant in an unknown state.
+
+## A7. Re-verification summary (Parts 8–11 of this pass)
+
+Full targeted re-run of every previously-fixed Phase 1 security area
+(pgx/v5 error compatibility, all five tenant-lifecycle statuses,
+`set_tenant_context`, RLS isolation, connection-pool tenant isolation,
+session-revocation tombstones, `/auth/logout`, `/auth/me`, platform-admin
+policy tests) plus the full `go test ./...` (67 packages, zero failures)
+after every change in this addendum — all green, no regressions introduced
+by any fix in the original report or this addendum. `gofmt`/`go vet`/`go
+build` clean. `go test -race` remains unsupported on this sandbox
+(android/arm64) — not falsely claimed as run. Dependabot re-checked: same 14
+open alerts as the original triage, none newly relevant to the security
+boundary, PostgreSQL/pgx, auth/session handling, HTTP parsing, or SQL
+generation — no action taken, consistent with the original triage.
+
+## A8. Original P0s — re-confirmed via fresh source evidence
+
+- **Bulk import bypasses audit/validation**: `ioport/importer.go` still
+  calls `repo.BulkCreate` directly at 3 call sites, zero pipeline
+  integration. Confirmed unresolved.
+- **Workflow-outbox durability**: no `workflow_outbox` file exists anywhere
+  in the repository (`find . -iname '*workflow_outbox*'` → empty);
+  `EntityService.startWorkflows` (`api/service/entity.go`) is unchanged.
+  Confirmed unresolved.
+
+Neither was touched, implemented, or marked complete in this addendum.
+
+## A9. Updated acceptance — what changed since the original report
+
+Every criterion in the original acceptance matrix (§21) still holds exactly
+as stated **for the ORDER BY / write-path-injection / WithTx scope this
+report's main body targeted**. This addendum does not overturn any of those
+28 PASS lines. It adds one finding **outside that original scope** (RLS
+policy composition for an entirely unused scope type, not an untrusted-
+identifier injection) that must be tracked and fixed before `ScopeOrganization`
+is ever used in production, and corrects two tests whose original fixture
+did not match the DDL `generator.go` actually emits.
+
+## A10. Final security decision (re-affirmed with the new finding disclosed)
+
+**SECURITY CLOSED** for the scope this report and its addendum actually
+targeted: the `ORDER BY` injection, the `updateSystem`/`BulkUpdate`
+write-path injection and tenant/id-reassignment bug, the `Aggregate`/
+`report.GenerateSQL` equivalent-shape landmines, and the `WithTx`
+panic-safety gap are all fixed, regression-tested against real PostgreSQL
+(with explicit red/green verification for both P0s), and re-verified
+without regression across every previously-fixed Phase 1 security area and
+the full test suite.
+
+This is **explicitly qualified**, not unconditional: the organisation-scope
+RLS composition bug found in this addendum (§A2) is a real, CRITICAL-severity
+gap with zero production exploitability today (no entity uses
+`ScopeOrganization` anywhere in the codebase) that must be resolved —
+tracked as `tasks.md` 1.18 — before Phase 3 (organisation hierarchy) begins
+or before any entity ever declares `ScopeOrganization`/`ScopeOrganizationTree`
+in production. It does not reopen this report's own closure decision because
+it sits outside the scope that decision covers (an unused capability's RLS
+design, not an untrusted-identifier injection reachable today), but it must
+not be lost track of, and Phase 3 must not begin without it being resolved
+first.
+
+The two pre-existing P0s (bulk-import audit bypass, workflow-outbox
+durability) remain tracked, confirmed unresolved via fresh source evidence,
+and untouched by this addendum, exactly as required.

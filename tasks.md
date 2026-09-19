@@ -222,6 +222,16 @@ this section is the roadmap-tracking summary.
 - **TESTS (real PostgreSQL, `pool_max_conns=1`):** `TestWithTx_PanicBeforeAnyMutation_RollsBackAndReleasesConnection`, `TestWithTx_PanicAfterMutation_RollsBackTheMutationToo`, `TestWithTx_PanicInNestedCall_CaughtByOutermostRollback` (proves the outer transaction's defer catches a panic from inside a nested `WithTx` call, which does no transaction management of its own via the `existing.InTx()` short-circuit), `TestWithTx_NoPanic_StillCommitsNormally` (regression guard on ordinary commit behavior). Verified red first via a throwaway, bounded-timeout diagnostic against the reverted code (confirmed genuine connection exhaustion, not inferred), then green after restoring the fix.
 - **ACCEPTANCE CRITERIA:** [x] Panic still propagates to the caller (not swallowed). [x] Connection is provably reusable by a different tenant immediately afterward. [x] A mutation performed before the panic is rolled back, not partially committed. [x] A panic inside a nested `WithTx` call is still caught by the outermost transaction's cleanup. [x] Ordinary (non-panicking) commit behavior unchanged.
 
+### 1.18 CRITICAL: `ScopeOrganization`/`ScopeOrganizationTree` RLS provides no actual isolation (found during final forensic verification)
+- [ ] **STATUS: open, CRITICAL severity, zero production exploitability today — must block Phase 3 and any real `ScopeOrganization` usage until resolved.**
+- **GOAL:** Make the organisation-scoping RLS policy actually isolate organisations, not merely coexist syntactically with the tenant-isolation policy.
+- **WHY:** `generator.go` emits TWO separate `CREATE POLICY` statements for every `ScopeOrganization`/`ScopeOrganizationTree` entity — the org-scope policy AND the `tenant_isolation` policy every non-System-scope entity also gets. Both are PERMISSIVE (the `CREATE POLICY` default). PostgreSQL combines multiple permissive policies with OR, not AND: a row passes if it satisfies AT LEAST ONE applicable permissive policy. Since `tenant_isolation` alone is satisfied by every row in the tenant regardless of `org_id`, the org-scope policy is a complete no-op — for SELECT, INSERT, and UPDATE alike. Reproduced directly against real PostgreSQL (non-superuser `awo_app` role): a caller in Org A's context sees Org B's rows too; INSERT with a foreign `org_id` (correct `tenant_id`) succeeds; UPDATE reassigning an existing row's `org_id` to a foreign organisation succeeds. This also isn't caught by `Repository.checkWritableField` (item 1.14) — unlike `tenant_id`, `org_id` is not an implicit standard column in `generateEntitySQL`; an entity author would have to declare it as an ordinary field, which `checkWritableField` would then treat like any other business field.
+- **EXPLOITABILITY:** None today — confirmed via exhaustive source search that zero entities in this codebase declare `ScopeOrganization`/`ScopeOrganizationTree` (consistent with `platform/organization.OrganizationService` being 100% stubbed, tracked separately under Phase 3). This is a landmine in an unused capability, not a live incident.
+- **FILES:** `generator/generator.go` (RLS policy emission for `ScopeOrganization`/`ScopeOrganizationTree`), `contrib/pgx/organization_security_test.go` (corrected fixture + new regression tests, this pass).
+- **CANDIDATE FIXES (decision not made — needs its own dedicated review, not a rushed change):** (a) declare the org-scope policy `AS RESTRICTIVE` so it ANDs with the permissive `tenant_isolation` policy instead of OR-ing; (b) combine both conditions into one policy expression (`USING (tenant_id = current_tenant_id() AND org_id = current_org_id())`); (c) make `org_id` a generator-managed standard column excluded from `FieldsByName`, the same way `tenant_id` is, closing the companion write-path gap at the same time.
+- **TESTS (already added, documenting current — broken — behavior, real PostgreSQL, non-superuser role):** `TestOrganizationRLS_SiblingOrgsIsolated` and `TestOrganizationRLS_NoOrgContext_SeesNothing` (corrected to use the real two-policy DDL shape and assert the actual, current behavior — both now documented as "KNOWN GAP" rather than silently passing against an inaccurate single-policy fixture that never exercised the interaction), `TestOrganizationRLS_KnownGap_MultiplePermissivePoliciesAllowOrgReassignment` (proves the INSERT/UPDATE cross-organisation write cases directly). When this item is fixed, these three tests' assertions must be flipped back to assert real isolation — not deleted or loosened.
+- **ACCEPTANCE CRITERIA:** [ ] A fix approach chosen and documented. [ ] Sibling-organisation SELECT isolation restored (test flipped back to asserting isolation, passing). [ ] Cross-organisation INSERT/UPDATE rejected (new test asserting rejection, passing). [ ] Fix verified against real PostgreSQL with a non-superuser role. [ ] `RLS_SPEC.md` updated if the fix changes how `ScopeOrganization` policies are documented.
+
 ---
 
 ## Phase 2 — Close the P1 Architecture/Dependency Gaps
@@ -274,6 +284,14 @@ this section is the roadmap-tracking summary.
 ---
 
 ## Phase 3 — Organisation Hierarchy (make it real)
+
+**BLOCKED on Phase 1 item 1.18 (CRITICAL, found during final forensic security verification):
+the `ScopeOrganization`/`ScopeOrganizationTree` RLS policy currently provides zero actual
+isolation — see 1.18 above for the full reproduction. Do not begin implementing
+`OrganizationService` or declaring any real `ScopeOrganization` entity until 1.18 is resolved
+and its regression tests are flipped back to asserting real isolation; doing so first would
+ship a working-looking organisation hierarchy with no actual database-level enforcement
+behind it.**
 
 ### 3.1 Implement `OrganizationService`
 - [ ] **GOAL:** Create/Move/ResolveScope actually work.
