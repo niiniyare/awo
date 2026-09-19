@@ -30,6 +30,7 @@ import (
 	"awo.so/awo/driver"
 	"awo.so/awo/events"
 	"awo.so/awo/filter"
+	"awo.so/awo/ioport"
 	"awo.so/awo/runtime"
 )
 
@@ -42,6 +43,13 @@ type EntityService struct {
 	publisher events.Publisher      // durable outbox write for Create/Update/Delete
 	sanitizer *audit.Sanitizer      // redacts Sensitive fields from outbox payloads
 }
+
+// Compile-time assertion that *EntityService satisfies ioport's own,
+// deliberately narrow persistence dependency (Phase 2 Step 5) — ioport does
+// not import this package, so this is the one place that would fail to
+// build if CreateBatch's signature ever drifted from what ioport.Import
+// requires.
+var _ ioport.EntityBatchMutator = (*EntityService)(nil)
 
 // NewEntityService creates an EntityService.
 // temporal may be nil; workflow starts will fail gracefully if so.
@@ -245,6 +253,114 @@ func (s *EntityService) Exists(ctx context.Context, f *filter.Filter) (bool, err
 // the raw repository.
 func (s *EntityService) WithTx(ctx context.Context, fn func(context.Context) error) error {
 	return s.repo.WithTx(ctx, fn)
+}
+
+// CreateBatch runs the full create lifecycle for multiple records sharing
+// ONE flush transaction (Phase 2 Step 5 — bulk import through the canonical
+// mutation pipeline; PHASE2_ARCHITECTURE_PLAN.md Step 5; ADR-025 §14). It is
+// the sole persistence path ioport.Import uses (via the ioport.
+// EntityBatchMutator interface, which *EntityService satisfies
+// structurally) — bulk import no longer calls repo.BulkCreate directly and
+// unconditionally, bypassing validation, hooks, audit, and the outbox.
+//
+// Sequence, matching ADR-025 §14 exactly:
+//
+//  1. RunBeforeCreate for every row, outside any transaction — identical to
+//     Create's own pre-persist stage (defaults, validation, before hooks).
+//     If skipInvalid is false, the first row that fails aborts the call
+//     immediately: no transaction is opened, nothing is persisted, and the
+//     returned error is the caller's (ioport's) signal to abort the whole
+//     import when ImportOptions.SkipErrors is false. If skipInvalid is
+//     true, a failing row is recorded in the result's Skipped list and
+//     excluded from the flush; the remaining valid rows still proceed.
+//  2. ONE repo.WithTx wraps repo.BulkCreate (the existing fast multi-row
+//     INSERT — unchanged, still hookless on its own) for every row that
+//     passed step 1, followed by RunAuditRecord + RunAfterCreate +
+//     publishLifecycleEvent for EACH row BulkCreate returns — one audit
+//     record and one outbox event per row, not one summary per flush.
+//     repo.BulkCreate's own internal WithTx call joins this already-open
+//     transaction rather than starting a second one (repo.WithTx is
+//     reentrant — verified by contrib/pgx's own nested-transaction tests),
+//     so the batch INSERT and every row's audit/after-hook/outbox write
+//     commit or roll back together: per-flush atomicity, matching
+//     BulkCreate's own pre-existing "all succeed or all fail" contract,
+//     now extended to cover the canonical pipeline stages instead of a raw
+//     INSERT with nothing else.
+//  3. StartWorkflow triggers fire once per successfully committed record,
+//     after the transaction commits — identical timing to Create's own
+//     startWorkflows call.
+//
+// Tenant identity is never taken from row data: every row in the batch is
+// persisted under the single TenantContext already active in ctx (the same
+// mechanism repo.Create/repo.BulkCreate already use — tenant.FromContext,
+// enforced again at the database level by RLS), exactly like Create. A
+// "tenant_id" column in imported data has no path to influence the
+// persisted tenant — repo.BulkCreate never reads it from CreateInput.Data.
+func (s *EntityService) CreateBatch(ctx context.Context, rows []map[string]any, actor *def.Actor, skipInvalid bool) (*def.BatchCreateResult, error) {
+	if len(rows) == 0 {
+		return &def.BatchCreateResult{}, nil
+	}
+
+	assembled := make([]*def.EntityRecord, 0, len(rows))
+	var skipped []def.BatchRowError
+	for i, data := range rows {
+		pctx := &runtime.CreateContext{
+			Ctx:        ctx,
+			EntityName: s.schema.QualifiedName,
+			Data:       data,
+			Actor:      actor,
+		}
+		record, err := s.pipeline.RunBeforeCreate(pctx)
+		if err != nil {
+			if !skipInvalid {
+				return nil, fmt.Errorf("row %d: %w", i+1, err)
+			}
+			skipped = append(skipped, def.BatchRowError{Index: i, Err: err})
+			continue
+		}
+		assembled = append(assembled, record)
+	}
+
+	if len(assembled) == 0 {
+		return &def.BatchCreateResult{Skipped: skipped}, nil
+	}
+
+	var created []*def.EntityRecord
+	if err := s.repo.WithTx(ctx, func(txCtx context.Context) error {
+		inputs := make([]driver.CreateInput, len(assembled))
+		for i, rec := range assembled {
+			inputs[i] = driver.CreateInput{
+				Data:         rec.Data,
+				CustomFields: rec.CustomFields,
+				Actor:        actor,
+			}
+		}
+		var err error
+		created, err = s.repo.BulkCreate(txCtx, inputs)
+		if err != nil {
+			return err
+		}
+		for _, rec := range created {
+			if err := s.pipeline.RunAuditRecord(txCtx, rec, nil, rec.Data); err != nil {
+				return err
+			}
+			if err := s.pipeline.RunAfterCreate(txCtx, rec); err != nil {
+				return err
+			}
+			if err := s.publishLifecycleEvent(txCtx, events.EventCreated, rec, actor); err != nil {
+				return err
+			}
+		}
+		return nil
+	}); err != nil {
+		return &def.BatchCreateResult{Skipped: skipped}, err
+	}
+
+	for _, rec := range created {
+		s.startWorkflows(ctx, def.EventOnCreate, rec, actor)
+	}
+
+	return &def.BatchCreateResult{Created: created, Skipped: skipped}, nil
 }
 
 // startWorkflows fires Temporal workflows for matching triggers.
