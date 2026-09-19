@@ -50,14 +50,22 @@ type Allowlist struct {
 // NewAllowlist builds an Allowlist from an EntitySchema. The allowed set
 // includes all declared field names plus the standard framework columns
 // (id, tenant_id, created_at, updated_at, deleted_at).
+//
+// Reads from both es.Fields and es.FieldsByName — a real CompiledSchema
+// (compiler.Compile) always populates both consistently, but this stays
+// robust for any caller (tests included) that constructs an EntitySchema by
+// hand and only populates one of the two.
 func NewAllowlist(es *compiler.EntitySchema) *Allowlist {
-	allowed := make(map[string]bool, len(es.Fields)+8)
+	allowed := make(map[string]bool, len(es.Fields)+len(es.FieldsByName)+8)
 	// Standard framework columns present on every system entity table.
 	for _, col := range []string{"id", "tenant_id", "created_at", "updated_at", "deleted_at"} {
 		allowed[col] = true
 	}
 	for _, f := range es.Fields {
 		allowed[f.Name] = true
+	}
+	for name := range es.FieldsByName {
+		allowed[name] = true
 	}
 	return &Allowlist{entityName: es.QualifiedName, allowed: allowed}
 }

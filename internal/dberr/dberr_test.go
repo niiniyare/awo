@@ -13,14 +13,14 @@ import (
 // TestParse_MatchesRealPgxV5Error proves that dberr.Parse recognizes an error
 // of the exact concrete type pgx/v5 actually returns.
 //
-// Phase 0 discovered that dberr.go imported the legacy, standalone
-// "github.com/jackc/pgconn" package (pgx v4-era) while every other framework
-// package uses pgx/v5. errors.As matches by concrete Go type, not by
-// structural shape, so *github.com/jackc/pgconn.PgError and
-// *github.com/jackc/pgx/v5/pgconn.PgError are permanently incompatible even
-// though their fields look alike. Before the import fix, this test fails:
-// Parse falls through to the generic "%s: database error (...): %w" wrap
-// branch instead of returning a typed *runtime.BusinessError.
+// dberr.go used to import the legacy, standalone "github.com/jackc/pgconn"
+// package (pgx v4-era) while every other framework package uses pgx/v5.
+// errors.As matches by concrete Go type, not by structural shape, so
+// *github.com/jackc/pgconn.PgError and *github.com/jackc/pgx/v5/pgconn.PgError
+// are permanently incompatible even though their fields look alike. Before
+// the import fix, this test fails: Parse falls through to the generic
+// "%s: database error (...): %w" wrap branch instead of returning a typed
+// *runtime.BusinessError.
 func TestParse_MatchesRealPgxV5Error(t *testing.T) {
 	tests := []struct {
 		name     string

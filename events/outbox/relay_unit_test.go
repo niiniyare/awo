@@ -60,16 +60,30 @@ func TestSubscribe_Wildcard(t *testing.T) {
 	r.Subscribe("", sub)
 }
 
-// TestOutboxWriter_Publish_NilPoolPanics verifies production invariant: calling
-// Publish on an OutboxWriter constructed with nil pool surfaces a panic from
-// the pool — not a silent data-loss bug.
+// TestOutboxWriter_Publish_NoActiveTransaction_ReturnsErrorNotPanic verifies
+// the Step 1 transaction-join contract at the unit level (no real PostgreSQL
+// needed, since the failure must occur before any database access is
+// attempted): Publish resolves its connection via tx.QuerierFromContext, not
+// via the OutboxWriter's own pool field, so a bare context.Background() (no
+// active transaction) must produce a clear, returned error — never a panic,
+// and never a silent, accidental fallback to an auto-commit connection.
 //
-// This is a documentation test. In practice, bootstrap.go always provides a
-// real pool. We just confirm that the relay fails loudly, not silently.
-func TestOutboxWriter_Publish_NilPoolPanics(t *testing.T) {
-	w := outbox.NewWriter(nil)
-	require.Panics(t, func() {
-		_ = w.Publish(context.Background(), events.DomainEvent{
+// This replaces a prior version of this test that asserted Publish panicked
+// when constructed with a nil pool — that was true only because the old
+// implementation dereferenced w.pool directly (w.pool.Acquire(ctx)). Once
+// Publish stopped touching pool at all (Step 1's transaction-join fix), that
+// scenario no longer applies; nil pool is irrelevant to Publish's behavior
+// now, and the correct failure mode for "no active transaction" is a
+// returned error, not a panic — matching events.Publisher's documented
+// contract ("Publisher.Publish will return an error if no active
+// transaction is present") and this package's own error-handling
+// conventions elsewhere (e.g. audit.TransactionalWriter.Write's analogous
+// "no database connection available" error, never a panic).
+func TestOutboxWriter_Publish_NoActiveTransaction_ReturnsErrorNotPanic(t *testing.T) {
+	w := outbox.NewWriter(nil) // pool is irrelevant here — Publish never touches it
+	var err error
+	require.NotPanics(t, func() {
+		err = w.Publish(context.Background(), events.DomainEvent{
 			ID:         uuid.New(),
 			TenantID:   uuid.New(),
 			Type:       "test.event",
@@ -78,6 +92,9 @@ func TestOutboxWriter_Publish_NilPoolPanics(t *testing.T) {
 			OccurredAt: time.Now(),
 		})
 	})
+	require.Error(t, err, "Publish must return an error, not silently succeed, when ctx carries no active transaction")
+	assert.Contains(t, err.Error(), "no active transaction",
+		"the error must be specific enough to distinguish this failure mode from other insert failures")
 }
 
 // TestNilIfEmpty_ViaPayload is an indirect integration test that verifies that

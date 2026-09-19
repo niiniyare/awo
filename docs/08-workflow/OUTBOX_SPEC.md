@@ -2,9 +2,23 @@
 
 **Classification:** Specification — Tier 1
 **Owner:** `08-workflow/OUTBOX_SPEC.md`
-**Status:** Frozen at v1.0 (ADR-007)
+**Status:** Superseded by ADR-025 (Phase 2 Steps 2/3B/4/6) — see notice below. Frozen at v1.0 (ADR-007) historically.
 
----
+> **ARCHITECTURE CORRECTION (Phase 2 Step 6):** The dedicated `workflow_outbox` table this
+> document specifies below was never built, and ADR-025 deliberately supersedes this design —
+> see `docs/adr/ADR-025-transactional-events-and-workflow-durability.md`. The actual, current,
+> implemented mechanism is: workflow-start intents are written as ordinary
+> `events.DomainEvent` rows (`Type: "workflow.trigger_fired"`) into the SAME `events_outbox`
+> table lifecycle events already use (Phase 2 Step 2 migration,
+> `events/outbox/migrations/`) — there is no second outbox table. The existing
+> `events/outbox.Relay` (Phase 2 Step 3B: SKIP LOCKED claim, exponential backoff, dead-letter,
+> per-event tenant-context restoration) dispatches these rows to a dedicated
+> `events/outbox.WorkflowTriggerSubscriber` (Phase 2 Step 4), which calls
+> `workflow.WorkflowExecutor.Start`. `EntityService.Create/Update/Delete/CreateBatch` (Phase 2
+> Step 6) and `runtime.ActionContext.StartWorkflow` (Phase 2 Step 4) both publish this event
+> transactionally instead of calling Temporal directly. The schema, worker design, and SQL
+> below describe the superseded design and should not be used as an implementation reference —
+> they are retained for historical context only, pending a full rewrite of this document.
 
 ## Purpose
 

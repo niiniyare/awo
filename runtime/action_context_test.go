@@ -2,6 +2,7 @@ package runtime
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"testing"
 
@@ -9,7 +10,6 @@ import (
 
 	"awo.so/awo/def"
 	"awo.so/awo/events"
-	"awo.so/awo/workflow"
 )
 
 // --- compile-time interface check ---
@@ -52,46 +52,45 @@ func (r *noopRepo) Delete(_ context.Context, _ uuid.UUID) error {
 	return errors.New("noopRepo.Delete: not implemented")
 }
 
-// capturePublisher records the last published DomainEvent.
+// capturePublisher records every published DomainEvent.
 type capturePublisher struct {
-	last *events.DomainEvent
+	received []events.DomainEvent
 }
 
 func (p *capturePublisher) Publish(_ context.Context, e events.DomainEvent) error {
-	p.last = &e
+	p.received = append(p.received, e)
 	return nil
 }
 
-// captureExecutor records the last WorkflowSpec passed to Start.
-type captureExecutor struct {
-	last *workflow.WorkflowSpec
+func (p *capturePublisher) last() *events.DomainEvent {
+	if len(p.received) == 0 {
+		return nil
+	}
+	return &p.received[len(p.received)-1]
 }
 
-func (e *captureExecutor) Start(_ context.Context, spec workflow.WorkflowSpec) (workflow.WorkflowID, error) {
-	e.last = &spec
-	return workflow.WorkflowID("test-workflow-id"), nil
-}
-func (e *captureExecutor) Signal(_ context.Context, _ workflow.WorkflowID, _ string, _ any) error {
-	return nil
-}
-func (e *captureExecutor) Query(_ context.Context, _ workflow.WorkflowID, _ string) (any, error) {
-	return nil, nil
-}
-func (e *captureExecutor) Cancel(_ context.Context, _ workflow.WorkflowID) error { return nil }
+// failingPublisher always returns err — used to prove Publish/StartWorkflow
+// propagate the underlying events.Publisher's error rather than swallowing
+// it (e.g. the "no active transaction" case events/outbox.OutboxWriter.Publish
+// returns in production).
+type failingPublisher struct{ err error }
+
+func (p *failingPublisher) Publish(_ context.Context, _ events.DomainEvent) error { return p.err }
 
 func noopTx(ctx context.Context, fn func(context.Context) error) error { return fn(ctx) }
 
-func makeTestActionContext(pub events.Publisher, exec workflow.WorkflowExecutor) *ActionContext {
+func makeTestActionContext(pub events.Publisher) *ActionContext {
 	tenantID := uuid.New()
 	actor := &def.Actor{TenantID: tenantID}
 	return NewActionContext(ActionContextConfig{
-		Ctx:      context.Background(),
-		TenantID: tenantID,
-		Actor:    actor,
-		Publish:  pub,
-		Executor: exec,
-		TxFn:     noopTx,
-		RepoFn:   func(name string) def.ActionEntityRepo { return &noopRepo{name: name} },
+		Ctx:        context.Background(),
+		TenantID:   tenantID,
+		Actor:      actor,
+		EntityName: "finance_invoice",
+		RecordID:   uuid.New(),
+		Publish:    pub,
+		TxFn:       noopTx,
+		RepoFn:     func(name string) def.ActionEntityRepo { return &noopRepo{name: name} },
 	})
 }
 
@@ -101,13 +100,14 @@ func TestActionContext_ViewerAndTenant(t *testing.T) {
 	tenantID := uuid.New()
 	actor := &def.Actor{TenantID: tenantID, Roles: []string{"role:tenant.admin"}}
 	ac := NewActionContext(ActionContextConfig{
-		Ctx:      context.Background(),
-		TenantID: tenantID,
-		Actor:    actor,
-		Publish:  events.NoopPublisher{},
-		Executor: workflow.NoopExecutor{},
-		TxFn:     noopTx,
-		RepoFn:   func(name string) def.ActionEntityRepo { return &noopRepo{name: name} },
+		Ctx:        context.Background(),
+		TenantID:   tenantID,
+		Actor:      actor,
+		EntityName: "finance_invoice",
+		RecordID:   uuid.New(),
+		Publish:    events.NoopPublisher{},
+		TxFn:       noopTx,
+		RepoFn:     func(name string) def.ActionEntityRepo { return &noopRepo{name: name} },
 	})
 
 	if ac.TenantID() != tenantID {
@@ -119,7 +119,7 @@ func TestActionContext_ViewerAndTenant(t *testing.T) {
 }
 
 func TestActionContext_Repo(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	repo := ac.Repo("finance_invoice")
 	if repo == nil {
 		t.Fatal("Repo: returned nil")
@@ -130,7 +130,7 @@ func TestActionContext_Repo(t *testing.T) {
 }
 
 func TestActionContext_Tx(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	called := false
 	err := ac.Tx(context.Background(), func(_ context.Context) error {
 		called = true
@@ -146,7 +146,7 @@ func TestActionContext_Tx(t *testing.T) {
 
 func TestActionContext_Publish(t *testing.T) {
 	cap := &capturePublisher{}
-	ac := makeTestActionContext(cap, workflow.NoopExecutor{})
+	ac := makeTestActionContext(cap)
 
 	err := ac.Publish(context.Background(), def.ActionEvent{
 		Topic:   "finance.invoice.submitted",
@@ -155,21 +155,58 @@ func TestActionContext_Publish(t *testing.T) {
 	if err != nil {
 		t.Fatalf("Publish: unexpected error: %v", err)
 	}
-	if cap.last == nil {
+	last := cap.last()
+	if last == nil {
 		t.Fatal("Publish: no event received by publisher")
 	}
-	if cap.last.ActionName != "finance.invoice.submitted" {
-		t.Errorf("Publish: ActionName got %q, want %q", cap.last.ActionName, "finance.invoice.submitted")
+	if last.ActionName != "finance.invoice.submitted" {
+		t.Errorf("Publish: ActionName got %q, want %q", last.ActionName, "finance.invoice.submitted")
 	}
 	// TenantID must be auto-populated from the context tenant.
-	if cap.last.TenantID == uuid.Nil {
+	if last.TenantID == uuid.Nil {
 		t.Error("Publish: TenantID must be auto-populated when left zero in ActionEvent")
+	}
+	// EntityName/RecordID must be populated from the ActionContext's own
+	// binding — a real, previously-undiscovered bug (Step 4): the outbox
+	// schema's entity_name/record_id columns are NOT NULL, so leaving them
+	// zero would make every real Publish call fail at the database layer.
+	if last.EntityName != "finance_invoice" {
+		t.Errorf("Publish: EntityName got %q, want %q", last.EntityName, "finance_invoice")
+	}
+	if last.RecordID == uuid.Nil {
+		t.Error("Publish: RecordID must be populated from the ActionContext's own binding, not left zero")
+	}
+	// Payload must be genuine JSON (Step 4 fix: json.Marshal, not
+	// fmt.Sprintf("%v", ...)) — round-trip it and confirm the values survive.
+	var decoded map[string]any
+	if err := json.Unmarshal(last.Payload, &decoded); err != nil {
+		t.Fatalf("Publish: payload is not valid JSON: %v (payload: %q)", err, last.Payload)
+	}
+	if decoded["status"] != "submitted" {
+		t.Errorf("Publish: payload round-trip: got %v, want status=submitted", decoded)
 	}
 }
 
-func TestActionContext_StartWorkflow(t *testing.T) {
-	cap := &captureExecutor{}
-	ac := makeTestActionContext(events.NoopPublisher{}, cap)
+func TestActionContext_Publish_PropagatesPublisherError(t *testing.T) {
+	sentinel := errors.New("no active transaction in context")
+	ac := makeTestActionContext(&failingPublisher{err: sentinel})
+
+	err := ac.Publish(context.Background(), def.ActionEvent{Topic: "x", Payload: map[string]any{}})
+	if !errors.Is(err, sentinel) {
+		t.Errorf("Publish: expected underlying publisher error to propagate, got %v", err)
+	}
+}
+
+// TestActionContext_StartWorkflow_PublishesDurableIntent_NotDirectTemporalCall
+// is the central Step 4 regression test at the unit level: StartWorkflow
+// must publish an EventWorkflowTriggerFired domain event through the same
+// events.Publisher Publish uses — it must never call a workflow executor
+// directly. There is no workflow.WorkflowExecutor dependency on ActionContext
+// at all anymore (see ActionContextConfig — Executor was removed); if
+// StartWorkflow tried to call one, this test file would not compile.
+func TestActionContext_StartWorkflow_PublishesDurableIntent_NotDirectTemporalCall(t *testing.T) {
+	cap := &capturePublisher{}
+	ac := makeTestActionContext(cap)
 
 	wid, err := ac.StartWorkflow(context.Background(), def.ActionWorkflowSpec{
 		WorkflowFn: "SubmitInvoiceWorkflow",
@@ -182,33 +219,72 @@ func TestActionContext_StartWorkflow(t *testing.T) {
 	if wid == "" {
 		t.Error("StartWorkflow: returned empty workflowID")
 	}
-	if cap.last == nil {
-		t.Fatal("StartWorkflow: executor.Start not called")
+
+	last := cap.last()
+	if last == nil {
+		t.Fatal("StartWorkflow: no event published — the durable intent must be an outbox event, not a direct executor call")
 	}
-	if cap.last.TaskQueue != "finance.invoice.submit" {
-		t.Errorf("StartWorkflow: TaskQueue got %q, want %q", cap.last.TaskQueue, "finance.invoice.submit")
+	if last.Type != events.EventWorkflowTriggerFired {
+		t.Errorf("StartWorkflow: event Type got %q, want %q", last.Type, events.EventWorkflowTriggerFired)
+	}
+	if last.EntityName != "finance_invoice" || last.RecordID == uuid.Nil {
+		t.Errorf("StartWorkflow: EntityName/RecordID must be populated (NOT NULL outbox columns): got EntityName=%q RecordID=%v",
+			last.EntityName, last.RecordID)
+	}
+
+	var spec def.ActionWorkflowSpec
+	if err := json.Unmarshal(last.Payload, &spec); err != nil {
+		t.Fatalf("StartWorkflow: payload is not valid JSON: %v", err)
+	}
+	if spec.WorkflowFn != "SubmitInvoiceWorkflow" {
+		t.Errorf("StartWorkflow: payload WorkflowFn got %q, want %q", spec.WorkflowFn, "SubmitInvoiceWorkflow")
+	}
+	if spec.TaskQueue != "finance.invoice.submit" {
+		t.Errorf("StartWorkflow: payload TaskQueue got %q, want %q", spec.TaskQueue, "finance.invoice.submit")
+	}
+	if spec.WorkflowID != wid {
+		t.Errorf("StartWorkflow: payload WorkflowID (%q) must match the returned workflowID (%q) — "+
+			"the relay's later dispatch must use the exact same resolved ID", spec.WorkflowID, wid)
 	}
 }
 
 func TestActionContext_StartWorkflow_AutoGeneratesID(t *testing.T) {
-	cap := &captureExecutor{}
-	ac := makeTestActionContext(events.NoopPublisher{}, cap)
+	cap := &capturePublisher{}
+	ac := makeTestActionContext(cap)
 
 	// Leave WorkflowID empty — ActionContext must auto-generate one.
-	_, err := ac.StartWorkflow(context.Background(), def.ActionWorkflowSpec{
+	wid, err := ac.StartWorkflow(context.Background(), def.ActionWorkflowSpec{
 		WorkflowFn: "SomeWorkflow",
 		TaskQueue:  "some.queue",
 	})
 	if err != nil {
 		t.Fatalf("StartWorkflow: unexpected error: %v", err)
 	}
-	if cap.last.WorkflowID == "" {
+	if wid == "" {
 		t.Error("StartWorkflow: auto-generated WorkflowID must not be empty")
+	}
+
+	var spec def.ActionWorkflowSpec
+	if err := json.Unmarshal(cap.last().Payload, &spec); err != nil {
+		t.Fatalf("payload not valid JSON: %v", err)
+	}
+	if spec.WorkflowID != wid {
+		t.Errorf("auto-generated WorkflowID must be reflected in the published payload: got %q, want %q", spec.WorkflowID, wid)
+	}
+}
+
+func TestActionContext_StartWorkflow_PropagatesPublisherError(t *testing.T) {
+	sentinel := errors.New("no active transaction in context")
+	ac := makeTestActionContext(&failingPublisher{err: sentinel})
+
+	_, err := ac.StartWorkflow(context.Background(), def.ActionWorkflowSpec{WorkflowFn: "X", TaskQueue: "q"})
+	if !errors.Is(err, sentinel) {
+		t.Errorf("StartWorkflow: expected underlying publisher error to propagate, got %v", err)
 	}
 }
 
 func TestActionContext_Clock_ReturnsTime(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	now := ac.Clock()
 	if now.IsZero() {
 		t.Error("Clock: returned zero time")
@@ -216,14 +292,14 @@ func TestActionContext_Clock_ReturnsTime(t *testing.T) {
 }
 
 func TestActionContext_Logger_NotNil(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	if ac.Logger() == nil {
 		t.Error("Logger: returned nil")
 	}
 }
 
 func TestActionContext_Cache_NotNil(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	if ac.Cache() == nil {
 		t.Error("Cache: returned nil")
 	}
@@ -231,7 +307,7 @@ func TestActionContext_Cache_NotNil(t *testing.T) {
 
 func TestActionContext_Notify_NoopWhenNilFn(t *testing.T) {
 	// notifyFn is not set in makeTestActionContext — Notify must be a no-op.
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	err := ac.Notify(context.Background(), def.ActionNotification{
 		UserIDs: []uuid.UUID{uuid.New()},
 		Subject: "Test notification",
@@ -243,7 +319,7 @@ func TestActionContext_Notify_NoopWhenNilFn(t *testing.T) {
 }
 
 func TestActionContext_InvalidateCache_NoopWhenNilFn(t *testing.T) {
-	ac := makeTestActionContext(events.NoopPublisher{}, workflow.NoopExecutor{})
+	ac := makeTestActionContext(events.NoopPublisher{})
 	err := ac.InvalidateCache(context.Background(), "finance_invoice")
 	if err != nil {
 		t.Errorf("InvalidateCache: expected nil error when invalidateFn is nil; got %v", err)
@@ -260,24 +336,37 @@ func TestNewActionContext_PanicsOnNilPublish(t *testing.T) {
 		Ctx:      context.Background(),
 		TenantID: uuid.New(),
 		Publish:  nil, // intentionally nil
-		Executor: workflow.NoopExecutor{},
 		TxFn:     noopTx,
 		RepoFn:   func(string) def.ActionEntityRepo { return &noopRepo{} },
 	})
 }
 
-func TestNewActionContext_PanicsOnNilExecutor(t *testing.T) {
+func TestNewActionContext_PanicsOnNilTxFn(t *testing.T) {
 	defer func() {
 		if r := recover(); r == nil {
-			t.Error("expected panic when Executor is nil")
+			t.Error("expected panic when TxFn is nil")
 		}
 	}()
 	NewActionContext(ActionContextConfig{
 		Ctx:      context.Background(),
 		TenantID: uuid.New(),
 		Publish:  events.NoopPublisher{},
-		Executor: nil, // intentionally nil
-		TxFn:     noopTx,
+		TxFn:     nil, // intentionally nil
 		RepoFn:   func(string) def.ActionEntityRepo { return &noopRepo{} },
+	})
+}
+
+func TestNewActionContext_PanicsOnNilRepoFn(t *testing.T) {
+	defer func() {
+		if r := recover(); r == nil {
+			t.Error("expected panic when RepoFn is nil")
+		}
+	}()
+	NewActionContext(ActionContextConfig{
+		Ctx:      context.Background(),
+		TenantID: uuid.New(),
+		Publish:  events.NoopPublisher{},
+		TxFn:     noopTx,
+		RepoFn:   nil, // intentionally nil
 	})
 }

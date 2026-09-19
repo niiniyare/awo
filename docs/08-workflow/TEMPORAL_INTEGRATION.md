@@ -53,19 +53,22 @@ Custom action events can be declared for any custom action name.
 
 ---
 
-## 2. Workflow Start Protocol (ADR-007)
+## 2. Workflow Start Protocol (ADR-025, superseding ADR-007)
 
-Workflow starts are NOT direct calls to Temporal. They go through the workflow outbox:
+Workflow starts are NOT direct calls to Temporal. A matching `WorkflowTrigger` (or
+`ActionContext.StartWorkflow`) instead publishes a `workflow.trigger_fired` `events.DomainEvent`
+into the same `events_outbox` table lifecycle events use (Phase 2 Step 2/6) — there is no
+separate `workflow_outbox` table (see `docs/adr/ADR-025-transactional-events-and-workflow-durability.md`;
+`OUTBOX_SPEC.md`'s `workflow_outbox` design is superseded, not current):
 
 ```
-Entity TX commits
+Entity TX: mutation + audit + workflow-intent event, together
         │
         ▼
-Runtime writes WorkflowOutboxRecord to workflow_outbox
-(outside entity TX — see OUTBOX_SPEC.md)
+COMMIT (the event is now durable, inside events_outbox)
         │
         ▼
-Outbox worker reads pending records
+Outbox relay claims pending rows (independently, after commit)
         │
         ▼
 Worker calls Temporal.StartWorkflow()
@@ -254,7 +257,7 @@ Task queues MUST match the `TaskQueue` value in `WorkflowTrigger` declarations.
 - All I/O MUST be in Temporal activities.
 - `time.Now()` MUST NOT be called in workflow code — use `workflow.Now(ctx)`.
 - `time.Sleep()` MUST NOT be called in workflow code — use `workflow.Sleep(ctx, d)`.
-- Workflow starts MUST go through the `workflow_outbox` table (ADR-007).
+- Workflow starts MUST go through the `events_outbox` table as a durable `workflow.trigger_fired` event (ADR-025, superseding ADR-007's `workflow_outbox` design) — never a direct Temporal call from a mutation-bound code path.
 - Temporal activities MUST be idempotent (they may be retried).
 - Workflow function naming MUST follow `{Entity}{Event}Workflow`.
 - Activity function naming MUST follow `{Verb}{Noun}Activity`.

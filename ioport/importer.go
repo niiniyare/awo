@@ -3,20 +3,31 @@
 // Import feeds records into the entity pipeline (validation + hooks run for
 // each record). Export serializes query results to CSV, JSON, or JSONL.
 //
-// Both operations go through the EntityRepository interface — no direct DB
-// access. All framework invariants (immutable fields, required fields, hooks)
-// are enforced on import.
+// Import runs entirely through EntityBatchMutator — implemented by
+// *api/service.EntityService.CreateBatch (Phase 2 Step 5,
+// PHASE2_ARCHITECTURE_PLAN.md Step 5, ADR-025 §14) — never through a raw
+// repository INSERT. Every imported row receives the same validation,
+// defaults, before/after hooks, mandatory audit record, and durable outbox
+// event as a record created via the ordinary POST /entities endpoint. ioport
+// depends only on the narrow EntityBatchMutator interface below, not on
+// api/service itself, so its own dependency graph stays at the
+// driver/compiler layer — the concrete EntityService is wired in by whatever
+// constructs the call (an HTTP handler or CLI command), not by ioport.
+//
+// Export serializes Query results and remains on the plain
+// driver.EntityRepository read path — it performs no mutation and needs no
+// pipeline access.
 //
 // # Import
 //
-//	result, err := ioport.Import(ctx, schema, repo, reader, ioport.ImportOptions{
+//	result, err := ioport.Import(ctx, schema, mutator, reader, ioport.ImportOptions{
 //	    Format: ioport.FormatCSV,
 //	    Actor:  actor,
 //	})
 //
 // # Export
 //
-//	err := ioport.Export(ctx, repo, writer, ioport.ExportOptions{
+//	err := ioport.Export(ctx, schema, repo, writer, ioport.ExportOptions{
 //	    Format: ioport.FormatCSV,
 //	    Filter: filter.Eq("status", "active"),
 //	})
@@ -36,6 +47,18 @@ import (
 	"awo.so/awo/driver"
 	"awo.so/awo/filter"
 )
+
+// EntityBatchMutator is the canonical mutation-pipeline dependency Import
+// uses to persist records in bounded, flush-sized batches (ADR-025 §14).
+// Implemented by *api/service.EntityService.CreateBatch. rows are raw field
+// data maps (the same shape driver.CreateInput.Data already carries);
+// skipInvalid mirrors ImportOptions.SkipErrors — when true, a row that fails
+// validation is excluded from the flush (recorded in the result's Skipped
+// list) while the rest of the flush still proceeds; when false, the first
+// invalid row aborts the call with no transaction opened.
+type EntityBatchMutator interface {
+	CreateBatch(ctx context.Context, rows []map[string]any, actor *def.Actor, skipInvalid bool) (*def.BatchCreateResult, error)
+}
 
 // Format identifies the serialization format for import and export.
 type Format string
@@ -95,13 +118,19 @@ func (e ImportError) Error() string {
 	return fmt.Sprintf("row %d: %v", e.Row, e.Err)
 }
 
-// Import reads records from r in the specified format and creates them via repo.
-// All framework hooks and validators run for each record. Returns an ImportResult
-// and a non-nil error only when ImportOptions.SkipErrors is false and a row fails.
+// Import reads records from r in the specified format and creates them via
+// mutator's canonical batch-create pipeline (EntityBatchMutator —
+// implemented by *api/service.EntityService.CreateBatch). All framework
+// validation, defaults, before/after hooks, mandatory audit, and durable
+// outbox events run for each record, per flush (default 100 rows, ADR-025
+// §14) — never bypassed. Returns an ImportResult and a non-nil error only
+// when ImportOptions.SkipErrors is false and a row or flush fails; when true,
+// row/flush failures are recorded in ImportResult.Errors and the import
+// continues with the next row/flush.
 func Import(
 	ctx context.Context,
 	schema *compiler.EntitySchema,
-	repo driver.EntityRepository[*def.EntityRecord],
+	mutator EntityBatchMutator,
 	r io.Reader,
 	opts ImportOptions,
 ) (*ImportResult, error) {
@@ -114,20 +143,65 @@ func Import(
 
 	switch opts.Format {
 	case FormatCSV:
-		return importCSV(ctx, schema, repo, r, opts)
+		return importCSV(ctx, schema, mutator, r, opts)
 	case FormatJSON:
-		return importJSON(ctx, schema, repo, r, opts)
+		return importJSON(ctx, schema, mutator, r, opts)
 	case FormatJSONL:
-		return importJSONL(ctx, schema, repo, r, opts)
+		return importJSONL(ctx, schema, mutator, r, opts)
 	default:
 		return nil, fmt.Errorf("ioport: unknown import format %q", opts.Format)
 	}
 }
 
+// flushBatch persists batchData (whose entries correspond 1:1, in order, to
+// the 1-based input row numbers in batchRowNums) via mutator.CreateBatch,
+// merging the outcome into result in place.
+//
+// Returns a non-nil error only when the caller must abort the entire import
+// immediately (ImportOptions.SkipErrors is false and either a row failed
+// validation or the flush's shared transaction failed) — mirroring the
+// existing fail-fast convention already used for CSV/JSON parse errors.
+// When SkipErrors is true, every failure this function encounters is instead
+// appended to result.Errors and nil is returned, so the caller proceeds to
+// the next row/flush.
+func flushBatch(ctx context.Context, mutator EntityBatchMutator, opts ImportOptions, batchData []map[string]any, batchRowNums []int, result *ImportResult) error {
+	if len(batchData) == 0 {
+		return nil
+	}
+
+	res, err := mutator.CreateBatch(ctx, batchData, opts.Actor, opts.SkipErrors)
+	if res != nil {
+		result.Created += len(res.Created)
+		for _, sk := range res.Skipped {
+			row := 0
+			if sk.Index >= 0 && sk.Index < len(batchRowNums) {
+				row = batchRowNums[sk.Index]
+			}
+			ie := ImportError{Row: row, Err: sk.Err}
+			if !opts.SkipErrors {
+				return ie
+			}
+			result.Errors = append(result.Errors, ie)
+		}
+	}
+	if err != nil {
+		lastRow := 0
+		if len(batchRowNums) > 0 {
+			lastRow = batchRowNums[len(batchRowNums)-1]
+		}
+		ie := ImportError{Row: lastRow, Err: err}
+		if !opts.SkipErrors {
+			return ie
+		}
+		result.Errors = append(result.Errors, ie)
+	}
+	return nil
+}
+
 func importCSV(
 	ctx context.Context,
 	schema *compiler.EntitySchema,
-	repo driver.EntityRepository[*def.EntityRecord],
+	mutator EntityBatchMutator,
 	r io.Reader,
 	opts ImportOptions,
 ) (*ImportResult, error) {
@@ -140,20 +214,15 @@ func importCSV(
 	}
 
 	result := &ImportResult{}
-	var batch []driver.CreateInput
+	var batchData []map[string]any
+	var batchRowNums []int
 	rowNum := 1 // header is row 0
 
 	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		created, bulkErr := repo.BulkCreate(ctx, batch)
-		if bulkErr != nil {
-			return bulkErr
-		}
-		result.Created += len(created)
-		batch = batch[:0]
-		return nil
+		err := flushBatch(ctx, mutator, opts, batchData, batchRowNums, result)
+		batchData = batchData[:0]
+		batchRowNums = batchRowNums[:0]
+		return err
 	}
 
 	for {
@@ -182,21 +251,17 @@ func importCSV(
 			continue
 		}
 
-		batch = append(batch, driver.CreateInput{Data: data, Actor: opts.Actor})
-		if len(batch) >= opts.BatchSize {
+		batchData = append(batchData, data)
+		batchRowNums = append(batchRowNums, rowNum)
+		if len(batchData) >= opts.BatchSize {
 			if flushErr := flush(); flushErr != nil {
-				ie := ImportError{Row: rowNum, Err: flushErr}
-				if !opts.SkipErrors {
-					return result, ie
-				}
-				result.Errors = append(result.Errors, ie)
-				batch = batch[:0]
+				return result, flushErr
 			}
 		}
 	}
 
 	if err := flush(); err != nil {
-		return result, fmt.Errorf("ioport: csv: final flush: %w", err)
+		return result, err
 	}
 	return result, nil
 }
@@ -204,7 +269,7 @@ func importCSV(
 func importJSON(
 	ctx context.Context,
 	schema *compiler.EntitySchema,
-	repo driver.EntityRepository[*def.EntityRecord],
+	mutator EntityBatchMutator,
 	r io.Reader,
 	opts ImportOptions,
 ) (*ImportResult, error) {
@@ -214,25 +279,21 @@ func importJSON(
 	}
 
 	result := &ImportResult{Total: len(rows)}
-	var batch []driver.CreateInput
+	var batchData []map[string]any
+	var batchRowNums []int
 
 	for i, row := range rows {
 		rowNum := i + 1
 		data := normalizeJSONRow(schema, row)
-		batch = append(batch, driver.CreateInput{Data: data, Actor: opts.Actor})
+		batchData = append(batchData, data)
+		batchRowNums = append(batchRowNums, rowNum)
 
-		if len(batch) >= opts.BatchSize || i == len(rows)-1 {
-			created, err := repo.BulkCreate(ctx, batch)
-			if err != nil {
-				ie := ImportError{Row: rowNum, Err: err}
-				if !opts.SkipErrors {
-					return result, ie
-				}
-				result.Errors = append(result.Errors, ie)
-			} else {
-				result.Created += len(created)
+		if len(batchData) >= opts.BatchSize || i == len(rows)-1 {
+			if err := flushBatch(ctx, mutator, opts, batchData, batchRowNums, result); err != nil {
+				return result, err
 			}
-			batch = batch[:0]
+			batchData = batchData[:0]
+			batchRowNums = batchRowNums[:0]
 		}
 	}
 	return result, nil
@@ -241,26 +302,21 @@ func importJSON(
 func importJSONL(
 	ctx context.Context,
 	schema *compiler.EntitySchema,
-	repo driver.EntityRepository[*def.EntityRecord],
+	mutator EntityBatchMutator,
 	r io.Reader,
 	opts ImportOptions,
 ) (*ImportResult, error) {
 	dec := json.NewDecoder(r)
 	result := &ImportResult{}
-	var batch []driver.CreateInput
+	var batchData []map[string]any
+	var batchRowNums []int
 	rowNum := 0
 
 	flush := func() error {
-		if len(batch) == 0 {
-			return nil
-		}
-		created, err := repo.BulkCreate(ctx, batch)
-		if err != nil {
-			return err
-		}
-		result.Created += len(created)
-		batch = batch[:0]
-		return nil
+		err := flushBatch(ctx, mutator, opts, batchData, batchRowNums, result)
+		batchData = batchData[:0]
+		batchRowNums = batchRowNums[:0]
+		return err
 	}
 
 	for dec.More() {
@@ -276,21 +332,17 @@ func importJSONL(
 			continue
 		}
 		data := normalizeJSONRow(schema, row)
-		batch = append(batch, driver.CreateInput{Data: data, Actor: opts.Actor})
+		batchData = append(batchData, data)
+		batchRowNums = append(batchRowNums, rowNum)
 
-		if len(batch) >= opts.BatchSize {
-			if err := flush(); err != nil {
-				ie := ImportError{Row: rowNum, Err: err}
-				if !opts.SkipErrors {
-					return result, ie
-				}
-				result.Errors = append(result.Errors, ie)
-				batch = batch[:0]
+		if len(batchData) >= opts.BatchSize {
+			if flushErr := flush(); flushErr != nil {
+				return result, flushErr
 			}
 		}
 	}
 	if err := flush(); err != nil {
-		return result, fmt.Errorf("ioport: jsonl: final flush: %w", err)
+		return result, err
 	}
 	return result, nil
 }

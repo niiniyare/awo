@@ -17,7 +17,7 @@ A custom HTTP endpoint declared on an `EntityDefinition` via `ActionDef`. Action
 The parameter injected into every `ActionHandlerFunc`. Contains the request `context.Context`, the target `RecordID`, the `Actor`, the raw request `Body`, and the `ActionRuntime`. The framework constructs this before the handler is called. Declared in `awo/def`.
 
 **ActionRuntime**
-The service interface injected into every action handler. Provides: `Repo()`, `Tx()`, `Publish()`, `StartWorkflow()`, `Notify()`, `InvalidateCache()`, `Cache()`, `Clock()`, `Logger()`, `TenantID()`, `Actor()`. Declared in `awo/def`. The concrete implementation is `runtime.DefaultActionRuntime` (internal).
+The service interface injected into every action handler. Provides: `Repo()`, `Tx()`, `Publish()`, `StartWorkflow()`, `Notify()`, `InvalidateCache()`, `Cache()`, `Clock()`, `Logger()`, `TenantID()`, `Actor()`. Declared in `awo/def`. The canonical concrete implementation is `runtime.ActionContext` (`runtime/runtime_action_context.go`), constructed per action invocation by `api/service.ActionContextFactory`.
 
 **Actor**
 The authenticated principal who initiated an operation. Contains `UserID`, `ServiceAccountID`, `TenantID`, and `Roles`. Exactly one of `UserID` or `ServiceAccountID` is non-nil. `IsPlatformAdmin()` is a method that checks `Roles`, not a boolean field. Declared in `awo/def`. See ADR-003.
@@ -239,7 +239,7 @@ The authorization interface embedded in `context.Context` by the middleware pipe
 The intermediate representation (IR) between the SDUI generator and the amis renderer. A tree of `widget.Node` values, each with a `NodeKind` constant describing the semantic widget type. The amis renderer converts `*widget.Node` trees to `map[string]any` amis JSON. See ADR-006.
 
 **WorkflowOutbox**
-The `workflow_outbox` PostgreSQL table. Every `StartWorkflow()` call writes a record here within the entity's transaction. An outbox worker dispatches to Temporal after commit, with exponential backoff retry. See ADR-007.
+Historical term (ADR-007) for a dedicated workflow-dispatch table — superseded by ADR-025 (Phase 2). `StartWorkflow()` calls (and `WorkflowTrigger`-matching mutations) write a `workflow.trigger_fired` `events.DomainEvent` into the single `events_outbox` table instead — see [`events_outbox`](#) and `docs/adr/ADR-025-transactional-events-and-workflow-durability.md`. The `events/outbox.Relay`'s `WorkflowTriggerSubscriber` dispatches these to Temporal after commit, with exponential backoff retry — no separate table or worker exists.
 
 **WorkflowTrigger**
 A declaration on `EntityDefinition` that binds a Temporal workflow start to an entity lifecycle event (`EventOnCreate`, `EventOnUpdate`, `EventOnDelete`, `EventOnSubmit`, etc.). The `InputBuilder` function produces the workflow input from the `EntityRecord` and `TriggerContext`.

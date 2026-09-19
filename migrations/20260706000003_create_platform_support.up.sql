@@ -144,6 +144,24 @@ CREATE POLICY tenant_isolation ON platform_tenant_module
     USING (tenant_id = current_tenant_id());
 
 -- Transactional outbox table (global — no RLS)
+--
+-- SUPERSEDED (Phase 2 Step 2, ADR-025 §7/§22): this table definition was
+-- never applied by any live migration path (this top-level migrations/
+-- directory has no //go:embed wiring into the framework's migration system,
+-- confirmed by exhaustive search) and predates ADR-025's schema, which adds
+-- system_actor, correlation_id, next_attempt_at, and dead_at, and replaces
+-- the flat "attempts < 5" index predicate below with next_attempt_at/dead_at
+-- scheduling. The one authoritative, live, production events_outbox schema
+-- is now events/outbox/migrations/001_events_outbox.up.sql (Module "outbox",
+-- registered via migration.Register and blank-imported by cmd/migrate).
+-- This block is left in place, unmodified, as historical scaffolding per
+-- this project's convention of not deleting superseded artifacts — it must
+-- not be wired into any live migration path, and no other events_outbox
+-- definition should be added anywhere else. The other tables in this file
+-- (iam_audit_log, platform_feature_flag, platform_flag_tenant_override,
+-- platform_setting, platform_custom_field, platform_module,
+-- platform_tenant_module) are a separate, still-open concern (tasks.md 5.2)
+-- and are NOT addressed or resolved by this annotation.
 CREATE TABLE IF NOT EXISTS events_outbox (
     id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id     UUID,

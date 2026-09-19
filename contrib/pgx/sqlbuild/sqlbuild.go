@@ -208,6 +208,16 @@ func quoteIdent(name string) string {
 	return `"` + escaped + `"`
 }
 
+// QuoteIdent is the exported form of quoteIdent, for callers outside this
+// package that build raw SQL fragments referencing a column identifier
+// (e.g. an ORDER BY clause) and need the exact same escaping every
+// WHERE-clause field reference already gets. Always pair this with
+// Allowlist.Check first — quoting alone prevents breaking out of the
+// identifier, but does not restrict which real column may be referenced.
+func QuoteIdent(name string) string {
+	return quoteIdent(name)
+}
+
 // escapeLike escapes LIKE pattern metacharacters (%, _).
 func escapeLike(s string) string {
 	s = strings.ReplaceAll(s, `\`, `\\`)

@@ -255,6 +255,83 @@ func TestGenerateSQL_AggregateNoAlias_Error(t *testing.T) {
 	}
 }
 
+// --- Security regression tests: GroupBy/OrderBy/Aggregate field & function validation ---
+
+func TestGenerateSQL_UnknownGroupByField_Error(t *testing.T) {
+	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
+	_, err := GenerateSQL(ReportDefinition{
+		Name:    "bad_groupby",
+		Entity:  "report_invoice",
+		GroupBy: []string{`status" ; DROP TABLE report_invoice; --`},
+	}, schema)
+	if err == nil {
+		t.Fatal("expected error for a group-by field that is not a real entity field or output column")
+	}
+}
+
+func TestGenerateSQL_UnknownOrderByField_Error(t *testing.T) {
+	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
+	_, err := GenerateSQL(ReportDefinition{
+		Name:   "bad_orderby",
+		Entity: "report_invoice",
+		OrderBy: []ReportOrder{
+			{Field: `total_amount" ; DROP TABLE report_invoice; --`},
+		},
+	}, schema)
+	if err == nil {
+		t.Fatal("expected error for an order-by field that is not a real entity field or output column")
+	}
+}
+
+func TestGenerateSQL_OrderByAlias_Succeeds(t *testing.T) {
+	// OrderBy is documented to accept either a real field name or an alias
+	// projected by ReportField.Alias — this must keep working after the
+	// validation above was added.
+	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
+	q, err := GenerateSQL(ReportDefinition{
+		Name:   "sorted_by_alias",
+		Entity: "report_invoice",
+		Fields: []ReportField{
+			{Name: "total_amount", Alias: "amount"},
+		},
+		OrderBy: []ReportOrder{{Field: "amount"}},
+	}, schema)
+	if err != nil {
+		t.Fatalf("unexpected error ordering by a projected alias: %v", err)
+	}
+	if !strings.Contains(q.SQL, `ORDER BY "amount"`) {
+		t.Errorf("expected ORDER BY on the alias, got: %s", q.SQL)
+	}
+}
+
+func TestGenerateSQL_UnknownAggregateFunc_Error(t *testing.T) {
+	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
+	_, err := GenerateSQL(ReportDefinition{
+		Name:   "bad_agg_func",
+		Entity: "report_invoice",
+		Aggregates: []ReportAggregate{
+			{Func: AggregateFunc("SUM(1); DROP TABLE report_invoice; --"), Field: "total_amount", Alias: "x"},
+		},
+	}, schema)
+	if err == nil {
+		t.Fatal("expected error for an aggregate function outside the known SUM/AVG/COUNT/MAX/MIN set")
+	}
+}
+
+func TestGenerateSQL_UnknownAggregateField_Error(t *testing.T) {
+	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
+	_, err := GenerateSQL(ReportDefinition{
+		Name:   "bad_agg_field",
+		Entity: "report_invoice",
+		Aggregates: []ReportAggregate{
+			{Func: AggregateSUM, Field: `total_amount" ; DROP TABLE report_invoice; --`, Alias: "x"},
+		},
+	}, schema)
+	if err == nil {
+		t.Fatal("expected error for an aggregate field that is not a real entity field")
+	}
+}
+
 func TestGenerateSQL_ParametersArePositional(t *testing.T) {
 	schema := buildSchema(t, []def.EntityDefinition{invoiceDef()})
 	f := filter.And(

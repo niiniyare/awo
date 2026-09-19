@@ -39,6 +39,7 @@ import (
 	"awo.so/awo/bootstrap"
 	contrib "awo.so/awo/contrib/pgx"
 	contribredis "awo.so/awo/contrib/redis"
+	"awo.so/awo/events"
 	"awo.so/awo/events/outbox"
 	"awo.so/awo/observability/health"
 	"awo.so/awo/observability/metrics"
@@ -50,6 +51,7 @@ import (
 	sdui_layout "awo.so/awo/sdui/layout"
 	sdui_renderer "awo.so/awo/sdui/renderer"
 	sdui_validation "awo.so/awo/sdui/validation"
+	"awo.so/awo/workflow"
 
 	// Platform module init() calls — imports drive entity registration.
 	// platform/iam is already imported above for iam.New; the init()
@@ -190,8 +192,40 @@ func main() {
 	}
 	tenantRepo := contrib.NewRepository(result.Pool, tenantSchema)
 
-	// Outbox relay — delivers domain events from the transactional outbox.
+	// Temporal client — wired when TEMPORAL_HOST is set; nil = degraded mode.
+	// Constructed here (before the relay below) because the relay's
+	// WorkflowTriggerSubscriber needs a workflow.WorkflowExecutor built from
+	// it. EntityService/ActionContext never see this client directly (Phase 2
+	// Step 6) — they only ever publish durable workflow-start intents; this
+	// is the sole place a workflow.WorkflowExecutor.Start call happens
+	// outside a Temporal worker itself.
+	var temporalClient temporalclient.Client
+	if temporalHost := getEnv("TEMPORAL_HOST", ""); temporalHost != "" {
+		tc, tcErr := temporalclient.Dial(temporalclient.Options{
+			HostPort: temporalHost,
+		})
+		if tcErr != nil {
+			slog.Warn("temporal client dial failed; workflow dispatch disabled", "host", temporalHost, "err", tcErr)
+		} else {
+			temporalClient = tc
+			defer temporalClient.Close()
+			slog.Info("temporal client connected", "host", temporalHost)
+		}
+	} else {
+		slog.Info("TEMPORAL_HOST not set; running in degraded mode (no workflow dispatch)")
+	}
+
+	// Outbox relay — delivers domain events from the transactional outbox,
+	// including workflow-start intents (events.EventWorkflowTriggerFired,
+	// Phase 2 Step 6). workflowExecutor is workflow.NoopExecutor{} in
+	// degraded mode: dispatch then fails with workflow.ErrWorkflowUnavailable,
+	// an ordinary retry/dead-letter-eligible error, not a panic or silent drop.
+	var workflowExecutor workflow.WorkflowExecutor = workflow.NoopExecutor{}
+	if temporalClient != nil {
+		workflowExecutor = workflow.NewTemporalExecutor(temporalClient)
+	}
 	relay := outbox.New(result.Pool)
+	relay.Subscribe(events.EventWorkflowTriggerFired, outbox.NewWorkflowTriggerSubscriber(workflowExecutor))
 	go func() {
 		if err := relay.Start(ctx); err != nil && ctx.Err() == nil {
 			slog.Error("outbox relay stopped unexpectedly", "err", err)
@@ -260,24 +294,6 @@ func main() {
 		Cache:             sduiCacheFor(result.Redis),
 	})
 
-	// Temporal client — wired when TEMPORAL_HOST is set; nil = degraded mode.
-	// NoopExecutor in the router/handler layer handles nil gracefully.
-	var temporalClient temporalclient.Client
-	if temporalHost := getEnv("TEMPORAL_HOST", ""); temporalHost != "" {
-		tc, tcErr := temporalclient.Dial(temporalclient.Options{
-			HostPort: temporalHost,
-		})
-		if tcErr != nil {
-			slog.Warn("temporal client dial failed; workflow starts disabled", "host", temporalHost, "err", tcErr)
-		} else {
-			temporalClient = tc
-			defer temporalClient.Close()
-			slog.Info("temporal client connected", "host", temporalHost)
-		}
-	} else {
-		slog.Info("TEMPORAL_HOST not set; running in degraded mode (no workflow starts)")
-	}
-
 	// CRUD routes for all registered entities — full middleware pipeline applied inside.
 	router.Register(app, result.Schema, router.RegisterOptions{
 		Pool:               result.Pool,
@@ -285,10 +301,10 @@ func main() {
 		IAM:                iamModule.Auth,
 		Tenants:            tenantRepo,
 		Authz:              evaluator,
-		Temporal:           temporalClient,
 		AuditWriter:        auditWriter,
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
+		EventPublisher:     outbox.NewWriter(result.Pool),
 	})
 
 	// Static file serving — amis SDK assets.

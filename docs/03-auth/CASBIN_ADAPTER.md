@@ -123,7 +123,7 @@ To replace Casbin with OPA or a custom engine:
 
 1. Implement `auth.PolicyEvaluator`
 2. Load `CompiledSchema.CapabilityGrants` into the new engine at startup
-3. Pass the new implementation to `RuntimeFactory`
+3. Pass the new implementation as `RegisterOptions.Authz` in `api/router.Register`
 
 No EntityDefinition changes are required. The `PermissionSet` and `CapabilityGrant` types remain unchanged.
 

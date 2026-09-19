@@ -209,6 +209,50 @@ func ResetRole(t *testing.T, pool *pgxpool.Pool) {
 	}
 }
 
+// OpenConcurrentPool opens a second pool against the same isolated test
+// schema as pool (discovered via its current search_path), without the
+// pool_max_conns=1 restriction SetupTestDB applies. Use this for tests that
+// need genuine concurrent connections — SetupTestDB's own pool is
+// deliberately pinned to a single connection so that sequential calls are
+// guaranteed to reuse it (see SetupTestDB's doc comment), which is the
+// opposite of what a concurrency test needs. The returned pool is closed
+// automatically via t.Cleanup.
+func OpenConcurrentPool(t *testing.T, pool *pgxpool.Pool) *pgxpool.Pool {
+	t.Helper()
+	dsn := os.Getenv("TEST_DATABASE_URL")
+	if dsn == "" {
+		t.Skip("TEST_DATABASE_URL not set — skipping PostgreSQL integration test")
+	}
+
+	var searchPath string
+	if err := pool.QueryRow(context.Background(), "SHOW search_path").Scan(&searchPath); err != nil {
+		t.Fatalf("db.OpenConcurrentPool: discover search_path: %v", err)
+	}
+
+	sep := "?"
+	if strings.Contains(dsn, "?") {
+		sep = "&"
+	}
+	cfg, err := pgxpool.ParseConfig(dsn + sep + "search_path=" + searchPath)
+	if err != nil {
+		t.Fatalf("db.OpenConcurrentPool: parse config: %v", err)
+	}
+	// Every physical connection the pool opens starts as the superuser/owner
+	// role from the DSN — switch each one to AppRole as soon as it's
+	// established so RLS is enforced no matter which connection a given
+	// request happens to acquire.
+	cfg.AfterConnect = func(ctx context.Context, conn *pgx.Conn) error {
+		_, err := conn.Exec(ctx, "SET ROLE "+AppRole)
+		return err
+	}
+	concurrent, err := pgxpool.NewWithConfig(context.Background(), cfg)
+	if err != nil {
+		t.Fatalf("db.OpenConcurrentPool: %v", err)
+	}
+	t.Cleanup(concurrent.Close)
+	return concurrent
+}
+
 // InstallTenantLifecycle creates a minimal platform_tenant(id, status) table
 // in the test schema (if not already present) and replaces the schema's
 // set_tenant_context with the real production implementation
@@ -260,6 +304,14 @@ GRANT SELECT ON platform_tenant TO ` + AppRole + `;
 // platform_tenant) to have been applied first. Runs as the superuser/owner
 // role since AppRole only has SELECT on platform_tenant (it is a
 // framework-managed table, never written by application code via RLS).
+//
+// Pitfall: this calls ResetRole internally, so it silently undoes any
+// earlier `SET ROLE` your test issued. Call all CreateTenant (and other
+// superuser-requiring setup) before switching to AppRole for the RLS
+// exercise you actually want to test, not the other way around — otherwise
+// your test will silently run as the PostgreSQL superuser, which bypasses
+// RLS entirely regardless of FORCE ROW LEVEL SECURITY, and any assertion
+// that "tenant isolation held" will pass for the wrong reason.
 func CreateTenant(t *testing.T, pool *pgxpool.Pool, status string) uuid.UUID {
 	t.Helper()
 	ResetRole(t, pool)
@@ -292,6 +344,14 @@ func QueryRowSQL(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) pgx.
 	t.Helper()
 	ResetRole(t, pool)
 	return pool.QueryRow(context.Background(), sql, args...)
+}
+
+// QueryRowsSQL is QueryRowSQL for multi-row results. The caller must Close
+// the returned pgx.Rows.
+func QueryRowsSQL(t *testing.T, pool *pgxpool.Pool, sql string, args ...any) (pgx.Rows, error) {
+	t.Helper()
+	ResetRole(t, pool)
+	return pool.Query(context.Background(), sql, args...)
 }
 
 // TableExists reports whether tableName exists in the current search_path.

@@ -28,8 +28,7 @@ import (
 	contribredis "awo.so/awo/contrib/redis"
 	"awo.so/awo/def"
 	"awo.so/awo/driver"
-
-	// FIX: "awo.so/awo/events/outbox" — re-enable when events_outbox migration applied
+	"awo.so/awo/events/outbox"
 	"awo.so/awo/observability/health"
 	"awo.so/awo/observability/metrics"
 	"awo.so/awo/platform/iam"
@@ -295,10 +294,10 @@ func startServer(cfg ServeConfig) error {
 		IAM:                iamAuth,
 		Tenants:            tenants,
 		Authz:              evaluator,
-		Temporal:           temporalClient,
 		AuditWriter:        auditWriter,
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
+		EventPublisher:     outbox.NewWriter(pool),
 	})
 
 	// Vite build output. Serves /assets/*, /sdk/*, /locales/*, etc.

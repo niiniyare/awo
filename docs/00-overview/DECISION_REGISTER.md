@@ -41,6 +41,7 @@ This document is the canonical record of all architectural decisions (ADRs) for 
 | ADR-022 | EntityScope: 5-level data isolation enum on EntityDefinition | Active |
 | ADR-023 | AllowAudit: opt-out bool on EntityDefinition supersedes ADR-016 audit.Register pattern for disable | Active |
 | ADR-024 | SessionValidator interface: decouples auth middleware from IAM concrete type | Active |
+| ADR-025 | Transactional events and workflow durability: unified `events_outbox` table; supersedes ADR-007/ADR-008 in part | Proposed |
 
 ---
 
@@ -190,6 +191,15 @@ CREATE TABLE workflow_outbox (
 
 **Consequence:** Temporal start is idempotent via WorkflowID deduplication. If the outbox worker retries a dispatch, Temporal returns the existing workflow run.
 
+**Superseded in part by ADR-025 (Proposed):** the standalone `workflow_outbox` table and its
+post-commit, separately-transacted write model are replaced by a single `events_outbox`
+table shared with domain events (ADR-008), written in the *same* transaction as the
+triggering mutation rather than in a separate one afterward. The `WorkflowID`-based
+dedup consequence above is retained unchanged by ADR-025, not superseded. This table
+was never implemented as specified here — see ADR-025 §1 for the as-built state. This
+supersession takes effect once ADR-025 is promoted beyond Proposed status; until then,
+this entry remains the formally frozen decision on record.
+
 ---
 
 ## ADR-008: Event Outbox Schema Is the Public Contract
@@ -213,6 +223,19 @@ CREATE TABLE event_outbox (
 The `EventBroker` interface is pluggable: KafkaBroker, NATSBroker, RedisPubSubBroker, NoopBroker.
 
 **Consequence:** External consumers can reliably poll `event_outbox` as a CDC source if needed.
+
+**Superseded in part by ADR-025 (Proposed):** the `event_outbox` table name and the
+`EventBroker`/Kafka/NATS/Redis-Pub/Sub delivery design are replaced by a single, already
+partially-implemented, in-process `events.Subscriber` relay writing to a table named
+`events_outbox` (plural "events"), shared with workflow-trigger dispatch (ADR-007). No
+`EventBroker` implementation, Kafka/NATS/Redis-Pub/Sub adapter, or `awo.so/awo/outbox`
+package was ever built against this entry's design — see ADR-025 §1 for the as-built
+state. `docs/09-events/EVENT_OUTBOX_SPEC.md` §6's payload-content restriction (sensitive
+fields, full snapshots, secrets, credentials, and tokens excluded from `payload`) — not
+itself restated in this register entry, but part of this decision's implementing spec —
+is explicitly carried forward, unweakened, by ADR-025; it is not one of the parts being
+superseded. This supersession takes effect once ADR-025 is promoted beyond Proposed
+status; until then, this entry remains the formally frozen decision on record.
 
 ---
 
@@ -539,6 +562,26 @@ The `api/middleware` auth middleware depends on `auth.SessionValidator`, not `*i
 
 ---
 
+## ADR-025: Transactional Events and Workflow Durability
+
+**Status:** Proposed. Not yet Active/Frozen — see the note on this entry's effect, below.
+
+**Full text:** [`docs/adr/ADR-025-transactional-events-and-workflow-durability.md`](../adr/ADR-025-transactional-events-and-workflow-durability.md). This entry is a summary and index pointer, not a restatement — the full ADR (23 sections: canonical mutation contract, transaction ownership, audit atomicity, outbox schema, relay semantics, workflow intent vs. execution, at-least-once semantics, idempotency, tenant/context propagation, bulk import contract, hook semantics, a 15-row failure matrix, core/adapter boundaries, security invariants, explicit non-goals, consequences, alternatives considered, migration strategy, and acceptance criteria) is long enough to warrant its own file, unlike the shorter entries elsewhere in this register.
+
+**Decision (summary):** One `events_outbox` table becomes the sole durable handoff boundary between a committed entity mutation and any downstream processing — domain-event delivery and Temporal workflow dispatch alike — replacing the two separate, never-fully-implemented designs in ADR-007 and ADR-008. The outbox write is added to the same database transaction that already carries the entity mutation and its audit record (ADR-005/ADR-013/ADR-014, unchanged), making mutation + audit + outbox atomic: all three commit together or none do. Direct calls to the Temporal SDK from any transaction-bound mutation path are prohibited; workflow dispatch happens only through a background relay reading committed outbox rows, at-least-once, never exactly-once. `runtime.ActionContext` (`runtime/runtime_action_context.go`) is designated the canonical implementation of the existing `def.ActionRuntime` contract (`docs/13-actions/ACTION_RUNTIME_REFERENCE.md`) once repaired; the dead, unwired sibling implementation (`runtime.RuntimeFactory`/`defaultActionRuntime`) is retired once the repair lands.
+
+**Relationship to other ADRs, stated explicitly per this register's own cross-reference convention:**
+- **Supersedes, in part, ADR-007 and ADR-008** — see the "Superseded in part by ADR-025" notes appended to each of those entries above. Neither ADR-007 nor ADR-008's original text is rewritten; both remain the historical record of what was originally decided and (per each entry's own admission via this annotation) never fully built.
+- **Does not touch ADR-009.** API-level idempotency (`X-Idempotency-Key` + Redis) remains entirely governed by ADR-009, unaffected and unreferenced by ADR-025's own event/relay-level idempotency discussion (which concerns a different layer: outbox delivery, not HTTP request replay).
+- **Does not touch ADR-013.** Transaction ownership remains exactly as ADR-013 states — the driver (`contrib/pgx`) owns and manages the transaction via `Repository.WithTx`; ADR-025 adds one new step inside that existing, unchanged ownership model, it does not introduce a second transaction owner.
+- **Does not touch ADR-014**, except to state where the outbox write's own failure-handling policy is deliberately more conservative than ADR-014/ADR-017's audit-write policy for the same transaction (an outbox-insert failure always aborts the mutation, regardless of the entity's audit category — unlike an audit-write failure, which ADR-017's category-based policy may suppress). ADR-014 remains the sole authority on how audit records themselves are integrated; ADR-025 only adds a sibling write alongside it.
+
+**Consequence for this register's own Public Contracts table:** the `event_outbox` and `workflow_outbox` frozen contract rows (below) are annotated as pending supersession by the new `events_outbox` contract, which is listed as Proposed, not yet Frozen — consistent with this entry's own status.
+
+**Note on effect:** Per this document's own governance rule ("No architectural decision may be made that contradicts these ADRs without an ARB review and a new numbered ADR appended to this document"), registering ADR-025 here makes it discoverable and states its intended relationship to ADR-007/ADR-008/ADR-009/ADR-013/ADR-014 — it does not, by itself, promote ADR-025 to a binding decision. No ARB process is defined anywhere in this repository (ADR-025's own text acknowledges this gap rather than inventing one). Until whatever review process this repository's maintainers actually use accepts ADR-025 and this entry's Status line is updated to Active or Frozen, ADR-007 and ADR-008 remain the formally frozen decisions of record, and Phase 2 implementation against ADR-025's contract should not be treated as authorized by this registration step alone.
+
+---
+
 ## Public Contracts (Frozen)
 
 The following are public contracts that cannot change without a new ADR and breaking-change notice:
@@ -554,8 +597,9 @@ The following are public contracts that cannot change without a new ADR and brea
 | `auth.SessionValidator` interface | `awo/auth` | v1.0 (ADR-024) |
 | `auth.ViewerContext` interface | `awo/auth` | v1.0 |
 | `widget.Node` struct + `NodeKind` constants | `awo/sdui/widget` | v1.0 |
-| `event_outbox` table schema | PostgreSQL | v1.0 |
-| `workflow_outbox` table schema | PostgreSQL | v1.0 |
+| `event_outbox` table schema | PostgreSQL | v1.0 (pending supersession — ADR-025, Proposed) |
+| `workflow_outbox` table schema | PostgreSQL | v1.0 (pending supersession — ADR-025, Proposed) |
+| `events_outbox` table schema | PostgreSQL | Not yet Frozen — ADR-025 (Proposed) |
 | `audit.AuditWriter` interface | `awo/audit` | v1.0 |
 | `audit.AuditRecord` struct | `awo/audit` | v1.0 |
 | `audit.EntityAuditConfig` registry API | `awo/audit` | v1.0 |
