@@ -68,6 +68,7 @@ func FromCompiled(es *compiler.EntitySchema) generator.EntitySchema {
 		UIPrefix:    "/ui/" + es.Module + "/" + es.APIResource,
 		Permissions: permissionsMap(es.Permissions),
 		HasWorkflow: len(es.WorkflowTriggers) > 0,
+		HasAudit:    es.AllowAudit,
 	}
 
 	// Fields.

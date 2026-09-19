@@ -277,6 +277,12 @@ type EntitySchema struct {
 	// The generator emits a NodeWorkflowPanel in detail view when true.
 	// The workflow state data source URL is expected to be at {DetailURL}/workflow-state.
 	HasWorkflow bool
+
+	// HasAudit is true when the framework writes audit records for mutations
+	// to this entity (def.EntityDefinition.AllowAudit()). The generator emits
+	// a NodeActivity timeline in detail view when true, querying the iam
+	// audit_log entity's own SDUI list endpoint filtered to this record.
+	HasAudit bool
 }
 
 // DashboardPanel carries metadata for one panel on a dashboard page.
@@ -679,6 +685,20 @@ func (g *EntityGenerator) buildDetail(schema EntitySchema, ctx sduictx.Generator
 		},
 	}
 	pageChildren = append(pageChildren, detailForm)
+
+	// Activity/audit timeline — auto-emitted when the framework audits
+	// mutations to this entity. Queries the iam audit_log entity's own SDUI
+	// list endpoint, filtered to this entity and record.
+	if schema.HasAudit {
+		pageChildren = append(pageChildren, &widget.Node{
+			Kind:  widget.NodeActivity,
+			Label: "Activity",
+			DataSource: &widget.DataSource{
+				URL:    "/api/v1/ui/iam/audit_log?filter[entity_name][eq]=" + schema.Name + "&filter[record_id][eq]=${id}",
+				Method: "GET",
+			},
+		})
+	}
 
 	// Related lists from edge definitions.
 	for _, rel := range schema.Relations {
