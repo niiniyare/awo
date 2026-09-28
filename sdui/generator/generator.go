@@ -283,7 +283,18 @@ type EntitySchema struct {
 	// a NodeActivity timeline in detail view when true, querying the iam
 	// audit_log entity's own SDUI list endpoint filtered to this record.
 	HasAudit bool
+
+	// AuditURL is the audit_log data API list endpoint used by the activity
+	// timeline. Empty disables the timeline.
+	AuditURL string
+
+	// AttachmentsURL is the attachment data API list endpoint. When set, the
+	// detail view lists files linked to the record. Empty disables the panel.
+	AttachmentsURL string
 }
+
+// AttachmentReadPermission gates the attachments panel on detail pages.
+const AttachmentReadPermission = "platform.attachment.read"
 
 // DashboardPanel carries metadata for one panel on a dashboard page.
 // Derived from dashboard.PanelDef by the adapt layer; the generator converts
@@ -691,15 +702,34 @@ func (g *EntityGenerator) buildDetail(schema EntitySchema, ctx sduictx.Generator
 	pageChildren = append(pageChildren, detailForm)
 
 	// Activity/audit timeline — auto-emitted when the framework audits
-	// mutations to this entity. Queries the iam audit_log entity's own SDUI
-	// list endpoint, filtered to this entity and record.
-	if schema.HasAudit {
+	// mutations to this entity. Reads the audit_log data API, filtered to
+	// this entity and record.
+	if schema.HasAudit && schema.AuditURL != "" {
 		pageChildren = append(pageChildren, &widget.Node{
 			Kind:  widget.NodeActivity,
 			Label: "Activity",
 			DataSource: &widget.DataSource{
-				URL:    "/api/v1/ui/iam/audit_log?filter[entity_name][eq]=" + schema.Name + "&filter[record_id][eq]=${id}",
+				URL:    schema.AuditURL + "?filter[entity_name][eq]=" + schema.Name + "&filter[record_id][eq]=${id}",
 				Method: "GET",
+			},
+		})
+	}
+
+	// Attachments list — files linked to this record, read-only. Absent
+	// (not hidden) when the viewer cannot read attachments.
+	if schema.AttachmentsURL != "" && ctx.Viewer.HasPermission(AttachmentReadPermission) {
+		pageChildren = append(pageChildren, &widget.Node{
+			Kind:  widget.NodeRelatedList,
+			Name:  "attachments",
+			Label: "Attachments",
+			DataSource: &widget.DataSource{
+				URL:    schema.AttachmentsURL + "?filter[entity_name][eq]=" + schema.Name + "&filter[entity_id][eq]=${id}",
+				Method: "GET",
+			},
+			Children: []*widget.Node{
+				{Kind: widget.NodeText, Name: "file_name", Label: "File"},
+				{Kind: widget.NodeText, Name: "content_type", Label: "Type"},
+				{Kind: widget.NodeNumber, Name: "file_size", Label: "Size (bytes)"},
 			},
 		})
 	}

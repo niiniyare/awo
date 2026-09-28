@@ -1066,6 +1066,9 @@ func (r *DefaultRenderer) renderRelatedList(n *widget.Node, ctx renderer.Rendere
 		"type":          "crud",
 		"columns":       cols,
 		"footerToolbar": []any{"statistics", "pagination"},
+		// Same list response envelope as renderList ({ items: [...] }).
+		"itemsKey":    "items",
+		"placeholder": renderer.Message(ctx.GenCtx.EffectiveLocale(), renderer.MsgEmptyState),
 	}
 	if n.DataSource != nil && n.DataSource.URL != "" {
 		out["api"] = buildAPI(n.DataSource)
