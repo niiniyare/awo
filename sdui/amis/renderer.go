@@ -542,7 +542,7 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 		// itemsKey must match what adaptResponse() produces in the frontend fetcher.
 		// AMIS crud defaults to "rows"; our backend wraps list data as { items: [...] }.
 		// Setting this explicitly prevents breakage on AMIS version drift.
-		"itemsKey": "items",
+		"itemsKey":    "items",
 		"placeholder": renderer.Message(ctx.GenCtx.EffectiveLocale(), renderer.MsgEmptyState),
 		// Let users show/hide columns and collapse the filter bar; keep row
 		// selection when paging so bulk actions work across pages.
