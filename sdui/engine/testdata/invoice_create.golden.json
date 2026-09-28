@@ -43,6 +43,7 @@
           "type": "textarea"
         }
       ],
+      "promptPageLeave": true,
       "title": "Invoice",
       "type": "form"
     }

@@ -86,6 +86,8 @@
           "width": 195
         }
       ],
+      "columnsTogglable": "auto",
+      "filterTogglable": true,
       "footerToolbar": [
         "statistics",
         "pagination"
@@ -100,9 +102,12 @@
           "link": "/ui/finance/invoices/create",
           "type": "button"
         },
-        "reload"
+        "reload",
+        "columns-toggler",
+        "export-csv"
       ],
       "itemsKey": "items",
+      "keepItemSelectionOnPageChange": true,
       "perPage": 20,
       "perPageAvailable": [
         10,
