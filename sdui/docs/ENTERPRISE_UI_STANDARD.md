@@ -1,7 +1,5 @@
 # Enterprise-grade ERP UI standard
 
-As of 2026-09-28. Shared copy: https://claude.ai/code/artifact/8d7aadc4-c868-4036-aeb3-d5dfa5992b62
-
 ## Purpose and scope
 
 This is the yardstick for AWO's auto-generated CRUD pages: what an enterprise-grade ERP page must have, what is nice to have, and what leading systems are moving toward. Use it as a review checklist when changing the SDUI generator.
