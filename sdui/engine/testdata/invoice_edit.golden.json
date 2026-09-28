@@ -44,6 +44,7 @@
         }
       ],
       "initApi": "GET:/api/v1/finance/invoices/${id}",
+      "promptPageLeave": true,
       "title": "Invoice",
       "type": "form"
     }

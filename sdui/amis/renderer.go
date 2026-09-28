@@ -452,6 +452,10 @@ func (r *DefaultRenderer) renderForm(n *widget.Node, ctx renderer.RendererContex
 	} else if len(acts) > 0 {
 		out["actions"] = acts
 	}
+	// Warn before discarding unsaved input on editable (submittable) forms.
+	if out["api"] != nil {
+		out["promptPageLeave"] = true
+	}
 	return out, nil
 }
 
@@ -489,7 +493,7 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 		}
 		columns = append(columns, map[string]any{
 			"type":    "operation",
-			"label":   "Actions",
+			"label":   renderer.Message(ctx.GenCtx.EffectiveLocale(), renderer.MsgActions),
 			"width":   rowOperationWidth(rowActions),
 			"buttons": rowBtns,
 		})
@@ -508,7 +512,7 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 	// them as literal text, which is why we use crud here.
 	headerToolbar := make([]any, 0, len(acts)+1)
 	headerToolbar = append(headerToolbar, acts...)
-	headerToolbar = append(headerToolbar, "reload")
+	headerToolbar = append(headerToolbar, "reload", "columns-toggler", "export-csv")
 
 	// Bulk actions — rendered only when generator provided bulk ops.
 	// renderedBulk must be a non-nil slice: "bulkActions": null serialises
@@ -539,8 +543,12 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 		// AMIS crud defaults to "rows"; our backend wraps list data as { items: [...] }.
 		// Setting this explicitly prevents breakage on AMIS version drift.
 		"itemsKey": "items",
-		// English empty-state text wired directly; does not depend on locale bundle.
-		"placeholder": "No records found.",
+		"placeholder": renderer.Message(ctx.GenCtx.EffectiveLocale(), renderer.MsgEmptyState),
+		// Let users show/hide columns and collapse the filter bar; keep row
+		// selection when paging so bulk actions work across pages.
+		"columnsTogglable":              "auto",
+		"filterTogglable":               true,
+		"keepItemSelectionOnPageChange": true,
 	}
 	if n.DataSource != nil && n.DataSource.URL != "" {
 		out["api"] = buildAPI(n.DataSource)
