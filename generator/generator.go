@@ -186,6 +186,21 @@ $$ LANGUAGE plpgsql STABLE;
 `)
 }
 
+// OrgPathSQL returns the DDL for current_org_path() — the materialized-path
+// lookup used by ScopeOrganizationTree RLS policies. Exported for the same
+// reason as OrgContextSQL: callers exercising real ScopeOrganizationTree RLS
+// (e.g. tests) should install the actual production function.
+func OrgPathSQL() string {
+	return strings.TrimSpace(`
+-- current_org_path() returns the materialized path of the current organization context.
+-- Used by ScopeOrganizationTree RLS policies. Path format: "/parent-id/self-id/".
+CREATE OR REPLACE FUNCTION current_org_path() RETURNS text LANGUAGE sql STABLE AS $$
+    SELECT path FROM platform_organization
+    WHERE id = current_org_id()
+$$;
+`)
+}
+
 // sharedInfraSQL returns the shared infrastructure SQL:
 // - pg_trgm extension
 // - current_tenant_id() and set_tenant_context() for tenant RLS
@@ -198,14 +213,7 @@ func sharedInfraSQL() string {
 
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 
-`) + "\n\n" + TenantContextSQL() + "\n\n" + OrgContextSQL() + "\n\n" + strings.TrimSpace(`
--- current_org_path() returns the materialized path of the current organization context.
--- Used by ScopeOrganizationTree RLS policies. Path format: "/parent-id/self-id/".
-CREATE OR REPLACE FUNCTION current_org_path() RETURNS text LANGUAGE sql STABLE AS $$
-    SELECT path FROM platform_organization
-    WHERE id = current_org_id()
-$$;
-
+`) + "\n\n" + TenantContextSQL() + "\n\n" + OrgContextSQL() + "\n\n" + OrgPathSQL() + "\n\n" + strings.TrimSpace(`
 -- awo_set_updated_at() is the trigger function used by all entity tables.
 CREATE OR REPLACE FUNCTION awo_set_updated_at() RETURNS trigger AS $$
 BEGIN
@@ -301,15 +309,36 @@ func generateEntitySQL(es *compiler.EntitySchema) (string, error) {
 		fmt.Fprintf(&b, "CREATE POLICY %s_tenant_isolation ON %s\n    USING (tenant_id = current_tenant_id());\n\n",
 			es.QualifiedName, quoteIdent(es.QualifiedName))
 		// Additional org isolation policy for organization-scoped entities.
+		//
+		// Declared AS RESTRICTIVE, not PERMISSIVE (the CREATE POLICY default).
+		// PostgreSQL ORs multiple PERMISSIVE policies together but ANDs
+		// RESTRICTIVE policies against the PERMISSIVE result. tenant_isolation
+		// above is the entity's only PERMISSIVE policy, so the combined
+		// effective check is exactly:
+		//
+		//     tenant_isolation AND org_isolation
+		//
+		// instead of the unsound `tenant_isolation OR org_isolation` that
+		// results if org_isolation is left PERMISSIVE (satisfying
+		// tenant_isolation alone — true for every row in the tenant regardless
+		// of org_id — would make the row visible/writable independent of
+		// organisation, defeating org scoping entirely). This also applies
+		// automatically to WITH CHECK (INSERT/UPDATE), since a policy with no
+		// explicit WITH CHECK clause uses its USING expression for both.
 		switch es.Scope {
 		case def.ScopeOrganization:
-			fmt.Fprintf(&b, "CREATE POLICY %s_org_isolation ON %s\n    USING (org_id = current_org_id());\n\n",
+			fmt.Fprintf(&b, "CREATE POLICY %s_org_isolation ON %s AS RESTRICTIVE\n    USING (org_id = current_org_id());\n\n",
 				es.QualifiedName, quoteIdent(es.QualifiedName))
 		case def.ScopeOrganizationTree:
 			// Tree policy: org must be the current org or a descendant.
 			// Materialized path format is "/parent-id/.../self-id/"; subtree
 			// members share a common path prefix with the current org's path.
-			fmt.Fprintf(&b, "CREATE POLICY %s_org_tree_isolation ON %s\n    USING (org_id IN (\n        SELECT id FROM platform_organization\n        WHERE path LIKE current_org_path() || '%%'\n    ));\n\n",
+			// current_org_path() resolves via a plain (invoker-rights) SELECT
+			// against platform_organization, which itself carries tenant
+			// RLS — so a current_org_id() belonging to a different tenant
+			// resolves to a NULL path, and the LIKE match (and thus this
+			// policy) fails closed rather than leaking cross-tenant.
+			fmt.Fprintf(&b, "CREATE POLICY %s_org_tree_isolation ON %s AS RESTRICTIVE\n    USING (org_id IN (\n        SELECT id FROM platform_organization\n        WHERE path LIKE current_org_path() || '%%'\n    ));\n\n",
 				es.QualifiedName, quoteIdent(es.QualifiedName))
 		}
 	}
