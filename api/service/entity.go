@@ -135,6 +135,12 @@ func (s *EntityService) Create(ctx context.Context, data map[string]any, actor *
 		if txErr != nil {
 			return txErr
 		}
+		// contrib/pgx.Repository.Create returns a freshly-scanned record with
+		// no Meta populated at all (Phase 2 Step 7b finding) — RunAuditRecord
+		// reads record.Meta.Actor to attribute the audit row, so it must be
+		// set here, from the same actor already passed into CreateInput
+		// above, before the audit write below.
+		created.Meta.Actor = actor
 		if txErr = s.pipeline.RunAuditRecord(txCtx, created, nil, created.Data); txErr != nil {
 			return txErr
 		}
@@ -186,6 +192,8 @@ func (s *EntityService) Update(ctx context.Context, id uuid.UUID, data map[strin
 		if txErr != nil {
 			return txErr
 		}
+		// Same Meta.Actor gap as Create — see its comment above.
+		updated.Meta.Actor = actor
 		if txErr = s.pipeline.RunAuditRecord(txCtx, updated, current.Data, updated.Data); txErr != nil {
 			return txErr
 		}
@@ -214,6 +222,11 @@ func (s *EntityService) Delete(ctx context.Context, id uuid.UUID, actor *def.Act
 	if err != nil {
 		return err
 	}
+	// contrib/pgx.Repository.Get never populates Meta at all — Delete has no
+	// repository-returned post-mutation record to attach the actor to
+	// (Delete itself returns nothing), so it must be set on the pre-deletion
+	// snapshot here, the same one RunAuditRecord below will consume.
+	current.Meta.Actor = actor
 
 	if err := s.pipeline.RunBeforeDelete(ctx, current); err != nil {
 		return err
@@ -362,6 +375,9 @@ func (s *EntityService) CreateBatch(ctx context.Context, rows []map[string]any, 
 			return err
 		}
 		for _, rec := range created {
+			// Same Meta.Actor gap as Create — see its comment above.
+			// repo.BulkCreate's returned records have no Meta populated either.
+			rec.Meta.Actor = actor
 			if err := s.pipeline.RunAuditRecord(txCtx, rec, nil, rec.Data); err != nil {
 				return err
 			}
@@ -486,14 +502,14 @@ func (s *EntityService) publishWorkflowIntents(ctx context.Context, event def.Ev
 // (there is no "after" state), matching RunAuditRecord's own convention.
 //
 // actor is taken directly from Create/Update/Delete's own parameter, not
-// from record.Meta.Actor: contrib/pgx.Repository's Create/Update do not
-// populate Meta.Actor on the *def.EntityRecord they return (confirmed by
-// reading contrib/pgx/repo.go's row-scanning helpers, which construct a
-// fresh record with no Meta field set at all) — a pre-existing gap, also
-// affecting RunAuditRecord's own Actor field for real (non-test-stub)
-// repositories, not introduced or fixed by this change. Using the caller's
-// own actor parameter directly sidesteps that gap rather than depending on
-// it being fixed.
+// from record.Meta.Actor. Since Phase 2 Step 7b, Meta.Actor is also set (by
+// Create/Update/Delete/CreateBatch, right before their own RunAuditRecord
+// call — contrib/pgx.Repository's Create/Update/Get never populate it
+// themselves), so the two would agree here too; this method deliberately
+// keeps using its own explicit actor parameter rather than switching to
+// record.Meta.Actor, so lifecycle/workflow-intent event publishing has one
+// single, explicit, always-correct source of actor identity, never
+// dependent on whichever mutation-specific code path happened to run first.
 //
 // An error here is NOT subject to ADR-017's audit-failure leniency: per
 // ADR-025 §6 it always propagates, so returning it from this method's caller
