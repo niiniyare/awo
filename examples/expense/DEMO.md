@@ -2,14 +2,16 @@
 
 Status: **fully verified by live execution** (real login, real authenticated
 CRUD + lifecycle, real tenant isolation under real RLS) **and** by the
-real-Postgres test suite. The one remaining gap is disclosed honestly in §5/§6
-below (visual browser rendering of the generated UI — no browser-capable tool
-was available in this environment). See
+real-Postgres test suite, at the **API level**. The generated **visual** UI
+is a separate, currently-broken story — disclosed precisely in §5/§6 below,
+with two independent, now-identified causes (not merely "no browser was
+available"). See
 `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` for the full
 findings behind every item below, including **R.6** (the generic-repository
-defect that previously blocked the authenticated flow entirely — now fixed)
-and **R.7** (a real, separate operational finding about database credential
-choice, uncovered and resolved while running this demonstration).
+defect that previously blocked the authenticated flow entirely — now fixed),
+**R.7** (a real, separate operational finding about database credential
+choice, uncovered and resolved while running this demonstration), and
+**R.10**/**R.11** (the two causes of the UI gap, found this pass).
 
 ## What this proves
 
@@ -68,6 +70,27 @@ Server ready  (21 entities, 106 routes)
    UI       http://localhost:8080/ui
    Showcase http://localhost:8080/showcase
 ```
+
+**KNOWN GAP (R.10, see findings register §B.10):** launched exactly this
+way — from the repository root, as shown above — `GET /ui`, `GET /ui/*`, and
+`GET /showcase*` all return `404`. The server's static file serving
+(`cmd/awo/serve_impl.go`) hard-codes paths relative to its *working
+directory* (`./awo/web/dist`, `./awo/web/showcase/index.html`), not to the
+repository root, and no `awo/` subdirectory exists anywhere in this repo. The
+only way confirmed this pass to make `/ui`/`/showcase` actually serve real
+HTML is to launch the compiled binary with its working directory set to the
+**parent** of this checkout (so `./awo/web/dist` happens to resolve to this
+repo's real `web/dist`, since the checkout itself is named `awo`):
+
+```sh
+go build -o /tmp/awo-bin ./cmd/awo   # from inside the repo
+cd ..                                 # one level above the checkout
+/tmp/awo-bin serve --db "$DATABASE_URL" --redis "$REDIS_URL" --port 8080
+```
+
+All API routes (`/api/v1/...`, §3 onward below) work correctly either way —
+only the static UI/showcase file serving is affected. This is a real,
+undecided framework gap, not something to work around permanently; see R.10.
 
 ## 3. Discover the route (verified live)
 
@@ -238,7 +261,9 @@ go test ./examples/... -v
 
 5/5 passing.
 
-## 5. UI — SDUI schema verified; visual rendering NOT verified
+## 5. UI — SDUI backend schema verified; the checked-in visual frontend does NOT show this entity today (two independent, confirmed causes)
+
+### 5a. The backend's own SDUI generation is correct (verified live, this pass)
 
 ```sh
 curl -s http://localhost:8080/api/v1/ui/nav -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <acme-tenant-uuid>"
@@ -246,22 +271,69 @@ curl -s http://localhost:8080/api/v1/ui/business/expenses -H "Authorization: Bea
 curl -s http://localhost:8080/api/v1/ui/business/expenses/<id> -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <acme-tenant-uuid>"
 ```
 
-All three returned `200` with well-formed amis JSON schema: the nav entry for
-Expenses, a list-view schema with the expected columns and an API binding to
-`/api/v1/business/expenses`, and a detail-view schema with readable field
-labels and the created record's values.
+All three returned `200` with well-formed amis JSON schema: `GET /api/v1/ui/nav`
+correctly includes `business → Expenses → business_expense →
+/ui/business/expenses` among the other real entities; the list-view schema
+has the expected columns and an API binding to `/api/v1/business/expenses`;
+the detail-view schema has readable field labels, validations, and a
+real created record's values. Re-verified this pass with a freshly-created,
+isolated login session — not just re-asserted from a prior run.
 
-**What was NOT done:** this environment has no browser-capable tool, and the
-static frontend bundle (`./awo/web/dist/index.html`) is not built here, so
-the generated page was never actually opened and visually inspected — only
-its underlying JSON schema was. **This is disclosed as an explicit, open gap,
-not claimed as done** — tracked as `tasks.md` **R.9**. Do not treat the JSON
-schema check above as equivalent to visual verification.
+### 5b. The checked-in `web/dist` frontend cannot reach any of the above, for two separate, now-identified reasons
+
+**Cause 1 (R.10):** the documented startup command in §2 above 404s on every
+`/ui`/`/showcase` route, because the server's static file paths are relative
+to its working directory and assume a directory named `awo` exists as a
+*child* of the CWD — true only if you launch from one level above this
+checkout (see §2's workaround). This alone was never diagnosed in any prior
+pass of this demo.
+
+**Cause 2 (R.11), confirmed even after working around Cause 1:** the actual
+HTML/JS shipped in `web/dist/index.html` is a static, hand-authored demo
+page, not a build artifact wired to this backend:
+
+- Its sidebar navigation is a **hard-coded JavaScript array** of fictional
+  modules (Finance, Inventory, HR, CRM, Forecourt, plus a thin Platform
+  group) — it does not include "Expenses" and does not match any of this
+  project's real registered entities.
+- Its router always fetches a **static file** at `/schemas/pages/<page>.json`
+  — never the real `/api/v1/ui/{module}/{entity}` endpoint. Confirmed live:
+  `GET /schemas/pages/business/expenses.json` → `404` (no such file exists;
+  there is no "business" folder under `web/dist/schemas/pages/`).
+- Its login form calls `fetch('/auth/login', ...)` — missing the real
+  backend's `/api/v1` prefix. Confirmed live: `POST /auth/login` → `404`.
+  The real route, used throughout §2-§4 above, is `POST /api/v1/auth/login`.
+- Its "Create workspace" tab calls `/auth/register` — a route that does not
+  exist anywhere in this backend at all (only `/login`, `/logout`, `/me` are
+  registered).
+- Its API fetcher sends an `X-Awo-Tenant` header; every real request in this
+  document uses the backend's actual header, `X-Tenant-ID`.
+
+**Net effect:** even with a working browser, opening `/ui` today would show
+a sidebar with no Expense entry, and manually navigating to it (by any
+means) would not retrieve real data for Expense or any other entity — the
+static shell simply never talks to this backend correctly. This is **not**
+an SDUI-engine defect (§5a proves the engine itself is correct) — it is a
+disconnected frontend artifact. See findings register §B.10/§B.11 and
+`tasks.md` **R.10**/**R.11** for the full evidence and the (undecided,
+out-of-scope-for-this-pass) remediation options.
+
+**What was NOT done:** no browser-capable tool exists in this environment
+(confirmed: no Chromium/Firefox, no Playwright/Puppeteer, no compatible
+Linux userland to run one under Termux/Android) — so visual rendering itself
+remains unverified regardless of the above. **This is disclosed as an
+explicit, open gap, not claimed as done** — tracked as `tasks.md` **R.9**.
+Given 5b's findings, a browser would not currently show anything different
+from what the HTTP-level checks above already show.
 
 ## 6. What this does NOT prove yet
 
 - Visual browser rendering of the generated UI (R.9 — no browser-capable tool
-  available in this environment; JSON schema only, see §5).
+  available in this environment).
+- That the checked-in `web/dist` frontend shell actually displays the
+  Expense entity at all — confirmed this pass that, as currently wired, it
+  cannot (R.10/R.11); only the backend's SDUI JSON generation is verified
+  (§5a).
 - Audit-row content for this entity specifically (the generic mechanism is
   proven elsewhere in the codebase; not re-queried for this entity this pass).
 - A fully clean serialization of Link-type fields in JSON responses (R.8 —
