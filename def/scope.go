@@ -36,7 +36,9 @@ const (
 	// ScopeOrganizationTree rows are visible to the viewer's organization and
 	// all ancestor organizations up the hierarchy. Used for entities where
 	// parent organizations need visibility into children's data.
-	// Requires ltree-enabled organization hierarchy (platform_organizations).
+	// Requires the organization hierarchy's materialized `path` column
+	// (platform_organization; VARCHAR(4096) + LIKE prefix matching — see
+	// ADR-012, DECISION_REGISTER.md). Not an ltree-based hierarchy.
 	// Example: approval records visible to management chain.
 	ScopeOrganizationTree Scope = "organization_tree"
 

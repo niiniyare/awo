@@ -308,13 +308,20 @@ this section is the roadmap-tracking summary.
 
 ## Phase 3 — Organisation Hierarchy (make it real)
 
-**BLOCKED on Phase 1 item 1.18 (CRITICAL, found during final forensic security verification):
-the `ScopeOrganization`/`ScopeOrganizationTree` RLS policy currently provides zero actual
-isolation — see 1.18 above for the full reproduction. Do not begin implementing
-`OrganizationService` or declaring any real `ScopeOrganization` entity until 1.18 is resolved
-and its regression tests are flipped back to asserting real isolation; doing so first would
-ship a working-looking organisation hierarchy with no actual database-level enforcement
-behind it.**
+**UNBLOCKED as of Phase 2 Step 8.1 + Step 0 (path-representation reconciliation):**
+item 1.18's `ScopeOrganization`/`ScopeOrganizationTree` RLS defect is closed and verified
+(see 1.18 above — the org policy is now `AS RESTRICTIVE`, giving the intended
+`tenant_isolation AND org_isolation` semantics, confirmed against real PostgreSQL with
+adversarial sibling/hierarchy/cross-tenant tests). The companion path-representation
+question this phase's own 3.1 acceptance criteria raised (`ltree` vs. VARCHAR+LIKE) is
+also now resolved: repository inspection (Phase 3 Step 0) confirmed no `CREATE EXTENSION
+ltree` exists anywhere in the migration set and no active ADR, generator code, or RLS
+policy actually uses the `<@` ltree operator — the shipped `VARCHAR(4096)` materialized
+path + `LIKE 'prefix%'` representation (already what `generator.go`'s
+`current_org_path()`/`org_tree_isolation` policy and Step 8.1's fix implement) is retained
+as authoritative. `ADR-012` (`docs/00-overview/DECISION_REGISTER.md`) and
+`def/scope.go`'s `ScopeOrganizationTree` doc comment have been corrected to match. Phase 3
+implementation (3.1) may now proceed.
 
 ### 3.1 Implement `OrganizationService`
 - [ ] **GOAL:** Create/Move/ResolveScope actually work.
@@ -323,7 +330,7 @@ behind it.**
 - **DEPENDENCIES:** none, but should land before any business module claims to use org scoping.
 - **IMPLEMENTATION:** Implement each `OrganizationService` method against `EntityRepository`, and fix `PathComputeHook` to always compute the materialized path from the real parent record (via a repository lookup), not from a pre-populated test-only field.
 - **TESTS:** create a 3-level org hierarchy (Tenant → Holding → Company A); confirm `path`/`depth` are correct at each level; confirm a Company-A-scoped user cannot see Holding-level records; confirm a manager sees their subtree.
-- **ACCEPTANCE CRITERIA:** [ ] All `OrganizationService` methods implemented, tested against real PG. [ ] Hierarchy creation/query integration tests pass (these were explicitly unchecked/pending in every prior status doc). [ ] `path` field decision made explicitly (real `ltree` extension vs. formally-documented VARCHAR+LIKE) and ADR-012/024 corrected to match.
+- **ACCEPTANCE CRITERIA:** [x] `path` field decision made explicitly — VARCHAR(4096)+LIKE retained as authoritative (Phase 3 Step 0; no genuine `ltree` requirement found anywhere in the repository); `ADR-012` corrected to match (ADR-024 was unrelated — SessionValidator — and required no change). [ ] All `OrganizationService` methods implemented, tested against real PG. [ ] Hierarchy creation/query integration tests pass (these were explicitly unchecked/pending in every prior status doc).
 
 ---
 

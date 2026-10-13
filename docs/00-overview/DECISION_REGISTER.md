@@ -285,9 +285,11 @@ The `PolicyEvaluator` implementation (ADR-001) loads `CapabilityGrants` and tran
 
 **Original decision:** Deferred to v1.1.
 
-**Amended (Phase 8):** Organization hierarchy is now a framework-native platform entity implemented via `platform_organization` with `ltree`-backed path column. `ScopeOrganization` and `ScopeOrganizationTree` scopes (ADR-022) depend on it. The `tenant_id` FK remains the primary isolation unit; organization hierarchy adds a second filtering dimension within a tenant.
+**Amended (Phase 8):** Organization hierarchy is now a framework-native platform entity implemented via `platform_organization` with a `VARCHAR(4096)` materialized-path column (`"/root-id/parent-id/self-id/"`), not `ltree`. `ScopeOrganization` and `ScopeOrganizationTree` scopes (ADR-022) depend on it. The `tenant_id` FK remains the primary isolation unit; organization hierarchy adds a second filtering dimension within a tenant.
 
-**Implementation:** `platform/registry` module registers `platform_organization`. `ScopeOrganizationTree` queries use ltree `<@` ancestor operator. See `awo/tasks.md` Phase 8.
+**Amended (Phase 2 Step 8.1 (Phase 3 Step 0), confirmed as the path representation decision referenced by `tasks.md` 3.1's acceptance criteria):** `ltree` was never adopted — no `CREATE EXTENSION ltree` exists anywhere in the migration set, and the shipped schema, generator, and RLS policies have always used `VARCHAR(4096)` + `LIKE 'prefix%'` prefix matching, backed by a `btree (path text_pattern_ops)` index. This representation is retained as authoritative: it is what `generator.go`'s `ScopeOrganizationTree` RLS policy (`current_org_path()` + `path LIKE current_org_path() || '%'`), the `platform_organization` migration, and Step 8.1's verified `AS RESTRICTIVE` fix all actually implement. No other active ADR or framework contract requires `ltree` or its `<@` operator.
+
+**Implementation:** `platform/organization` (not `platform/registry` — that module registers unrelated platform module metadata) owns `platform_organization`. `ScopeOrganizationTree` queries use `path LIKE current_org_path() || '%'` prefix matching, not an ltree ancestor operator. See `awo/tasks.md` Phase 2 item 1.18 and Phase 3 item 3.1.
 
 ---
 
@@ -524,7 +526,7 @@ const (
     ScopeSystem           Scope = "system"           // global; no tenant_id, no RLS
     ScopeTenant           Scope = "tenant"           // default; RLS on tenant_id
     ScopeOrganization     Scope = "organization"     // RLS on tenant_id + org filter
-    ScopeOrganizationTree Scope = "organization_tree"// RLS on tenant_id + ltree ancestor
+    ScopeOrganizationTree Scope = "organization_tree"// RLS on tenant_id + materialized-path prefix (LIKE)
     ScopeUser             Scope = "user"             // private to creating user
 )
 ```

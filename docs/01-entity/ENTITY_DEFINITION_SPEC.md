@@ -116,7 +116,7 @@ Returns the data isolation boundary. Default (zero value): `ScopeTenant`. See `d
 | `ScopeSystem` | Global rows; no `tenant_id`, no RLS |
 | `ScopeTenant` | Default; RLS on `tenant_id` |
 | `ScopeOrganization` | RLS on `tenant_id` + org filter |
-| `ScopeOrganizationTree` | RLS on `tenant_id` + ltree ancestor |
+| `ScopeOrganizationTree` | RLS on `tenant_id` + materialized-path prefix match (`LIKE`) |
 | `ScopeUser` | Private to creating user |
 
 **`AllowAudit() bool`** *(ADR-023)*
