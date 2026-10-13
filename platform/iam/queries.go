@@ -23,8 +23,8 @@
 //     would require a general security bypass — that is not acceptable.
 //     Replacement: a dedicated DatabaseQuerier.LookupCredentials method in N+6D.
 //
-//  2. [sqlLookupAPIToken] — Cross-entity join. Spans iam_api_tokens and
-//     iam_service_accounts. EntityRepository is scoped to a single entity type;
+//  2. [sqlLookupAPIToken] — Cross-entity join. Spans iam_api_token and
+//     iam_service_account. EntityRepository is scoped to a single entity type;
 //     cross-entity joins are not expressible through its interface. Splitting
 //     this into two sequential EntityRepository calls would introduce a TOCTOU
 //     risk (service account status could change between reads) and double the
@@ -88,14 +88,14 @@ const sqlSetTenantContext = `SELECT set_tenant_context($1)`
 // Limitation: Security — sensitive field policy in EntityRepository.
 const sqlLookupCredentials = `
 	SELECT id, password_hash, status
-	FROM iam_users
+	FROM iam_user
 	WHERE email = $1
 `
 
 // ── API token validation ───────────────────────────────────────────────────────
 
 // sqlLookupAPIToken retrieves service account identity and token metadata for
-// a given token_hash. Joins iam_api_tokens and iam_service_accounts in a
+// a given token_hash. Joins iam_api_token and iam_service_account in a
 // single query to avoid two round-trips on the hot-path validation flow.
 //
 // Why SQL: This is a cross-entity join. EntityRepository is scoped to a single
@@ -116,8 +116,8 @@ const sqlLookupAPIToken = `
 		at.expires_at,
 		at.is_revoked,
 		sa.status
-	FROM iam_api_tokens at
-	JOIN iam_service_accounts sa ON sa.id = at.service_account_id
+	FROM iam_api_token at
+	JOIN iam_service_account sa ON sa.id = at.service_account_id
 	WHERE at.token_hash = $1
 `
 
@@ -145,12 +145,12 @@ const sqlLoadRolePermissions = `
 
 // ── Session recovery ────────────────────────────────────────────────────────────
 
-// sqlLoadSessionByHash retrieves session metadata from iam_sessions for a
+// sqlLoadSessionByHash retrieves session metadata from iam_session for a
 // given token_hash. Used to recover a valid session after Redis eviction or
 // restart. Only returns sessions that are not revoked and have not expired.
 //
 // The query executes inside a transaction with set_tenant_context so that RLS
-// on iam_sessions scopes the lookup to the correct tenant.
+// on iam_session scopes the lookup to the correct tenant.
 //
 // Fields returned: user_id, service_account_id, issued_at, expires_at,
 // device_id, ip_address, tenant_id.
@@ -163,7 +163,7 @@ const sqlLoadSessionByHash = `
 		device_id,
 		ip_address,
 		tenant_id
-	FROM iam_sessions
+	FROM iam_session
 	WHERE token_hash = $1
 	  AND revoked_at IS NULL
 	  AND expires_at > NOW()

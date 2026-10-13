@@ -11,7 +11,7 @@
 //	new workflow <name>    Scaffold a Temporal workflow stub
 //	schema inspect         Print schema endpoint hint
 //	schema fingerprint     Print fingerprint endpoint hint
-//	migrate up             Apply pending migrations (delegates to cmd/migrate)
+//	migrate up             Apply pending migrations (native — see migrate.go)
 //	migrate down           Roll back last migration
 //	migrate version        Print current migration version
 //	migrate status         List applied/pending migrations
@@ -107,13 +107,14 @@ Schema:
   schema fingerprint          Print the SHA-256 fingerprint of the compiled schema
 
 Migrations:
-  migrate up                  Apply all pending up migrations
-  migrate down                Roll back the last applied migration
-  migrate version             Print current database migration version
-  migrate status              List applied/pending migrations
+  migrate up [--db URL]       Apply all pending up migrations (default: $DATABASE_URL)
+  migrate down [--db URL]     Roll back the last applied migration
+  migrate version [--db URL] Print current database migration version
+  migrate status [--db URL]  Print current version and whether the database is dirty
 
 Modules:
-  module list                 List registered modules in dependency order
+  module list                 Stub — module/ dependency-ordered registration is not yet
+                               wired into bootstrap (tasks.md 2.5); lists nothing today
 
 Documentation:
   docgen [--out <dir>]        Generate Markdown API reference (stdout or directory)
@@ -207,21 +208,6 @@ func runNewWorkflow(args []string) error {
 		fmt.Printf("  %s\n", path)
 	}
 	return nil
-}
-
-func runMigrate(args []string) error {
-	sub := ""
-	if len(args) > 0 {
-		sub = args[0]
-	}
-	switch sub {
-	case "up", "down", "version", "status":
-		fmt.Printf("migrate %s: run the dedicated migration binary:\n", sub)
-		fmt.Printf("  go run ./cmd/migrate %s\n", sub)
-		return nil
-	default:
-		return fmt.Errorf("unknown migrate sub-command %q (use: up, down, version, status)", sub)
-	}
 }
 
 func runModule(args []string) error {

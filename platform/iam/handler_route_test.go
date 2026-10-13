@@ -76,7 +76,7 @@ func createIAMTestUser(t *testing.T, svc *iam.AuthService, tenantID uuid.UUID, e
 	userID := uuid.New()
 	pwHash := hashTestPassword(t, password)
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		`INSERT INTO iam_user (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', '%s', '%s', 'active')`,
 		userID, tenantID, email, pwHash,
 	))

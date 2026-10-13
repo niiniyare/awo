@@ -28,7 +28,7 @@ import (
 // ── DDL ────────────────────────────────────────────────────────────────────────
 
 const iamUsersDDL = `
-CREATE TABLE iam_users (
+CREATE TABLE iam_user (
     id            uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id     uuid NOT NULL,
     email         text NOT NULL,
@@ -39,11 +39,11 @@ CREATE TABLE iam_users (
     created_at    timestamptz NOT NULL DEFAULT now(),
     updated_at    timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE iam_users ENABLE ROW LEVEL SECURITY;
-ALTER TABLE iam_users FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON iam_users
+ALTER TABLE iam_user ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam_user FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON iam_user
     USING (tenant_id = current_tenant_id());
-GRANT SELECT, INSERT, UPDATE, DELETE ON iam_users TO awo_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON iam_user TO awo_app;
 `
 
 const iamUserRolesDDL = `
@@ -64,7 +64,7 @@ GRANT SELECT, INSERT, UPDATE, DELETE ON iam_user_roles TO awo_app;
 `
 
 const iamSessionsDDL = `
-CREATE TABLE iam_sessions (
+CREATE TABLE iam_session (
     id                 uuid PRIMARY KEY DEFAULT gen_random_uuid(),
     tenant_id          uuid NOT NULL,
     token_hash         text NOT NULL,
@@ -79,19 +79,19 @@ CREATE TABLE iam_sessions (
     created_at         timestamptz NOT NULL DEFAULT now(),
     updated_at         timestamptz NOT NULL DEFAULT now()
 );
-ALTER TABLE iam_sessions ENABLE ROW LEVEL SECURITY;
-ALTER TABLE iam_sessions FORCE ROW LEVEL SECURITY;
-CREATE POLICY tenant_isolation ON iam_sessions
+ALTER TABLE iam_session ENABLE ROW LEVEL SECURITY;
+ALTER TABLE iam_session FORCE ROW LEVEL SECURITY;
+CREATE POLICY tenant_isolation ON iam_session
     USING (tenant_id = current_tenant_id());
-GRANT SELECT, INSERT, UPDATE, DELETE ON iam_sessions TO awo_app;
+GRANT SELECT, INSERT, UPDATE, DELETE ON iam_session TO awo_app;
 `
 
 // ── EntitySchema helpers ──────────────────────────────────────────────────────
 
 func iamUsersSchema() *compiler.EntitySchema {
 	return &compiler.EntitySchema{
-		QualifiedName: "iam_users",
-		TableName:     "iam_users",
+		QualifiedName: "iam_user",
+		TableName:     "iam_user",
 		IsSystem:      true,
 		FieldsByName: map[string]def.FieldDef{
 			"email":         {Name: "email", Type: def.FieldTypeData},
@@ -116,8 +116,8 @@ func iamUserRolesSchema() *compiler.EntitySchema {
 
 func iamSessionsSchema() *compiler.EntitySchema {
 	return &compiler.EntitySchema{
-		QualifiedName: "iam_sessions",
-		TableName:     "iam_sessions",
+		QualifiedName: "iam_session",
+		TableName:     "iam_session",
 		IsSystem:      true,
 		FieldsByName: map[string]def.FieldDef{
 			"token_hash":         {Name: "token_hash", Type: def.FieldTypeData},
@@ -243,7 +243,7 @@ func TestAuthService_Login_Success_StoresSessionInRedis(t *testing.T) {
 	userID := uuid.New()
 	pwHash := hashTestPassword(t, "hunter2!")
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		`INSERT INTO iam_user (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', 'alice@example.com', '%s', 'active')`,
 		userID, tenantID, pwHash,
 	))
@@ -271,7 +271,7 @@ func TestAuthService_Login_WrongPassword_Returns401(t *testing.T) {
 	userID := uuid.New()
 	pwHash := hashTestPassword(t, "correctpassword")
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		`INSERT INTO iam_user (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', 'bob@example.com', '%s', 'active')`,
 		userID, tenantID, pwHash,
 	))
@@ -303,7 +303,7 @@ func TestAuthService_Login_InactiveUser_Returns403(t *testing.T) {
 	userID := uuid.New()
 	pwHash := hashTestPassword(t, "password123")
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		`INSERT INTO iam_user (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', 'carol@example.com', '%s', 'suspended')`,
 		userID, tenantID, pwHash,
 	))
@@ -394,7 +394,7 @@ func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) 
 	userID := uuid.New()
 	pwHash := hashTestPassword(t, "correct horse battery staple")
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_users (id, tenant_id, email, password_hash, status)
+		`INSERT INTO iam_user (id, tenant_id, email, password_hash, status)
 		 VALUES ('%s', '%s', 'dana@example.com', '%s', 'active')`,
 		userID, tenantID, pwHash,
 	))
@@ -421,7 +421,7 @@ func TestAuthService_Login_ActiveTenant_ValidCredentials_Succeeds(t *testing.T) 
 	// previously panicked before reaching this point).
 	var sessionCount int
 	require.NoError(t, testdb.QueryRowSQL(t, svc.DB,
-		`SELECT count(*) FROM iam_sessions WHERE token_hash = $1`, sha256hex(result.Token),
+		`SELECT count(*) FROM iam_session WHERE token_hash = $1`, sha256hex(result.Token),
 	).Scan(&sessionCount))
 	assert.Equal(t, 1, sessionCount, "the best-effort SQL session record must be written, not skipped")
 }
@@ -440,9 +440,9 @@ func TestAuthService_ValidateToken_RedisMiss_RecoverFromDB(t *testing.T) {
 	now := time.Now().UTC()
 	expiresAt := now.Add(24 * time.Hour)
 
-	// Insert the session directly into iam_sessions as superuser (bypasses RLS).
+	// Insert the session directly into iam_session as superuser (bypasses RLS).
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_sessions
+		`INSERT INTO iam_session
 		    (id, tenant_id, token_hash, user_id, service_account_id,
 		     issued_at, expires_at, device_id, ip_address)
 		 VALUES (gen_random_uuid(), '%s', '%s', '%s', NULL,
@@ -477,7 +477,7 @@ func TestAuthService_ValidateToken_ExpiredSession_Returns401(t *testing.T) {
 	// Insert an already-expired session — sqlLoadSessionByHash has expires_at > NOW()
 	// so this should NOT be returned by the DB query.
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_sessions
+		`INSERT INTO iam_session
 		    (id, tenant_id, token_hash, user_id, service_account_id,
 		     issued_at, expires_at, device_id, ip_address)
 		 VALUES (gen_random_uuid(), '%s', '%s', '%s', NULL,
@@ -505,7 +505,7 @@ func TestAuthService_ValidateToken_RevokedSession_NotReturned(t *testing.T) {
 
 	// Insert a revoked session (revoked_at IS NOT NULL → excluded by query).
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_sessions
+		`INSERT INTO iam_session
 		    (id, tenant_id, token_hash, user_id, service_account_id,
 		     issued_at, expires_at, device_id, ip_address, revoked_at)
 		 VALUES (gen_random_uuid(), '%s', '%s', '%s', NULL,
@@ -525,7 +525,7 @@ func TestAuthService_ValidateToken_RevokedSession_NotReturned(t *testing.T) {
 // deterministic regression test for a session-revocation race.
 //
 // Logout/RevokeUserSessions delete the live Redis key synchronously (the
-// critical, error-propagating path) but mark iam_sessions.revoked_at only
+// critical, error-propagating path) but mark iam_session.revoked_at only
 // best-effort, in a separate write that can fail independently — a network
 // blip, a connection pool exhaustion, anything. Before this fix,
 // recoverSessionFromDB's query only checked "revoked_at IS NULL AND
@@ -554,7 +554,7 @@ func TestAuthService_ValidateToken_RevocationTombstone_BlocksResurrection(t *tes
 	// PostgreSQL with revoked_at IS NULL (the "still valid" state that
 	// recoverSessionFromDB's query would match).
 	testdb.ApplySQL(t, svc.DB, fmt.Sprintf(
-		`INSERT INTO iam_sessions
+		`INSERT INTO iam_session
 		    (id, tenant_id, token_hash, user_id, service_account_id,
 		     issued_at, expires_at, device_id, ip_address)
 		 VALUES (gen_random_uuid(), '%s', '%s', '%s', NULL,
@@ -589,7 +589,7 @@ func TestAuthService_ValidateToken_RevocationTombstone_BlocksResurrection(t *tes
 	// expires_at in the future) — confirm that precondition directly.
 	var revokedAt *time.Time
 	require.NoError(t, testdb.QueryRowSQL(t, svc.DB,
-		`SELECT revoked_at FROM iam_sessions WHERE token_hash = $1`, hash).Scan(&revokedAt))
+		`SELECT revoked_at FROM iam_session WHERE token_hash = $1`, hash).Scan(&revokedAt))
 	require.Nil(t, revokedAt, "precondition: PostgreSQL must still show this session as not-revoked")
 
 	// Redis has no live key (Delete removed it) → ValidateToken falls
