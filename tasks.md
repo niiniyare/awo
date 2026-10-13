@@ -8,6 +8,34 @@
 
 Every item includes GOAL / WHY / FILES / DEPENDENCIES / IMPLEMENTATION / TESTS / ACCEPTANCE CRITERIA. Phases are ordered by actual dependency, not just severity — documentation-first per the framework's own Principle 5, then core contracts, then tests, then implementation, then infrastructure, then platform entities, then CLI/tooling, then advanced features.
 
+**CURRENT PHASE & IMMEDIATE OBJECTIVE (2026-10-13):** Phases 0-2 and Phase 3 Step 0/1 (organization RLS + path computation) are closed. The immediate objective has shifted from pure security/correctness hardening to **proving Awo can support a real business process end-to-end** — the first showcase, `examples/expense` (Business Expense), is implemented and verified (see **SHOWCASE** section immediately below). This does not supersede or deprioritize the still-open Phase 1/2/3 security and correctness items below it — it runs alongside them. See `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` for the durable record of everything discovered while building it (several new, previously-unknown findings — R.1/R.2/R.3, 3.1a, 3.1b below — came directly out of this showcase work).
+
+---
+
+## SHOWCASE — Business Expense (`examples/expense`)
+
+- [x] **STATUS: P0 vertical slice implemented and verified this pass.**
+- **GOAL:** Prove, with the smallest entity that exercises the most framework capability, that Awo supports a real business process: tenant-isolated persistence, a generated CRUD API, default permission enforcement, mandatory audit, and an explicit, tested status lifecycle — with zero hand-written SQL beyond the entity's own migration and zero hand-written API/routing code.
+- **WHY THIS ENTITY (full selection reasoning: `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` §D):** familiar to any non-technical stakeholder; small, closed-ended lifecycle (`draft -> submitted -> approved`/`rejected -> draft`); fits `SystemDefinition` exactly (no accounting integration, no approval-chain engine, no notification infrastructure needed to demonstrate it credibly); a `CustomDefinition` was considered and rejected — **confirmed non-functional against any real database today** (see findings register §A.3/R.2) — making `SystemDefinition` the only viable choice regardless of which would otherwise have been faster.
+- **FILES:** `examples/expense/definition.go`, `examples/expense/hooks.go` (`StatusTransitionGuard`), `examples/expense/migrations/001_create_business_expense.up.sql`/`.down.sql`, `examples/expense/migrations/migrations.go` (registered with `migration.Register`, Priority 40 — "custom application modules" per `migration.Source`'s own documented convention), `examples/expense/expense_pg_test.go`. Wired into `cmd/server/main.go`, `cmd/awo/cmds_schema.go` (entity registration) and `cmd/migrate/main.go` (migration registration — the step most other platform modules are missing; see R.1) as the one explicit, documented exception to the "business modules don't live in this repo" rule.
+- **ACCEPTANCE CRITERIA (mapped to the illustrative 9-point scenario — status per point):**
+
+  | # | Scenario requirement | Status |
+  |---|---|---|
+  | 1 | User creates an expense | **Implemented and verified** — `TestExpense_Create_DefaultsToDraft_TenantScoped` |
+  | 2 | Required fields / business rules validated | **Implemented and verified** — field-level `Required`/`Select` enum validation (generic framework mechanism, exercised by every Create call in the test suite) |
+  | 3 | Stored with correct tenant context | **Implemented and verified** — `TestExpense_TenantIsolation_OtherTenantCannotSeeIt`, real RLS, non-superuser `awo_app` role |
+  | 4 | Retrievable via existing API/UI | API: **implemented and verified** (generic `router.go` CRUD route, same mechanism as every other entity). UI (SDUI): **implemented but insufficiently verified** — the generic generator is tested; this entity's own generated page was not inspected this pass |
+  | 5 | Unauthorized operations rejected | **Implemented, not independently re-verified for this entity** — same generic `authz.RequirePermission` mechanism as every other entity; not given a dedicated test this pass (would duplicate coverage that already exists generically) |
+  | 6 | Changes produce expected audit history | **Implemented, not independently re-verified for this entity** — generic audit mechanism proven in Phase 2 Step 7b; this entity's own audit rows were not queried this pass (see findings register §A.8) |
+  | 7 | Permitted status transition moves the lifecycle forward | **Implemented and verified** — `TestExpense_StatusTransitionGuard_ValidTransition_Succeeds`, `..._InvalidTransition_Rejected`, `..._UnrelatedFieldUpdate_Unaffected` (the last one specifically proving this module did not repeat `platform/organization.MoveGuard`'s parameter-order bug — see 3.1a) |
+  | 8 | UI generated from existing capabilities | Same as #4 — **implemented but insufficiently verified** |
+  | 9 | Automated tests demonstrate the behavior | **Implemented and verified** — 5 tests, real PostgreSQL, real role, real migration file, all passing |
+
+- **TESTS:** `examples/expense/expense_pg_test.go` — 5 tests, all passing against real PostgreSQL (`go test ./examples/... -v`).
+- **VERIFICATION RUN THIS PASS:** `gofmt -l .` clean. `go vet ./...` clean. `go build ./...` clean. `git diff --check` clean. `go test ./examples/... -v`: 5/5 pass. `go test ./... -count=1`: **68 packages ok, 0 FAIL** (up from 67 before this entity existed). `-race`: unsupported on this host (android/arm64), CI's `linux/amd64` job remains authoritative.
+- **NOT DONE (explicitly deferred, not silently skipped):** SDUI page inspection for this entity (#4/#8 above); a dedicated authorization-rejection test for this entity (#5); a dedicated audit-row-content test for this entity (#6) — all three rely on already-proven generic mechanisms rather than being unverified claims.
+
 ---
 
 ## Phase 0 — Restore Buildability (BLOCKS EVERYTHING)
@@ -306,6 +334,36 @@ this section is the roadmap-tracking summary.
 
 ---
 
+## Findings-Register Follow-ups (R.x) — discovered building the showcase
+
+Full evidence for each: `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md`.
+
+### R.1 Most platform modules' migrations are not wired into `cmd/migrate`
+- [ ] **GOAL:** Every platform module whose entity is meant to be real in production has its migration reachable by the actual migration runner, not just by test harnesses that read the `.sql` file directly.
+- **WHY:** `cmd/migrate/main.go` blank-imports exactly 4 migration packages (`events/outbox`, `migration/bootstrap`, `audit`, `iam`, `tenant`). `organization`, `settings`, `flags`, `metadata`, `registry`, `notifications` (plural) all have real `.sql` files under `migrations/` with **no** `migrations.go` wrapper calling `migration.Register` — `cmd/migrate up` against a fresh database will never create their tables. `attachment`, `mail`, `notification` (singular) have no migration at all. Findings register §A.2.
+- **FILES:** one new `migrations.go` per affected module (mirroring `platform/audit/migrations/migrations.go`'s exact pattern — `//go:embed *.sql` + `migration.Register`), plus the corresponding blank import added to `cmd/migrate/main.go`.
+- **DEPENDENCIES:** blocks Phase 3's `OrganizationService` work from meaning anything against a real database — do this for `organization` first if nothing else.
+- **TESTS:** apply the full migration set to a clean database via the real `cmd/migrate up` (or an equivalent test using `migration.BuildFS()`) and confirm each previously-orphaned table now exists.
+- **ACCEPTANCE CRITERIA:** [ ] `organization` wired (priority: blocks Phase 3). [ ] `settings`, `flags`, `metadata`, `registry`, `notifications` (plural) each wired or explicitly deleted if genuinely dead. [ ] `attachment`/`mail`/`notification` (singular) get a real migration if they are meant to be functional, or are documented as scaffolding-only if not.
+
+### R.2 Custom entities (`def.CustomDefinition`) have no backing table anywhere
+- [ ] **GOAL:** `custom_entity_records` exists, with tenant RLS, wherever a `CustomDefinition` entity is actually used — or `CustomDefinition` is documented as not-yet-functional until this lands, so no module author is told to use it under false assumptions.
+- **WHY:** `compiler/schema.go` routes every `CustomDefinition` to a shared `custom_entity_records` table (filtered by `entity_type`) that is never created by any migration or Go code anywhere in the repository. Findings register §A.3.
+- **FILES:** new migration (likely `migration/bootstrap/` or its own small module) creating `custom_entity_records(id, tenant_id, entity_type, data jsonb, created_at, updated_at, custom_fields)` with the standard `tenant_isolation` RLS policy.
+- **DEPENDENCIES:** none.
+- **TESTS:** create/get/query a `CustomDefinition` entity against real PostgreSQL (none of the existing test suite does this against a real database today — confirm by grep before writing the fix, since this task's own research did not find one).
+- **ACCEPTANCE CRITERIA:** [ ] Table exists, RLS enforced. [ ] A real-Postgres test creates and reads back a `CustomDefinition` entity. [ ] `docs/01-entity/ENTITY_DEFINITION_SPEC.md`'s description of `CustomDefinition` corrected if it currently implies this already works.
+
+### R.3 Verify whether `iam_user`'s generic CRUD path is broken by its missing `custom_fields` column
+- [ ] **GOAL:** Confirm or refute (currently a hypothesis, not a confirmed defect) whether `Get`/`Create` against `iam_user` via the generic `EntityService`/`contrib/pgx.Repository` path fails with `column iam_user.custom_fields does not exist`.
+- **WHY:** `platform/iam/migrations/001_iam_user.up.sql` creates `iam_user` (the table the real `SystemDefinition.QualifiedName` resolves to) without a `custom_fields` column; `contrib/pgx.Repository.systemColumnsAndScanner` unconditionally selects one for every system entity. A second, differently-named migration (`20260720000001_create_iam_users.up.sql`, table `iam_users` — plural, with `custom_fields`) exists alongside it and is also embedded, but is not the table the entity definition actually targets. Findings register §A.6.
+- **FILES:** none yet — this is a verification task first.
+- **DEPENDENCIES:** none.
+- **TESTS:** one focused real-Postgres test: apply `platform/iam`'s real migrations, call `EntityService.Create`/`.Get` against the `iam_user` entity (not `AuthService`'s own hand-written queries), observe the actual result.
+- **ACCEPTANCE CRITERIA:** [ ] Hypothesis confirmed or refuted with a real test, not reasoning alone. [ ] If confirmed: add `custom_fields` to `iam_user`'s real migration (not the orphaned `iam_users` one) and delete or clearly mark the dead duplicate. [ ] If refuted: document why (e.g. `AuthService` never actually uses the generic path) so this doesn't get re-flagged without cause.
+
+---
+
 ## Phase 3 — Organisation Hierarchy (make it real)
 
 **UNBLOCKED as of Phase 2 Step 8.1 + Step 0 (path-representation reconciliation):**
@@ -325,12 +383,31 @@ implementation (3.1) may now proceed.
 
 ### 3.1 Implement `OrganizationService`
 - [ ] **GOAL:** Create/Move/ResolveScope actually work.
-- **WHY:** AUDIT_REPORT.md §4, §9 S10 — every method returns `"not implemented"` today; `PathComputeHook` silently mis-records every non-root org as a root on the real (non-test) call path, since it only computes a correct path when an internal test-only field is pre-populated.
-- **FILES:** `platform/organization/service.go`, `platform/organization/hooks.go`.
-- **DEPENDENCIES:** none, but should land before any business module claims to use org scoping.
-- **IMPLEMENTATION:** Implement each `OrganizationService` method against `EntityRepository`, and fix `PathComputeHook` to always compute the materialized path from the real parent record (via a repository lookup), not from a pre-populated test-only field.
-- **TESTS:** create a 3-level org hierarchy (Tenant → Holding → Company A); confirm `path`/`depth` are correct at each level; confirm a Company-A-scoped user cannot see Holding-level records; confirm a manager sees their subtree.
-- **ACCEPTANCE CRITERIA:** [x] `path` field decision made explicitly — VARCHAR(4096)+LIKE retained as authoritative (Phase 3 Step 0; no genuine `ltree` requirement found anywhere in the repository); `ADR-012` corrected to match (ADR-024 was unrelated — SessionValidator — and required no change). [ ] All `OrganizationService` methods implemented, tested against real PG. [ ] Hierarchy creation/query integration tests pass (these were explicitly unchecked/pending in every prior status doc).
+- **WHY:** AUDIT_REPORT.md §4, §9 S10 — every method returns `"not implemented"` today. **`PathComputeHook`'s own defect is now CLOSED — see 3.1 (status below) and Phase 3 Step 1's evidence; do not re-describe it as open.** Two new, smaller defects were found while verifying that fix and remain open: see **3.1a** and **3.1b** below. Also newly confirmed: `platform/organization`'s migration is not wired into the real `cmd/migrate` runner at all (see `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` §A.2/R.1) — `OrganizationService` would be meaningless against a database that was never actually migrated to have `platform_organization`; fix R.1 before or alongside this item. `OrgAssignmentDefinition` also still declares an explicit `tenant_id` `FieldDef`, the same bug Phase 3 Step 1 fixed on `organization.Definition` itself — fix it the same way (remove the field) before implementing any `OrganizationService` method that creates an assignment record.
+- **STATUS (Phase 3 Step 1, closed):** `PathComputeHook` now correctly computes path/depth from the real persisted parent via a real repository lookup, running `AfterCreate` (not `BeforeCreate` — the record's real ID does not exist until after persistence; see `platform/organization/hooks.go`'s doc comment for the full why). Verified against real PostgreSQL, non-superuser `awo_app` role, RED→GREEN. `organization.Definition`'s own `tenant_id` `FieldDef` was also removed (conflicted with `contrib/pgx.Repository.createSystem`'s unconditional column injection — a separate bug found while building the real-Postgres tests this fix needed).
+- **FILES:** `platform/organization/service.go` (still stubbed — this item's actual remaining scope), `platform/organization/hooks.go` (`PathComputeHook` — done), `platform/organization/migrations/migrations.go` (does not exist yet — needed for R.1).
+- **DEPENDENCIES:** R.1 (migration wiring) should land first or alongside — see above. 3.1a and 3.1b are independent, smaller, and can land separately.
+- **IMPLEMENTATION:** Implement each `OrganizationService` method against `EntityRepository`.
+- **TESTS:** create a 3-level org hierarchy (Tenant → Holding → Company A); confirm `path`/`depth` are correct at each level (this half is now proven — see Phase 3 Step 1's `platform/organization/path_compute_hook_pg_test.go`); confirm a Company-A-scoped user cannot see Holding-level records; confirm a manager sees their subtree.
+- **ACCEPTANCE CRITERIA:** [x] `path` field decision made explicitly — VARCHAR(4096)+LIKE retained as authoritative (Phase 3 Step 0; no genuine `ltree` requirement found anywhere in the repository); `ADR-012` corrected to match (ADR-024 was unrelated — SessionValidator — and required no change). [x] `PathComputeHook` computes real path/depth from the real parent on the real call path (Phase 3 Step 1). [ ] `platform_organization`'s migration wired into `cmd/migrate` (R.1). [ ] All `OrganizationService` methods implemented, tested against real PG. [ ] Hierarchy creation/query integration tests pass (these were explicitly unchecked/pending in every prior status doc).
+
+### 3.1a `platform/organization.MoveGuard` rejects every Update, not just path/depth writes (found during Phase 3 Step 1's verification)
+- [ ] **GOAL:** `MoveGuard` only rejects an Update that actually tries to set `path`/`depth` directly; unrelated field updates succeed.
+- **WHY:** `runtime/pipeline.go`'s actual call site passes hooks `(proposed, current)` — proposed/patched record first, prior/unpatched record second (verified from source, not assumed). `MoveGuard.BeforeUpdate(_, current, incoming *def.EntityRecord)` names its own parameters the other way around; Go binds positionally regardless of name, so `MoveGuard`'s `incoming` variable actually receives the **prior, unpatched** record — which, for any real persisted organization row, always has a non-null `path` key. The guard's check is therefore true for every update, not just attempts to set path/depth. Full writeup: `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` §B.1.
+- **FILES:** `platform/organization/hooks.go` (`MoveGuard.BeforeUpdate`).
+- **DEPENDENCIES:** none. Should land before 3.1's `OrganizationService.Move`/`Disable`/`Enable` (all Update-based, all would be unconditionally blocked by this bug otherwise).
+- **IMPLEMENTATION:** Swap the parameter names (or, more robustly, rename them to match what they actually are — `proposed, current` — so the mismatch can't recur) and check `proposed.Data["path"]`/`proposed.Data["depth"]` (the value the caller is trying to set), not the prior record's.
+- **TESTS:** update an existing organization's unrelated field (e.g. `name`) → must succeed (currently fails). Attempt to set `path`/`depth` directly via Update → must still be rejected (regression guard).
+- **ACCEPTANCE CRITERIA:** [ ] Unrelated-field update succeeds. [ ] Direct path/depth write still rejected. [ ] Verified against real PostgreSQL.
+
+### 3.1b Organization-creation audit snapshot does not reflect `PathComputeHook`'s computed path/depth (found during Phase 3 Step 1's verification)
+- [ ] **GOAL:** The `platform_audit_log` row for a `platform_organization` creation event records the real, computed `path`/`depth`, not the placeholder default.
+- **WHY:** `EntityService.Create` (`api/service/entity.go`) calls `RunAuditRecord` (line 144) **before** `RunAfterCreate` (line 147) — generically, for every entity. `PathComputeHook` (an `AfterCreate` hook) mutates `record.Data["path"]`/`["depth"]` in place at line 147, after the audit row has already been marshaled and inserted. Full writeup, including the options considered and explicitly NOT decided: `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` §B.2.
+- **FILES:** `api/service/entity.go` (if the generic ordering changes — affects every entity, not just organization) or `platform/organization/hooks.go` (if a narrower, organization-specific fix is chosen instead).
+- **DEPENDENCIES:** none, but **do not casually reorder `EntityService.Create`'s generic `RunAuditRecord`/`RunAfterCreate` sequence** without full-suite regression proof it doesn't change audit behavior for every other entity's `AfterCreate` hooks.
+- **IMPLEMENTATION:** Not decided. Options from the findings register: (a) move `RunAuditRecord` after `RunAfterCreate` generically; (b) re-marshal the audit row's `after_data` if any `AfterCreate` hook mutated the record; (c) document as an accepted, narrow limitation and leave `EntityService.Create` unchanged. Get sign-off on which before implementing — this is exactly the kind of consequential change the engineering-discipline skill requires alternatives + trade-offs for, not a unilateral pick.
+- **TESTS:** create an organization with a parent; query the actual persisted `platform_audit_log` row's `after_data`; assert it matches the real computed path/depth, not the placeholder.
+- **ACCEPTANCE CRITERIA:** [ ] Decision made and documented (not silently implemented). [ ] Audit row matches persisted/returned path+depth for organization creation. [ ] No regression in any other entity's audit-row contents (full suite).
 
 ---
 

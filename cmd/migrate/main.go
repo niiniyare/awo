@@ -36,7 +36,17 @@ import (
 
 	// Blank imports register all framework module migrations.
 	// Add new framework modules here as they are created.
+	//
+	// NOTE (see docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md
+	// §B "orphaned platform migrations"): platform/organization, settings,
+	// flags, metadata, registry, and notifications (plural) all have real
+	// migrations/*.sql files that are NOT registered here, and therefore
+	// cannot actually be applied by this binary against a fresh database
+	// today, despite their Go entity definitions being fully wired elsewhere.
+	// examples/expense/migrations is deliberately registered correctly below
+	// so this showcase module does not repeat that gap.
 	_ "awo.so/awo/events/outbox/migrations"
+	_ "awo.so/awo/examples/expense/migrations"
 	_ "awo.so/awo/migration/bootstrap"
 	_ "awo.so/awo/platform/audit/migrations"
 	_ "awo.so/awo/platform/iam/migrations"

@@ -28,12 +28,12 @@ import (
 	_ "awo.so/awo/platform/tenant"
 	// Business/application modules (e.g. finance, inventory) are NOT
 	// framework-native (see docs/00-overview/ARCH_OVERVIEW.md §10 "Platform
-	// Modules", which does not list Finance) and are intentionally not
-	// imported here. This binary is the framework's own reference CLI; it
-	// must build and run with only platform/* modules. An application
-	// repository that depends on awo.so/awo should provide its own cmd/
-	// entrypoint that blank-imports its business modules alongside the
-	// platform modules above.
+	// Modules", which does not list Finance) and are, as a rule, intentionally
+	// not imported here. examples/expense is the one deliberate exception —
+	// this framework's own showcase business module (see
+	// examples/expense/definition.go) — imported so this CLI's schema/codegen
+	// commands can see and generate against it too.
+	_ "awo.so/awo/examples/expense"
 )
 
 // globalFlags are parsed from os.Args before the sub-command is dispatched.

@@ -64,12 +64,19 @@ import (
 
 	// Business/application modules (e.g. finance, inventory) are NOT
 	// framework-native (see docs/00-overview/ARCH_OVERVIEW.md §10 "Platform
-	// Modules", which does not list Finance) and are intentionally not
-	// imported here. This binary is the framework's own reference server;
-	// it must build and run with only platform/* modules. An application
-	// repository that depends on awo.so/awo should provide its own cmd/
-	// entrypoint that blank-imports its business modules alongside the
-	// platform modules below.
+	// Modules", which does not list Finance) and are, as a rule, intentionally
+	// not imported here — a real application repository depending on
+	// awo.so/awo should provide its own cmd/ entrypoint that blank-imports its
+	// own business modules alongside the platform modules below.
+	//
+	// examples/expense is the one deliberate exception: it is this
+	// framework's own showcase business module (see
+	// examples/expense/definition.go's package doc comment and
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §D) —
+	// imported here specifically so this reference server can demonstrate a
+	// complete business capability end-to-end, not just platform scaffolding.
+	_ "awo.so/awo/examples/expense"
+	_ "awo.so/awo/examples/expense/migrations"
 	_ "awo.so/awo/platform/notification"
 	"awo.so/awo/platform/organization"
 	_ "awo.so/awo/platform/registry"
