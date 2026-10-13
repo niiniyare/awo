@@ -79,6 +79,17 @@ type EntitySchema struct {
 	// IsSystem is true for SQL-backed system entities; false for JSONB custom entities.
 	IsSystem bool
 
+	// HasUpdatedAt is true when this entity's real table carries an
+	// "updated_at" column. Propagated from EntityDefinition.HasUpdatedAt() —
+	// see that method's doc comment. contrib/pgx.Repository consults this
+	// before referencing the column in generated SQL.
+	HasUpdatedAt bool
+
+	// HasCustomFields is true when this entity's real table carries a
+	// "custom_fields" JSONB column. Propagated from
+	// EntityDefinition.HasCustomFields() — see that method's doc comment.
+	HasCustomFields bool
+
 	// Scope is the data isolation boundary for this entity.
 	// Propagated from EntityDefinition.EntityScope() at compile time.
 	Scope def.Scope
@@ -413,6 +424,8 @@ func buildEntitySchema(d def.EntityDefinition) *EntitySchema {
 		LocalName:           local,
 		Module:              module,
 		IsSystem:            d.IsSystem(),
+		HasUpdatedAt:        d.HasUpdatedAt(),
+		HasCustomFields:     d.HasCustomFields(),
 		Scope:               d.EntityScope(),
 		AllowAudit:          d.AllowAudit(),
 		Label:               d.EntityLabel(),

@@ -325,15 +325,33 @@ func (r *Repository) Create(ctx context.Context, input driver.CreateInput) (*def
 
 func (r *Repository) createSystem(ctx context.Context, db execer, id, tenantID uuid.UUID, input driver.CreateInput, now time.Time) (*def.EntityRecord, error) {
 	fieldNames := r.sortedFieldNames()
+	hasTenantID := r.schema.Scope != def.ScopeSystem
+	hasUpdatedAt := r.schema.HasUpdatedAt
+	hasCustomFields := r.schema.HasCustomFields
+
 	cols := make([]string, 0, 4+len(fieldNames)+1)
-	cols = append(cols, `"id"`, `"tenant_id"`, `"created_at"`, `"updated_at"`)
-	args := []any{id, tenantID, now, now}
+	args := make([]any, 0, 4+len(fieldNames)+1)
+	cols = append(cols, `"id"`)
+	args = append(args, id)
+	if hasTenantID {
+		cols = append(cols, `"tenant_id"`)
+		args = append(args, tenantID)
+	}
+	cols = append(cols, `"created_at"`)
+	args = append(args, now)
+	if hasUpdatedAt {
+		cols = append(cols, `"updated_at"`)
+		args = append(args, now)
+	}
 
 	for _, name := range fieldNames {
 		cols = append(cols, fmt.Sprintf(`"%s"`, name))
 		args = append(args, input.Data[name])
 	}
 	if len(input.CustomFields) > 0 {
+		if !hasCustomFields {
+			return nil, fmt.Errorf("%s.Create: entity does not support custom_fields (no such column on this table)", r.schema.TableName)
+		}
 		cfJSON, err := json.Marshal(input.CustomFields)
 		if err != nil {
 			return nil, fmt.Errorf("%s.Create: marshal custom_fields: %w", r.schema.TableName, err)
@@ -389,8 +407,12 @@ func (r *Repository) updateSystem(ctx context.Context, db execer, id uuid.UUID, 
 	if len(input.Data) == 0 && len(input.CustomFields) == 0 {
 		return r.getWithDB(ctx, db, id)
 	}
-	sets := []string{`"updated_at" = $1`}
-	args := []any{now}
+	var sets []string
+	var args []any
+	if r.schema.HasUpdatedAt {
+		sets = append(sets, `"updated_at" = $1`)
+		args = append(args, now)
+	}
 	for field, val := range input.Data {
 		if err := r.checkWritableField(field); err != nil {
 			return nil, fmt.Errorf("%s.Update: %w", r.schema.TableName, err)
@@ -399,12 +421,20 @@ func (r *Repository) updateSystem(ctx context.Context, db execer, id uuid.UUID, 
 		sets = append(sets, fmt.Sprintf(`%s = $%d`, sqlbuild.QuoteIdent(field), len(args)))
 	}
 	if len(input.CustomFields) > 0 {
+		if !r.schema.HasCustomFields {
+			return nil, fmt.Errorf("%s.Update: entity does not support custom_fields (no such column on this table)", r.schema.TableName)
+		}
 		cfJSON, err := json.Marshal(input.CustomFields)
 		if err != nil {
 			return nil, fmt.Errorf("%s.Update: marshal custom_fields: %w", r.schema.TableName, err)
 		}
 		args = append(args, cfJSON)
 		sets = append(sets, fmt.Sprintf(`"custom_fields" = "custom_fields" || $%d`, len(args)))
+	}
+	if len(sets) == 0 {
+		// Nothing left to set (e.g. a no-op Data-less Update on a table with
+		// no updated_at to bump) — avoid emitting "UPDATE t SET WHERE ...".
+		return r.getWithDB(ctx, db, id)
 	}
 	args = append(args, id)
 	sql := fmt.Sprintf(`UPDATE "%s" SET %s WHERE "id" = $%d`, r.schema.TableName, strings.Join(sets, ", "), len(args))
@@ -853,21 +883,45 @@ func (r *Repository) columnsAndScanner() (string, func(rowScanner) (*def.EntityR
 	return r.customColumnsAndScanner()
 }
 
+// systemColumnsAndScanner builds the SELECT column list and row-scan
+// destinations for a system entity, consulting the entity's actual declared
+// column contract rather than assuming every system table has an identical
+// set of framework-managed columns.
+//
+// Three framework-managed columns are conditional, each for a real,
+// confirmed reason (see docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md
+// §B.7 for the evidence trail that found this):
+//   - tenant_id: absent for ScopeSystem entities (platform_tenant — a tenant
+//     row cannot reference its own tenant_id). hasTenantID below.
+//   - updated_at: absent for entities that declare NoUpdatedAt — genuinely
+//     immutable-after-create tables (iam_user_role, iam_api_token,
+//     iam_session, iam_login_audit). hasUpdatedAt below.
+//   - custom_fields: absent for entities that declare NoCustomFields —
+//     hand-written platform tables (platform_tenant, every platform/iam
+//     system entity) that predate the awo/generator convention of always
+//     including one. hasCustomFields below.
 func (r *Repository) systemColumnsAndScanner() (string, func(rowScanner) (*def.EntityRecord, error)) {
 	table := r.schema.TableName
 	fieldNames := r.sortedFieldNames()
+	hasTenantID := r.schema.Scope != def.ScopeSystem
+	hasUpdatedAt := r.schema.HasUpdatedAt
+	hasCustomFields := r.schema.HasCustomFields
 
 	colExprs := make([]string, 0, 4+len(fieldNames)+1)
-	colExprs = append(colExprs,
-		fmt.Sprintf(`"%s"."id"`, table),
-		fmt.Sprintf(`"%s"."tenant_id"`, table),
-		fmt.Sprintf(`"%s"."created_at"`, table),
-		fmt.Sprintf(`"%s"."updated_at"`, table),
-	)
+	colExprs = append(colExprs, fmt.Sprintf(`"%s"."id"`, table))
+	if hasTenantID {
+		colExprs = append(colExprs, fmt.Sprintf(`"%s"."tenant_id"`, table))
+	}
+	colExprs = append(colExprs, fmt.Sprintf(`"%s"."created_at"`, table))
+	if hasUpdatedAt {
+		colExprs = append(colExprs, fmt.Sprintf(`"%s"."updated_at"`, table))
+	}
 	for _, name := range fieldNames {
 		colExprs = append(colExprs, fmt.Sprintf(`"%s"."%s"`, table, name))
 	}
-	colExprs = append(colExprs, fmt.Sprintf(`"%s"."custom_fields"`, table))
+	if hasCustomFields {
+		colExprs = append(colExprs, fmt.Sprintf(`"%s"."custom_fields"`, table))
+	}
 
 	scan := func(row rowScanner) (*def.EntityRecord, error) {
 		rec := &def.EntityRecord{
@@ -875,7 +929,14 @@ func (r *Repository) systemColumnsAndScanner() (string, func(rowScanner) (*def.E
 			Data:       make(map[string]any, len(fieldNames)),
 		}
 		dest := make([]any, 0, 4+len(fieldNames)+1)
-		dest = append(dest, &rec.ID, &rec.TenantID, &rec.CreatedAt, &rec.UpdatedAt)
+		dest = append(dest, &rec.ID)
+		if hasTenantID {
+			dest = append(dest, &rec.TenantID)
+		}
+		dest = append(dest, &rec.CreatedAt)
+		if hasUpdatedAt {
+			dest = append(dest, &rec.UpdatedAt)
+		}
 
 		fieldPtrs := make([]any, len(fieldNames))
 		for i := range fieldNames {
@@ -884,15 +945,22 @@ func (r *Repository) systemColumnsAndScanner() (string, func(rowScanner) (*def.E
 			dest = append(dest, fieldPtrs[i])
 		}
 		var cfRaw []byte
-		dest = append(dest, &cfRaw)
+		if hasCustomFields {
+			dest = append(dest, &cfRaw)
+		}
 
 		if err := row.Scan(dest...); err != nil {
 			return nil, err
 		}
+		if !hasUpdatedAt {
+			// No updated_at column exists at all for this immutable-by-design
+			// table — created_at is the only truthful "last modified" value.
+			rec.UpdatedAt = rec.CreatedAt
+		}
 		for i, name := range fieldNames {
 			rec.Data[name] = *(fieldPtrs[i].(*any))
 		}
-		if len(cfRaw) > 0 {
+		if hasCustomFields && len(cfRaw) > 0 {
 			_ = json.Unmarshal(cfRaw, &rec.CustomFields)
 		}
 		return rec, nil

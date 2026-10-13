@@ -128,6 +128,20 @@ var Definition = def.SystemDefinition{
 		},
 	},
 
+	// ScopeSystem: platform_tenant is the global, non-RLS table that defines
+	// tenants themselves — it has no tenant_id column (a tenant row cannot
+	// reference its own tenant) and no RLS policy, exactly as this package's
+	// own doc comment already stated. Declaring it here (previously left at
+	// the zero value, which defaults to ScopeTenant — contradicting that doc
+	// comment) is what lets contrib/pgx.Repository correctly omit tenant_id
+	// from generated SQL for this entity; see
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	Scope: def.ScopeSystem,
+
+	// platform_tenant's real migration (001_platform_tenant.up.sql) has no
+	// custom_fields column — it predates that convention. See §B.7.
+	NoCustomFields: true,
+
 	Hooks: def.HookSet{
 		BeforeCreate: []def.BeforeCreateHook{&SlugValidator{}, &StatusValidator{}},
 		BeforeUpdate: []def.BeforeUpdateHook{&TransitionGuard{}},

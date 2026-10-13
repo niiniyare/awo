@@ -68,6 +68,10 @@ var UserDefinition = def.SystemDefinition{
 			ReadOnly: true,
 		},
 	},
+	// iam_user's real migration (001_iam_user.up.sql) has updated_at but no
+	// custom_fields column — it predates that convention. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoCustomFields: true,
 	Hooks: def.HookSet{
 		BeforeCreate: []def.BeforeCreateHook{&UserPasswordHasher{}},
 		BeforeUpdate: []def.BeforeUpdateHook{&UserPasswordHasher{}},
@@ -132,6 +136,12 @@ var UserRoleDefinition = def.SystemDefinition{
 			ReadOnly:   true,
 		},
 	},
+	// iam_user_role's real migration (002_iam_user_role.up.sql) has neither
+	// updated_at (the record is immutable after creation — its own comment
+	// says so) nor custom_fields. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoUpdatedAt:    true,
+	NoCustomFields: true,
 	Hooks: def.HookSet{
 		AfterCreate: []def.AfterCreateHook{userRoleChangeHook},
 		AfterDelete: []def.AfterDeleteHook{userRoleChangeHook},
@@ -178,6 +188,10 @@ var ServiceAccountDefinition = def.SystemDefinition{
 			Default: func() any { return "active" },
 		},
 	},
+	// iam_service_account's real migration (003_iam_service_account.up.sql)
+	// has updated_at but no custom_fields column. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoCustomFields: true,
 	Permissions: def.PermissionSet{
 		Create: []string{"iam.service_account.create"},
 		Read:   []string{"iam.service_account.read"},
@@ -245,6 +259,11 @@ var APITokenDefinition = def.SystemDefinition{
 			Default: func() any { return false },
 		},
 	},
+	// iam_api_token's real migration (004_iam_api_token.up.sql) has neither
+	// updated_at (immutable after creation) nor custom_fields. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoUpdatedAt:    true,
+	NoCustomFields: true,
 	Permissions: def.PermissionSet{
 		Create: []string{"iam.api_token.create"},
 		Read:   []string{"iam.api_token.read"},
@@ -343,6 +362,12 @@ var SessionDefinition = def.SystemDefinition{
 			Hidden:      true, // excluded from list views; present in inspect/detail
 		},
 	},
+	// iam_session's real migration (005_iam_session.up.sql) has neither
+	// updated_at (immutable after creation — only revoke is permitted) nor
+	// custom_fields. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoUpdatedAt:    true,
+	NoCustomFields: true,
 	Permissions: def.PermissionSet{
 		Read:   []string{"iam.session.read"},
 		Delete: []string{"iam.session.delete"},
@@ -409,6 +434,11 @@ var LoginAuditDefinition = def.SystemDefinition{
 			MaxLen: 255,
 		},
 	},
+	// iam_login_audit's real migration (006_iam_login_audit.up.sql) has
+	// neither updated_at (append-only log) nor custom_fields. See
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.7.
+	NoUpdatedAt:    true,
+	NoCustomFields: true,
 	Hooks: def.HookSet{
 		BeforeUpdate: []def.BeforeUpdateHook{&LoginAuditImmutableGuard{}},
 		BeforeDelete: []def.BeforeDeleteHook{&LoginAuditImmutableGuard{}},
