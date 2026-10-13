@@ -71,7 +71,7 @@ import (
 	// entrypoint that blank-imports its business modules alongside the
 	// platform modules below.
 	_ "awo.so/awo/platform/notification"
-	_ "awo.so/awo/platform/organization"
+	"awo.so/awo/platform/organization"
 	_ "awo.so/awo/platform/registry"
 	_ "awo.so/awo/platform/settings"
 	_ "awo.so/awo/platform/tenant"
@@ -191,6 +191,19 @@ func main() {
 		os.Exit(1)
 	}
 	tenantRepo := contrib.NewRepository(result.Pool, tenantSchema)
+
+	// Wire platform_organization's repository into PathComputeHook (Phase 3
+	// Step 1) before accepting any traffic that could create an organization.
+	// router.Register below constructs its own separate repository instance
+	// for platform_organization's generic CRUD routes — both are stateless,
+	// pool-backed wrappers around the same table, so holding two instances is
+	// safe (same pattern already used for iamRepos/tenantRepo above).
+	orgSchema, ok := result.Schema.ByName["platform_organization"]
+	if !ok {
+		slog.Error("platform_organization entity not found in schema — platform/organization not registered")
+		os.Exit(1)
+	}
+	organization.WireRepository(contrib.NewRepository(result.Pool, orgSchema))
 
 	// Temporal client — wired when TEMPORAL_HOST is set; nil = degraded mode.
 	// Constructed here (before the relay below) because the relay's

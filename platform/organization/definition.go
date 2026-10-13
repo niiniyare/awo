@@ -61,15 +61,6 @@ var Definition = def.SystemDefinition{
 			MaxLen:    50,
 		},
 		{
-			// tenant_id is the infrastructure isolation boundary — always present.
-			Name:       "tenant_id",
-			Type:       def.FieldTypeLink,
-			Label:      "Tenant",
-			LinkTarget: "platform_tenant",
-			Required:   true,
-			Immutable:  true,
-		},
-		{
 			// parent_id is nil for root nodes (top-level org in a tenant).
 			Name:       "parent_id",
 			Type:       def.FieldTypeLink,
@@ -86,10 +77,16 @@ var Definition = def.SystemDefinition{
 		},
 		{
 			// path is a materialized path: "/root-id/parent-id/self-id/".
-			// Computed by PathComputeHook on create; updated by MoveService.
+			// The "/" default below only satisfies the column's NOT NULL
+			// constraint for the initial INSERT — PathComputeHook always
+			// overwrites it with the real, self-ID-derived path immediately
+			// afterward (AfterCreate, same transaction). It is never the
+			// path a caller or reader should observe. Updated by
+			// OrganizationService.Move once implemented.
 			Name:      "path",
 			Type:      def.FieldTypeData,
 			Label:     "Path",
+			Default:   func() any { return "/" },
 			Immutable: false, // updated by Move — cannot be set by API callers
 			MaxLen:    4096,
 		},
@@ -115,7 +112,12 @@ var Definition = def.SystemDefinition{
 	},
 
 	Hooks: def.HookSet{
-		BeforeCreate: []def.BeforeCreateHook{&CodeValidator{}, &PathComputeHook{}},
+		BeforeCreate: []def.BeforeCreateHook{&CodeValidator{}},
+		// PathComputeHook runs AfterCreate, not BeforeCreate — see its doc
+		// comment in hooks.go for why (the record's real ID does not exist
+		// until after persistence). pathComputeHook is the single shared
+		// instance WireRepository (hooks.go) mutates at bootstrap.
+		AfterCreate:  []def.AfterCreateHook{pathComputeHook},
 		BeforeUpdate: []def.BeforeUpdateHook{&MoveGuard{}},
 	},
 
