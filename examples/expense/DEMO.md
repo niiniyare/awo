@@ -92,6 +92,16 @@ All API routes (`/api/v1/...`, §3 onward below) work correctly either way —
 only the static UI/showcase file serving is affected. This is a real,
 undecided framework gap, not something to work around permanently; see R.10.
 
+**ANOTHER KNOWN GAP (R.12, see findings register §B.12) — don't trust the
+server's own console log for this specific check:** if you run the broken
+(repo-root) form above and look at the server's own structured log instead
+of checking the HTTP response directly, a bare `GET /` (and in fact any
+request matching no registered route at all) is misreported there as
+`status=200`, even though the real response sent to the client is a genuine
+`404`. Verify with `curl -D - http://localhost:8080/ui` (or any such path)
+and read the actual `HTTP/1.1 ...` status line yourself, rather than trusting
+the log line for this specific class of request.
+
 ## 3. Discover the route (verified live)
 
 ```sh
