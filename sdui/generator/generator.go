@@ -513,6 +513,15 @@ func (g *EntityGenerator) buildFilterBar(schema EntitySchema, ctx sduictx.Genera
 			continue
 		}
 		node := g.buildFieldNode(f, ctx, false)
+		// A filter field is never required and never carries the entity
+		// field's own create/edit validation rules (e.g. maxLength) —
+		// buildFieldNode is shared with the form builder, which sets both
+		// from FieldDef.Required/constraints for create/edit semantics that
+		// do not apply here. Leaving Required=true on a filter field made
+		// the whole filter form unsubmittable unless that one field was
+		// filled in, breaking "filter by any subset of fields" entirely.
+		node.Required = false
+		node.Validation = nil
 		// Override Name to match backend filter format: filter[field][op]=value.
 		// The backend filterparse package reads ?filter[field][operator]=value.
 		//
@@ -1095,20 +1104,16 @@ func (g *EntityGenerator) buildListActions(schema EntitySchema, ctx sduictx.Gene
 	}
 
 	// ── Bulk actions (Scope: "bulk") ───────────────────────────────────────────
-
-	// Bulk delete — requires delete permission.
-	if perm := schema.Permissions["delete"]; perm == "" || ctx.Viewer.HasPermission(perm) {
-		out = append(out, &widget.ActionNode{
-			ID:          "bulk-delete",
-			Label:       "Delete selected",
-			ActionType:  "ajax",
-			Level:       "danger",
-			API:         "DELETE:" + schema.ListURL,
-			ConfirmText: "Delete all selected records? This cannot be undone.",
-			Icon:        "trash",
-			Scope:       "bulk",
-		})
-	}
+	//
+	// No bulk action is emitted here. A prior version emitted a "Delete
+	// selected" bulk-delete action calling "DELETE " + schema.ListURL (no
+	// /:id) — api/router.Register only ever registers DELETE on the
+	// per-record path ("DELETE /:id"), never on the collection path, so that
+	// action called a route that does not exist on any entity. Confirmed via
+	// api/router/router.go: the only Delete registration is
+	// `entity.Delete("/:id", ...)`. Removed rather than exposing a button
+	// that always fails — see tasks.md for the follow-up to implement a real,
+	// audited, permission-checked bulk-delete endpoint if one is wanted.
 
 	return out
 }

@@ -269,8 +269,13 @@ func TestGenerator_ListActions_RowScopedActions(t *testing.T) {
 	if scopeCounts["row"] < 3 {
 		t.Errorf("expected at least 3 row-scoped actions (view/edit/delete), got %d", scopeCounts["row"])
 	}
-	if scopeCounts["bulk"] < 1 {
-		t.Errorf("expected at least 1 bulk-scoped action (bulk delete), got %d", scopeCounts["bulk"])
+	// No bulk-scoped action is expected: api/router only ever registers
+	// DELETE on the per-record path ("/:id"), never on the collection path,
+	// so a generated bulk-delete action would call a route that does not
+	// exist on any entity. See sdui/generator/generator.go's buildListActions
+	// bulk-actions comment.
+	if scopeCounts["bulk"] != 0 {
+		t.Errorf("expected 0 bulk-scoped actions (no backend bulk-delete route exists), got %d", scopeCounts["bulk"])
 	}
 	if scopeCounts["toolbar"] < 1 {
 		t.Errorf("expected at least 1 toolbar-scoped action (create), got %d", scopeCounts["toolbar"])
@@ -406,6 +411,45 @@ func TestGenerator_FilterBar_FieldNames(t *testing.T) {
 				t.Errorf("date filter endName=%v want filter[issued_at][lte]", child.Props["endName"])
 			}
 		}
+	}
+}
+
+// TestGenerator_FilterBar_NeverRequired guards that a filter field never
+// carries the entity field's own create/edit Required/validation semantics.
+// buildFilterBar shares buildFieldNode with the form builder; a field that
+// is Required=true for create/edit (e.g. "name" below, MaxLength 255) must
+// not become an unsubmittable required filter — that would make the whole
+// filter form unusable unless that one field was filled in, breaking
+// "filter by any subset of fields" for every entity with a required field.
+func TestGenerator_FilterBar_NeverRequired(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeList, allPermsViewer())
+	schema := generator.EntitySchema{
+		Name:        "test",
+		Title:       "Test",
+		ListURL:     "/api/v1/test",
+		Permissions: map[string]string{},
+		Fields: []generator.FieldDef{
+			{Name: "name", Label: "Name", FieldType: "data", InList: true, InForm: true, Searchable: true, Required: true, MaxLength: 255},
+		},
+	}
+	root, err := g.Generate(schema, ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listNode := root.Children[0]
+	if listNode.FilterBar == nil {
+		t.Fatal("expected filter bar to be present")
+	}
+	if len(listNode.FilterBar.Children) != 1 {
+		t.Fatalf("expected exactly 1 filter field, got %d", len(listNode.FilterBar.Children))
+	}
+	node := listNode.FilterBar.Children[0]
+	if node.Required {
+		t.Error("filter field must never be Required, even when the underlying entity field is Required for create/edit")
+	}
+	if node.Validation != nil {
+		t.Errorf("filter field must not carry create/edit validation rules, got %v", node.Validation)
 	}
 }
 

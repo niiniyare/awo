@@ -5,18 +5,7 @@
         "method": "GET",
         "url": "/api/v1/finance/invoices"
       },
-      "bulkActions": [
-        {
-          "actionType": "ajax",
-          "api": "DELETE:/api/v1/finance/invoices",
-          "confirmText": "Delete all selected records? This cannot be undone.",
-          "icon": "fa fa-trash",
-          "id": "bulk-delete",
-          "label": "Delete selected",
-          "level": "danger",
-          "type": "button"
-        }
-      ],
+      "bulkActions": [],
       "columns": [
         {
           "label": "Invoice #",
