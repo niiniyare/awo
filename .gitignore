@@ -37,3 +37,5 @@ pgdata/
 # Environment files (may contain local secrets — see docs/18-security/SECRET_MANAGEMENT.md)
 .env
 .env.local
+/bin
+/build
