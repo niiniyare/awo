@@ -1,17 +1,21 @@
 # Business Expense — Showcase Demonstration Guide
 
 Status: **fully verified by live execution** (real login, real authenticated
-CRUD + lifecycle, real tenant isolation under real RLS) **and** by the
-real-Postgres test suite, at the **API level**. The generated **visual** UI
-is a separate, currently-broken story — disclosed precisely in §5/§6 below,
-with two independent, now-identified causes (not merely "no browser was
-available"). See
+CRUD + lifecycle, real tenant isolation under real RLS, persistence across a
+server restart) **and** by the real-Postgres test suite, at the **API
+level**. Re-verified fresh, end to end, on 2026-10-19 against a newly-built
+binary and the real database — not just re-asserted from the prior pass. The
+generated **visual** UI is a separate, currently-broken story — disclosed
+precisely in §5/§6 below, with two independent, now-identified causes (not
+merely "no browser was available"). See
 `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` for the full
 findings behind every item below, including **R.6** (the generic-repository
-defect that previously blocked the authenticated flow entirely — now fixed),
-**R.7** (a real, separate operational finding about database credential
-choice, uncovered and resolved while running this demonstration), and
-**R.10**/**R.11** (the two causes of the UI gap, found this pass).
+defect that previously blocked the authenticated flow entirely — now fixed,
+re-verified again this pass), **R.7** (a real, separate operational finding
+about database credential choice, uncovered and resolved while running this
+demonstration), **R.10**/**R.11** (the two causes of the UI gap, still
+open), and **R.12** (a server logging defect found and fixed on 2026-10-19 —
+see the note in §2 below).
 
 ## What this proves
 
@@ -92,15 +96,15 @@ All API routes (`/api/v1/...`, §3 onward below) work correctly either way —
 only the static UI/showcase file serving is affected. This is a real,
 undecided framework gap, not something to work around permanently; see R.10.
 
-**ANOTHER KNOWN GAP (R.12, see findings register §B.12) — don't trust the
-server's own console log for this specific check:** if you run the broken
-(repo-root) form above and look at the server's own structured log instead
-of checking the HTTP response directly, a bare `GET /` (and in fact any
-request matching no registered route at all) is misreported there as
-`status=200`, even though the real response sent to the client is a genuine
-`404`. Verify with `curl -D - http://localhost:8080/ui` (or any such path)
-and read the actual `HTTP/1.1 ...` status line yourself, rather than trusting
-the log line for this specific class of request.
+**(R.12, fixed 2026-10-19 — no longer a caveat):** an earlier pass of this
+document warned that the server's own structured log misreported some `404`
+responses as `status=200` (for a fully-unmatched route, and for a couple of
+handlers that returned a `*fiber.Error` directly). That was a real,
+confirmed defect in `api/middleware/logging.go`, fixed and regression-tested
+this pass (see findings register §B.12 and `tasks.md` R.12) — the server's
+own console log can now be trusted for this check too; a fresh re-run after
+the fix showed `WARN ... status=404` logged correctly for both previously-
+affected cases.
 
 ## 3. Discover the route (verified live)
 
