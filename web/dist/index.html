@@ -599,10 +599,26 @@
           });
       },
       isCancel: function () { return false; },
-      notify: function (type, msg) {
-        console.log('[amis:' + type + ']', msg);
-      },
-      alert: window.alert.bind(window),
+      // Deliberately NOT overriding notify/alert: amis.embed()'s own
+      // defaults (inside the real amis SDK's embed() function) already
+      // wire notify to a real, visible toast (f.toast[type](msg) — amis's
+      // own ToastComponent, which embed() mounts into the page for us) and
+      // alert to amis's own modal (f.alert) — both rendered, visible UI,
+      // not a console-only stub. A previous version of this file provided
+      // console.log-only overrides for both, which silently replaced that
+      // visible feedback: a rejected status transition (e.g. "approved"
+      // is a terminal state — the backend correctly rejects any further
+      // transition with a real 409) called env.notify('error', realMsg),
+      // which only ever reached the browser's developer console — no real
+      // user would see it. From the user's perspective, picking a new
+      // Status and pressing Save appeared to silently do nothing, which is
+      // exactly the reported "Status field is not reliably selectable."
+      // The widget itself was never disabled or broken (confirmed: the
+      // generated edit schema's "status" field carries no disabled/
+      // readOnly flag at all) — the lifecycle guard's own, correct
+      // rejection was simply invisible. Omitting these two keys here lets
+      // amis's real, already-mounted toast/alert UI show every
+      // notify/alert call for every entity and every action, generically.
       copy: function (text) {
         if (navigator.clipboard) navigator.clipboard.writeText(text);
       },

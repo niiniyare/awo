@@ -236,4 +236,39 @@ test('recordIdFromPath: generic across a completely different entity', function 
   assert.strictEqual(recordIdFromPath('iam/users/create'), undefined);
 });
 
+/* ── amisEnv notify/alert (R.15 / §B.16): a real, user-reported defect —
+   "Status field is not reliably selectable" — turned out to have nothing
+   wrong with the Status field, the schema, or the lifecycle guard (all
+   three confirmed correct by direct inspection and live API tests). The
+   actual cause: this file's own amisEnv previously overrode amis's
+   `notify`/`alert` with console.log-only stubs, silently swallowing every
+   visible error amis would otherwise show — including a correctly-
+   rejected status transition (e.g. "approved" is terminal; the backend
+   correctly returns a real 409). amis.embed()'s own real, shipped default
+   env (confirmed by reading the actual amis v6.7.0 SDK source) already
+   wires notify to a real, visible toast (f.toast[type](msg), rendered via
+   the ToastComponent embed() itself mounts into the page) and alert to
+   amis's own modal (f.alert) — neither is a no-op, and neither needs a
+   custom override. This is a pure STRUCTURAL guard (can't prove a toast
+   renders without a DOM — that was verified separately this session via
+   the real amis SDK in jsdom, not committed here; see findings register
+   §B.16 for that transcript) but it directly prevents the regression: if
+   either key is ever reintroduced, this fails immediately. ────────────── */
+
+test('amisEnv does not override notify or alert — real amis defaults must handle them', function () {
+  var envMatch = indexHtml.match(/var amisEnv = \{[\s\S]*?\n    \};/);
+  assert.ok(envMatch, 'amisEnv object literal not found — extraction is stale');
+  var envSource = envMatch[0];
+  assert.ok(!/\n\s*notify\s*:/.test(envSource),
+    'amisEnv must not define its own "notify" — it silently replaces amis\'s real, visible toast with a no-op, hiding every rejected action (including correctly-enforced lifecycle rejections) from the user');
+  assert.ok(!/\n\s*alert\s*:/.test(envSource),
+    'amisEnv must not define its own "alert" — same reasoning as notify');
+  // What SHOULD still be there: these are genuinely NOT provided by amis's
+  // own embed() defaults (confirmed from source), so overriding them is
+  // correct, not redundant.
+  assert.ok(/\bfetcher\s*:/.test(envSource), 'fetcher must still be overridden (auth headers, page_size translation)');
+  assert.ok(/\bjumpTo\s*:/.test(envSource), 'jumpTo must still be overridden (SPA routing integration)');
+  assert.ok(/\bisCancel\s*:/.test(envSource), 'isCancel must still be provided — amis calls it unconditionally in some paths');
+});
+
 console.log(passed + '/' + passed + ' passed');
