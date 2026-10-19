@@ -298,4 +298,36 @@ test('web/dist/index.html\'s whole inline <script> block is syntactically valid'
   }, 'the inline <script> body has a syntax error — this would ship straight to users with no build step to catch it');
 });
 
+/* ── Theme resolution (Enterprise UI Polish pass) ───────────────────────
+   Before this pass, "System" theme never actually followed the OS
+   preference — data-theme could be "system", but no CSS rule or JS ever
+   resolved that to an actual light/dark choice, so system mode silently
+   behaved like light mode always. applyTheme() now also sets
+   data-theme-resolved (mirroring the user's explicit light/dark choice, or
+   resolving "system" via matchMedia), and every dark-mode CSS rule — both
+   the shell's own tokens and the amis-specific overrides — keys off
+   -resolved, not the raw user choice. This is a structural guard (proving
+   a toast renders requires a DOM, which this file's own stated scope
+   doesn't attempt) but it directly prevents the regression: if either the
+   attribute-setting or the CSS selector ever reverts to the old
+   [data-theme="dark"]-only behavior, this fails. ──────────────────────── */
+
+test('theme: data-theme-resolved is set, including a real system-preference check', function () {
+  assert.ok(/setAttribute\(\s*['"]data-theme-resolved['"]/.test(indexHtml),
+    'applyTheme must set data-theme-resolved — this is what every dark-mode CSS rule actually keys off, not the raw data-theme choice');
+  assert.ok(/matchMedia\(\s*['"]\(prefers-color-scheme:\s*dark\)['"]\s*\)/.test(indexHtml),
+    '"system" theme must be resolved via a real prefers-color-scheme check, not left to silently behave like light mode');
+});
+
+test('theme: amis-specific dark overrides key off the resolved theme, not the raw choice', function () {
+  assert.ok(/\[data-theme-resolved="dark"\]\s*\{/.test(indexHtml),
+    'amis/shell dark-mode CSS must be scoped to [data-theme-resolved="dark"] so "system" mode is included, not just an explicit "dark" choice');
+  // A handful of the composite amis variables the mission specifically
+  // calls out (forms, tables, panels) must actually be present, not just
+  // the selector — confirms the block does real work, not an empty rule.
+  ['--Panel-bg-color', '--Table-bg', '--Form-input-bg', '--Form-input-color'].forEach(function (v) {
+    assert.ok(indexHtml.indexOf(v) !== -1, 'expected amis dark-theme override for ' + v);
+  });
+});
+
 console.log(passed + '/' + passed + ' passed');
