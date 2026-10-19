@@ -2,20 +2,20 @@
 
 Status: **fully verified by live execution** (real login, real authenticated
 CRUD + lifecycle, real tenant isolation under real RLS, persistence across a
-server restart) **and** by the real-Postgres test suite, at the **API
-level**. Re-verified fresh, end to end, on 2026-10-19 against a newly-built
-binary and the real database — not just re-asserted from the prior pass. The
-generated **visual** UI is a separate, currently-broken story — disclosed
-precisely in §5/§6 below, with two independent, now-identified causes (not
-merely "no browser was available"). See
+server restart) **and** by the real-Postgres test suite, at both the **API**
+and the **UI's own HTTP-contract** level — the checked-in frontend
+(`web/dist/index.html`) now genuinely calls the real backend (R.10/R.11,
+fixed 2026-10-19). The only remaining gap is **visual** browser rendering
+(R.9) — disclosed precisely in §5/§6 below; see findings register §B.13 for
+exactly why, checked this pass rather than re-asserted. See
 `docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md` for the full
 findings behind every item below, including **R.6** (the generic-repository
 defect that previously blocked the authenticated flow entirely — now fixed,
 re-verified again this pass), **R.7** (a real, separate operational finding
 about database credential choice, uncovered and resolved while running this
-demonstration), **R.10**/**R.11** (the two causes of the UI gap, still
-open), and **R.12** (a server logging defect found and fixed on 2026-10-19 —
-see the note in §2 below).
+demonstration), **R.10**/**R.11** (the CLI asset-serving and frontend-
+integration gaps, both now fixed), and **R.12** (a server logging defect
+found and fixed on 2026-10-19 — see the note in §2 below).
 
 ## What this proves
 
@@ -75,26 +75,14 @@ Server ready  (21 entities, 106 routes)
    Showcase http://localhost:8080/showcase
 ```
 
-**KNOWN GAP (R.10, see findings register §B.10):** launched exactly this
-way — from the repository root, as shown above — `GET /ui`, `GET /ui/*`, and
-`GET /showcase*` all return `404`. The server's static file serving
-(`cmd/awo/serve_impl.go`) hard-codes paths relative to its *working
-directory* (`./awo/web/dist`, `./awo/web/showcase/index.html`), not to the
-repository root, and no `awo/` subdirectory exists anywhere in this repo. The
-only way confirmed this pass to make `/ui`/`/showcase` actually serve real
-HTML is to launch the compiled binary with its working directory set to the
-**parent** of this checkout (so `./awo/web/dist` happens to resolve to this
-repo's real `web/dist`, since the checkout itself is named `awo`):
-
-```sh
-go build -o /tmp/awo-bin ./cmd/awo   # from inside the repo
-cd ..                                 # one level above the checkout
-/tmp/awo-bin serve --db "$DATABASE_URL" --redis "$REDIS_URL" --port 8080
-```
-
-All API routes (`/api/v1/...`, §3 onward below) work correctly either way —
-only the static UI/showcase file serving is affected. This is a real,
-undecided framework gap, not something to work around permanently; see R.10.
+**(R.10, fixed 2026-10-19 — no longer a caveat):** an earlier pass of this
+document warned that launching exactly this way — from the repository root,
+as shown above — made `GET /ui`/`GET /showcase*` 404, because the server's
+static file serving read a literal, working-directory-relative path. The
+showcase frontend is now embedded into the `cmd/awo` binary at compile time
+(see findings register §B.10 and `tasks.md` R.10); `/`, `/ui`, and
+`/showcase` all now return real `200`s from exactly the command above, with
+no workaround, both via `go run` and a separately built executable.
 
 **(R.12, fixed 2026-10-19 — no longer a caveat):** an earlier pass of this
 document warned that the server's own structured log misreported some `404`
@@ -275,9 +263,9 @@ go test ./examples/... -v
 
 5/5 passing.
 
-## 5. UI — SDUI backend schema verified; the checked-in visual frontend does NOT show this entity today (two independent, confirmed causes)
+## 5. UI — now integrated with the real backend (R.11, fixed 2026-10-19); visual rendering still unverified (R.9)
 
-### 5a. The backend's own SDUI generation is correct (verified live, this pass)
+### 5a. The backend's own SDUI generation is correct (re-verified live, this pass)
 
 ```sh
 curl -s http://localhost:8080/api/v1/ui/nav -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <acme-tenant-uuid>"
@@ -285,69 +273,83 @@ curl -s http://localhost:8080/api/v1/ui/business/expenses -H "Authorization: Bea
 curl -s http://localhost:8080/api/v1/ui/business/expenses/<id> -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <acme-tenant-uuid>"
 ```
 
-All three returned `200` with well-formed amis JSON schema: `GET /api/v1/ui/nav`
+All three return `200` with well-formed amis JSON schema: `GET /api/v1/ui/nav`
 correctly includes `business → Expenses → business_expense →
-/ui/business/expenses` among the other real entities; the list-view schema
-has the expected columns and an API binding to `/api/v1/business/expenses`;
-the detail-view schema has readable field labels, validations, and a
-real created record's values. Re-verified this pass with a freshly-created,
-isolated login session — not just re-asserted from a prior run.
+/ui/business/expenses` among the other 20 real entities; the list-view schema
+has the expected columns, filters, a "New Expense" create action, and an API
+binding to `/api/v1/business/expenses`; the detail/edit-view schemas have
+readable field labels, validations, and a real created record's values.
 
-### 5b. The checked-in `web/dist` frontend cannot reach any of the above, for two separate, now-identified reasons
+### 5b. The checked-in `web/dist` frontend is now wired to call all of the above for real
 
-**Cause 1 (R.10):** the documented startup command in §2 above 404s on every
-`/ui`/`/showcase` route, because the server's static file paths are relative
-to its working directory and assume a directory named `awo` exists as a
-*child* of the CWD — true only if you launch from one level above this
-checkout (see §2's workaround). This alone was never diagnosed in any prior
-pass of this demo.
+Previously (two separate, now-fixed causes — see findings register §B.10/§B.11
+for the full history): the documented startup command 404'd on `/ui`/`/showcase`
+entirely (R.10, fixed — see §2), and even once that was worked around, the
+shipped frontend was a disconnected static demo shell with a fictional
+hardcoded nav, a login form pointed at a nonexistent URL, and a schema loader
+that only ever read static mock files, never the real backend (R.11).
 
-**Cause 2 (R.11), confirmed even after working around Cause 1:** the actual
-HTML/JS shipped in `web/dist/index.html` is a static, hand-authored demo
-page, not a build artifact wired to this backend:
+`web/dist/index.html` has been rewritten to use the real contract throughout:
+real login (`POST /api/v1/auth/login`), a real session check (`GET
+/api/v1/auth/me`), a sidebar built live from `GET /api/v1/ui/nav`, real
+schema loading from `GET /api/v1/ui/{module}/{entity}[/{id}][/create|/edit]`,
+real path-based routing matching the backend's own generated links, and a
+generic adapter translating the real `{data}`/`{error}` response envelopes
+into what amis expects. Verified this pass by replaying, via curl, exactly
+the sequence of requests the rewritten JS makes:
 
-- Its sidebar navigation is a **hard-coded JavaScript array** of fictional
-  modules (Finance, Inventory, HR, CRM, Forecourt, plus a thin Platform
-  group) — it does not include "Expenses" and does not match any of this
-  project's real registered entities.
-- Its router always fetches a **static file** at `/schemas/pages/<page>.json`
-  — never the real `/api/v1/ui/{module}/{entity}` endpoint. Confirmed live:
-  `GET /schemas/pages/business/expenses.json` → `404` (no such file exists;
-  there is no "business" folder under `web/dist/schemas/pages/`).
-- Its login form calls `fetch('/auth/login', ...)` — missing the real
-  backend's `/api/v1` prefix. Confirmed live: `POST /auth/login` → `404`.
-  The real route, used throughout §2-§4 above, is `POST /api/v1/auth/login`.
-- Its "Create workspace" tab calls `/auth/register` — a route that does not
-  exist anywhere in this backend at all (only `/login`, `/logout`, `/me` are
-  registered).
-- Its API fetcher sends an `X-Awo-Tenant` header; every real request in this
-  document uses the backend's actual header, `X-Tenant-ID`.
+```sh
+# 1. Login (the frontend's login form)
+curl -s -X POST http://localhost:8080/api/v1/auth/login -H "Content-Type: application/json" \
+  -d '{"email":"<email>","password":"<password>","tenant_id":"<tenant-uuid>"}'
 
-**Net effect:** even with a working browser, opening `/ui` today would show
-a sidebar with no Expense entry, and manually navigating to it (by any
-means) would not retrieve real data for Expense or any other entity — the
-static shell simply never talks to this backend correctly. This is **not**
-an SDUI-engine defect (§5a proves the engine itself is correct) — it is a
-disconnected frontend artifact. See findings register §B.10/§B.11 and
-`tasks.md` **R.10**/**R.11** for the full evidence and the (undecided,
-out-of-scope-for-this-pass) remediation options.
+# 2. Session check on page load
+curl -s http://localhost:8080/api/v1/auth/me -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <tenant-uuid>"
 
-**What was NOT done:** no browser-capable tool exists in this environment
-(confirmed: no Chromium/Firefox, no Playwright/Puppeteer, no compatible
-Linux userland to run one under Termux/Android) — so visual rendering itself
-remains unverified regardless of the above. **This is disclosed as an
-explicit, open gap, not claimed as done** — tracked as `tasks.md` **R.9**.
-Given 5b's findings, a browser would not currently show anything different
-from what the HTTP-level checks above already show.
+# 3. Sidebar nav
+curl -s http://localhost:8080/api/v1/ui/nav -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <tenant-uuid>"
+
+# 4. List data (amis's own crud component call, page_size — not perPage — reaches the backend)
+curl -s "http://localhost:8080/api/v1/business/expenses?page=1&page_size=20" -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <tenant-uuid>"
+
+# 5. Create (the "New Expense" form's submit — submitted_by filled by the user via the
+#    now-enabled remote-select, which the generated create form previously left disabled
+#    with no default)
+curl -s -X POST http://localhost:8080/api/v1/business/expenses -H "Authorization: Bearer <token>" -H "X-Tenant-ID: <tenant-uuid>" \
+  -H "Content-Type: application/json" \
+  -d '{"description":"...","amount":"777.00","category":"other","expense_date":"2026-10-19","submitted_by":"<user-uuid>"}'
+
+# 6. The new record appears in a subsequent list fetch (same as step 4, re-run)
+```
+
+All six steps returned the expected real results this pass — login `200`,
+`/auth/me` `200`, nav `200` (21 entries), list `200` (existing + new records),
+create `201`, and the new record present in the very next list response
+(confirmed by `meta.total` incrementing and the new description appearing).
+The full lifecycle (submit/approve/invalid-transition/tenant-isolation) was
+then re-run through the same `PATCH .../{id}` contract the generated Edit
+form's "Save" button uses — identical results to §4 above, with a second
+tenant correctly blocked. The created record was confirmed directly in
+PostgreSQL via `psql`, and again after a full server restart.
+
+**What was NOT done — visual rendering (R.9):** this is HTTP-contract-level
+verification, replaying the exact requests the real JavaScript makes — it is
+**not** a substitute for opening the page in a real browser and looking at
+it. Re-checked this pass (not just re-asserted): real Chrome/Firefox apps
+are installed on this device and can genuinely be launched pointed at the
+running server (`am start -a android.intent.action.VIEW -d ...`), but this
+sandboxed shell has no screenshot command, no accessible console/network
+log, and no reachable remote-debugging port — there is no way to observe
+what actually renders. See findings register §B.13 for the full list of
+what was checked and ruled out. **This remains an explicit, open gap** —
+tracked as `tasks.md` **R.9** — not claimed as done.
 
 ## 6. What this does NOT prove yet
 
-- Visual browser rendering of the generated UI (R.9 — no browser-capable tool
-  available in this environment).
-- That the checked-in `web/dist` frontend shell actually displays the
-  Expense entity at all — confirmed this pass that, as currently wired, it
-  cannot (R.10/R.11); only the backend's SDUI JSON generation is verified
-  (§5a).
+- Visual browser rendering of the generated UI (R.9 — real browsers exist on
+  this device and can be launched, but no inspection channel — screenshot,
+  console, remote debugging — is reachable from this sandboxed shell; see
+  §B.13).
 - Audit-row content for this entity specifically (the generic mechanism is
   proven elsewhere in the codebase; not re-queried for this entity this pass).
 - A fully clean serialization of Link-type fields in JSON responses (R.8 —

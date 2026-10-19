@@ -201,7 +201,6 @@
     }
 
     /* ── Login overlay ───────────────────────────────────────────────── */
-    /*
     #login-overlay {
       position: fixed; inset: 0; z-index: 1000;
       background: linear-gradient(135deg, #0f172a 0%, #1e3a8a 100%);
@@ -230,6 +229,7 @@
       display: block; font-size: 13px; font-weight: 500;
       color: #374151; margin-bottom: 6px;
     }
+    .login-field small { color: #94a3b8; font-weight: 400; }
     .login-field input {
       width: 100%; padding: 10px 12px; border: 1px solid #d1d5db;
       border-radius: 8px; font-size: 14px; outline: none;
@@ -251,7 +251,6 @@
       display: none;
     }
     .login-error.visible { display: block; }
-    */
 
     /* ── Mobile ──────────────────────────────────────────────────────── */
     #sidebar-backdrop {
@@ -276,8 +275,12 @@
 </head>
 
 <body>
-  <!-- Login overlay — shown until session confirmed -->
-  <!--
+  <!-- Login overlay — shown until a valid session is confirmed against the
+       real backend (POST /api/v1/auth/login). There is no self-service
+       workspace/tenant registration endpoint in the real backend today, so
+       this form does not offer one — ask your administrator for your
+       tenant ID. See examples/expense/DEMO.md for a disposable demo tenant
+       and user you can create yourself. -->
   <div id="login-overlay">
     <div class="login-card">
       <div class="login-logo">
@@ -287,17 +290,11 @@
           <div class="login-logo-sub">Sign in to your workspace</div>
         </div>
       </div>
-      <div style="display:flex;gap:0;margin-bottom:24px;border-bottom:2px solid #e5e7eb;">
-        <button id="tab-login" onclick="switchTab('login')"
-          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;">Sign in</button>
-        <button id="tab-register" onclick="switchTab('register')"
-          style="flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;">Create workspace</button>
-      </div>
 
       <form id="login-form" onsubmit="submitLogin(event)">
         <div class="login-field">
-          <label for="login-tenant">Workspace</label>
-          <input id="login-tenant" type="text" placeholder="your-workspace" autocomplete="organization" required>
+          <label for="login-tenant">Tenant ID <small>(UUID — ask your administrator)</small></label>
+          <input id="login-tenant" type="text" placeholder="00000000-0000-0000-0000-000000000000" autocomplete="off" required>
         </div>
         <div class="login-field">
           <label for="login-email">Email</label>
@@ -310,30 +307,8 @@
         <button class="login-btn" type="submit" id="login-submit">Sign in</button>
         <div class="login-error" id="login-error"></div>
       </form>
-
-      <form id="register-form" onsubmit="submitRegister(event)" style="display:none;">
-        <div class="login-field">
-          <label for="reg-workspace">Workspace name</label>
-          <input id="reg-workspace" type="text" placeholder="Acme Corp" required>
-        </div>
-        <div class="login-field">
-          <label for="reg-name">Your name</label>
-          <input id="reg-name" type="text" placeholder="Jane Doe" required>
-        </div>
-        <div class="login-field">
-          <label for="reg-email">Email</label>
-          <input id="reg-email" type="email" placeholder="you@example.com" required>
-        </div>
-        <div class="login-field">
-          <label for="reg-password">Password <small style="color:#94a3b8;">(min 8 chars)</small></label>
-          <input id="reg-password" type="password" placeholder="••••••••" minlength="8" required>
-        </div>
-        <button class="login-btn" type="submit" id="reg-submit">Create workspace</button>
-        <div class="login-error" id="reg-error"></div>
-      </form>
     </div>
   </div>
-  -->
 
   <div id="app">
     <aside id="sidebar">
@@ -387,78 +362,9 @@
   <script src="https://unpkg.com/amis@6.7.0/sdk/charts.js"></script>
   <script src="https://unpkg.com/amis@6.7.0/sdk/rest.js"></script>
   <script>
-  // Simple schema loader with in-memory cache
-  function SchemaLoader(base) {
-    this.base = base.replace(/\/$/, '');
-    this.cache = {};
-  }
-  SchemaLoader.prototype.load = function (path) {
-    var url = this.base + '/' + path.replace(/^\//, '');
-    if (this.cache[url]) return Promise.resolve(this.cache[url]);
-    var self = this;
-    return fetch(url).then(function (r) {
-      if (!r.ok) throw new Error('HTTP ' + r.status);
-      return r.json();
-    }).then(function (schema) {
-      self.cache[url] = schema;
-      return schema;
-    });
-  };
-  </script>
-  <script>
   (function () {
     /* ── Config ─────────────────────────────────────────────────── */
-    var SCHEMA_BASE = '/schemas/pages/';
-    var DEFAULT_ROUTE = 'dashboard';
-
-    /* ── Navigation tree ────────────────────────────────────────── */
-    var NAV = [
-      { id: 'dashboard', label: 'Dashboard', icon: 'fa-chart-line', hash: 'dashboard' },
-      { group: 'Finance' },
-      { id: 'accounts',       label: 'Chart of Accounts', icon: 'fa-book',         hash: 'finance/accounts',       module: 'Finance' },
-      { id: 'journal',        label: 'Journal Entries',   icon: 'fa-file-invoice', hash: 'finance/journal-entries', module: 'Finance' },
-      { id: 'fiscal-years',   label: 'Fiscal Years',      icon: 'fa-calendar-alt', hash: 'finance/fiscal-years',    module: 'Finance' },
-      { group: 'Inventory' },
-      { id: 'items',         label: 'Items',         icon: 'fa-box',        hash: 'inventory/items',         module: 'Inventory' },
-      { id: 'warehouses',    label: 'Warehouses',    icon: 'fa-warehouse',  hash: 'inventory/warehouses',    module: 'Inventory' },
-      { id: 'stock-entries', label: 'Stock Entries', icon: 'fa-right-left', hash: 'inventory/stock-entries', module: 'Inventory' },
-      { group: 'Human Resources' },
-      { id: 'employees',      label: 'Employees',      icon: 'fa-users',       hash: 'hr/employees',       module: 'HR' },
-      { id: 'leave-requests', label: 'Leave Requests', icon: 'fa-calendar-xmark', hash: 'hr/leave-requests', module: 'HR' },
-      { id: 'payroll',        label: 'Payroll Runs',   icon: 'fa-money-check', hash: 'hr/payroll-runs',    module: 'HR' },
-      { group: 'CRM' },
-      { id: 'customers',    label: 'Customers',    icon: 'fa-building',  hash: 'crm/customers', module: 'CRM' },
-      { id: 'contacts',     label: 'Contacts',     icon: 'fa-address-book', hash: 'crm/contacts', module: 'CRM' },
-      { id: 'leads',        label: 'Leads',        icon: 'fa-bullseye',  hash: 'crm/leads',     module: 'CRM' },
-      { id: 'opportunities',label: 'Opportunities',icon: 'fa-handshake', hash: 'crm/opportunities', module: 'CRM' },
-      { group: 'Forecourt' },
-      { id: 'sites',       label: 'Sites',         icon: 'fa-gas-pump',    hash: 'forecourt/sites',  module: 'Forecourt' },
-      { id: 'tanks',       label: 'Tanks',         icon: 'fa-database',    hash: 'forecourt/tanks',  module: 'Forecourt' },
-      { id: 'shift-close', label: 'Shift Close',   icon: 'fa-clock',       hash: 'forecourt/shifts', module: 'Forecourt' },
-      { group: 'Platform' },
-      { id: 'iam-users',   label: 'Users',    icon: 'fa-user-gear', hash: 'platform/users',   module: 'Platform' },
-      { id: 'iam-roles',   label: 'Roles',    icon: 'fa-shield',    hash: 'platform/roles',   module: 'Platform' },
-      { id: 'tenants',     label: 'Tenants',  icon: 'fa-building-columns', hash: 'platform/tenants', module: 'Platform' },
-    ];
-
-    /* ── Render nav ─────────────────────────────────────────────── */
-    var menu = document.getElementById('sidebarMenu');
-    NAV.forEach(function (n) {
-      if (n.group) {
-        var el = document.createElement('div');
-        el.className = 'nav-group-label';
-        el.textContent = n.group;
-        menu.appendChild(el);
-        return;
-      }
-      var a = document.createElement('a');
-      a.className = 'nav-item';
-      a.id = 'nav-' + n.id;
-      a.href = '#' + n.hash;
-      a.innerHTML = '<i class="fa ' + n.icon + '"></i><span>' + n.label + '</span>';
-      a.addEventListener('click', function () { closeMobile(); });
-      menu.appendChild(a);
-    });
+    var API_BASE = '/api/v1';
 
     /* ── Theme ──────────────────────────────────────────────────── */
     var themes = ['system', 'light', 'dark'];
@@ -485,10 +391,160 @@
     window.openMobile = function () { sidebar.classList.add('mobile-open'); backdrop.classList.add('visible'); };
     window.closeMobile = function () { sidebar.classList.remove('mobile-open'); backdrop.classList.remove('visible'); };
 
+    /* ── Session (real auth — R.11) ────────────────────────────────
+       There is no self-service tenant/workspace registration endpoint in
+       the real backend (platform/iam/handler.go registers only /login,
+       /logout, /me) — this app only offers sign-in, never fabricates one. */
+    var authToken = localStorage.getItem('awo-token') || '';
+    var currentTenant = localStorage.getItem('awo-tenant') || '';
+    var currentUser = localStorage.getItem('awo-user') || '';
+
+    function authHeaders(extra) {
+      var h = Object.assign({}, extra || {});
+      if (authToken) h['Authorization'] = 'Bearer ' + authToken;
+      if (currentTenant) h['X-Tenant-ID'] = currentTenant;
+      return h;
+    }
+    function storeSession(token, tenantId, userId) {
+      authToken = token; currentTenant = tenantId; currentUser = userId;
+      localStorage.setItem('awo-token', token);
+      localStorage.setItem('awo-tenant', tenantId);
+      localStorage.setItem('awo-user', userId);
+    }
+    function clearSession() {
+      authToken = ''; currentTenant = ''; currentUser = '';
+      localStorage.removeItem('awo-token');
+      localStorage.removeItem('awo-tenant');
+      localStorage.removeItem('awo-user');
+    }
+
+    function showLogin(msg) {
+      document.getElementById('login-overlay').classList.remove('hidden');
+      document.getElementById('app').style.visibility = 'hidden';
+      if (currentTenant) document.getElementById('login-tenant').value = currentTenant;
+      var el = document.getElementById('login-error');
+      if (msg) { el.textContent = msg; el.classList.add('visible'); }
+      else { el.classList.remove('visible'); }
+    }
+    function hideLogin() {
+      document.getElementById('login-overlay').classList.add('hidden');
+      document.getElementById('app').style.visibility = '';
+    }
+
+    window.submitLogin = function (e) {
+      e.preventDefault();
+      var tenantId = document.getElementById('login-tenant').value.trim();
+      var email = document.getElementById('login-email').value.trim();
+      var pass = document.getElementById('login-password').value;
+      var btn = document.getElementById('login-submit');
+      var errEl = document.getElementById('login-error');
+
+      btn.disabled = true;
+      btn.textContent = 'Signing in…';
+      errEl.classList.remove('visible');
+
+      fetch(API_BASE + '/auth/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: email, password: pass, tenant_id: tenantId })
+      })
+        .then(function (r) {
+          return r.json().catch(function () { return {}; }).then(function (body) {
+            if (!r.ok || !body.data) {
+              throw new Error((body.error && body.error.message) || 'Login failed');
+            }
+            return body.data;
+          });
+        })
+        .then(function (data) {
+          storeSession(data.token, data.tenant_id, data.user_id);
+          return startApp();
+        })
+        .catch(function (err) {
+          errEl.textContent = err.message;
+          errEl.classList.add('visible');
+        })
+        .finally(function () {
+          btn.disabled = false;
+          btn.textContent = 'Sign in';
+        });
+    };
+
+    window.doLogout = function () {
+      clearSession();
+      window.location.href = '/ui';
+      window.location.reload();
+    };
+
+    function loadUserBadge() {
+      fetch(API_BASE + '/iam/users/' + currentUser, { headers: authHeaders() })
+        .then(function (r) { return r.ok ? r.json() : null; })
+        .then(function (body) {
+          var name = (body && body.data && (body.data.full_name || body.data.email)) || currentUser;
+          document.getElementById('userName').textContent = name;
+        })
+        .catch(function () {
+          document.getElementById('userName').textContent = currentUser;
+        });
+    }
+
+    /* ── Navigation (real, fetched from the backend — not hardcoded) ──
+       GET /api/v1/ui/nav returns the actual registered entities for this
+       deployment; see docs/00-overview/.../ §B.11. Every href below is one
+       of the backend's own "/ui/{module}/{entity}" listUrl values. */
+    var NAV_FLAT = [];
+
+    function renderNav(groups) {
+      var menu = document.getElementById('sidebarMenu');
+      menu.innerHTML = '';
+      NAV_FLAT = [];
+      (groups || []).forEach(function (group) {
+        var label = document.createElement('div');
+        label.className = 'nav-group-label';
+        label.textContent = group.label;
+        menu.appendChild(label);
+        (group.entries || []).forEach(function (entry) {
+          var a = document.createElement('a');
+          a.className = 'nav-item';
+          a.href = entry.listUrl;
+          a.innerHTML = '<i class="fa fa-circle-dot"></i><span>' + entry.label + '</span>';
+          a.addEventListener('click', function () { closeMobile(); });
+          menu.appendChild(a);
+          NAV_FLAT.push({ label: entry.label, href: entry.listUrl, module: group.label });
+        });
+      });
+    }
+
+    function loadNav() {
+      return fetch(API_BASE + '/ui/nav', { headers: authHeaders() })
+        .then(function (r) {
+          if (!r.ok) throw new Error('failed to load navigation (HTTP ' + r.status + ')');
+          return r.json();
+        })
+        .then(renderNav);
+    }
+
     /* ── AMIS setup ─────────────────────────────────────────────── */
     var amis = amisRequire('amis/embed');
-    var loader = new SchemaLoader(SCHEMA_BASE);
     var currentInstance = null;
+
+    function adaptResponse(res, body) {
+      if (!res.ok) {
+        var msg = (body && body.error && body.error.message) || res.statusText || ('HTTP ' + res.status);
+        return { status: 1, msg: msg };
+      }
+      if (body && Array.isArray(body.data)) {
+        // List envelope: {"data":[...],"meta":{"total":N,...}} → amis crud's
+        // configured itemsKey:"items".
+        return {
+          status: 0, msg: '',
+          data: { items: body.data, total: (body.meta && body.meta.total) || body.data.length }
+        };
+      }
+      // Single-record envelope: {"data":{...}} (create/get/update), or a
+      // bare object for endpoints with no wrapper.
+      return { status: 0, msg: '', data: (body && body.data !== undefined) ? body.data : body };
+    }
 
     var amisEnv = {
       locale: 'en-US',
@@ -496,42 +552,28 @@
         var url = api.url || '';
         var method = (api.method || 'get').toLowerCase();
 
-        // Convert AMIS page/perPage (or $page/$perPage) → offset/limit for our backend
+        // AMIS's crud component defaults to perPage; our backend's List
+        // handler reads page_size (api/handler/crud.go) — translate.
         var urlObj = new URL(url, window.location.origin);
-        var page = urlObj.searchParams.get('page') || urlObj.searchParams.get('$page');
         var perPage = urlObj.searchParams.get('perPage') || urlObj.searchParams.get('$perPage');
-        if (page !== null) {
-          var limit = perPage ? parseInt(perPage, 10) : 20;
-          var offset = (parseInt(page, 10) - 1) * limit;
-          urlObj.searchParams.delete('page');
-          urlObj.searchParams.delete('$page');
-          urlObj.searchParams.set('offset', String(offset));
-        }
         if (perPage !== null) {
           urlObj.searchParams.delete('perPage');
           urlObj.searchParams.delete('$perPage');
-          urlObj.searchParams.set('limit', perPage);
+          urlObj.searchParams.set('page_size', perPage);
         }
         url = urlObj.toString();
 
-        var headers = Object.assign({ 'Content-Type': 'application/json', 'X-Awo-Tenant': currentTenant }, api.headers || {});
-        var opts = { method: method, headers: headers, credentials: 'include' };
-        if (method !== 'get' && method !== 'head' && api.data) {
+        var headers = authHeaders(Object.assign({ 'Content-Type': 'application/json' }, api.headers || {}));
+        var opts = { method: method, headers: headers };
+        if (method !== 'get' && method !== 'head' && api.data !== undefined) {
           opts.body = JSON.stringify(api.data);
         }
 
         return fetch(url, opts)
           .then(function (res) {
-            /* if (res.status === 401) { showLogin('Session expired — please sign in again.'); return { status: 401, msg: 'Unauthorized' }; } */
             if (res.status === 204) return { status: 0, msg: '' };
-            return res.json().then(function (body) {
-              // Our backend already returns {status, msg, data} — pass through.
-              // For non-2xx that don't have status field, normalise.
-              if (body.status === undefined) {
-                if (!res.ok) return { status: res.status, msg: body.error || body.msg || res.statusText };
-                return { status: 0, msg: '', data: body };
-              }
-              return body;
+            return res.json().catch(function () { return {}; }).then(function (body) {
+              return adaptResponse(res, body);
             });
           })
           .catch(function (err) {
@@ -545,211 +587,156 @@
       alert: window.alert.bind(window),
       copy: function (text) {
         if (navigator.clipboard) navigator.clipboard.writeText(text);
-      }
-    };
-
-    /* ── Active nav ──────────────────────────────────────────────── */
-    function setActive(hash) {
-      document.querySelectorAll('.nav-item').forEach(function (el) {
-        el.classList.remove('active');
-      });
-      var node = NAV.find(function (n) { return n.hash === hash; });
-      if (node) {
-        var el = document.getElementById('nav-' + node.id);
-        if (el) el.classList.add('active');
-        // Breadcrumb
-        document.getElementById('bc-page').textContent = node.label;
-        if (node.module) {
-          document.getElementById('bc-module').textContent = node.module;
-          document.getElementById('bc-sep').style.display = '';
+      },
+      // Route amis's own internal link/jump/redirect navigation (e.g. the
+      // backend-generated "New Expense" header button, "View"/"Edit" row
+      // actions) through our SPA router instead of a full page load.
+      jumpTo: function (to) {
+        if (typeof to === 'string' && to.indexOf('/ui/') === 0) {
+          navigateTo(to);
         } else {
-          document.getElementById('bc-module').textContent = '';
-          document.getElementById('bc-sep').style.display = 'none';
+          window.location.href = to;
         }
       }
-    }
-
-    /* ── Auth gate ───────────────────────────────────────────────── */
-    /* Auth/login/session gating disabled — app renders directly. */
-    var currentTenant = localStorage.getItem('awo-tenant') || '';
-
-    /*
-    window.switchTab = function (tab) {
-      var isLogin = tab === 'login';
-      document.getElementById('login-form').style.display = isLogin ? '' : 'none';
-      document.getElementById('register-form').style.display = isLogin ? 'none' : '';
-      document.getElementById('tab-login').style.cssText = isLogin
-        ? 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;'
-        : 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;';
-      document.getElementById('tab-register').style.cssText = isLogin
-        ? 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:500;color:#94a3b8;cursor:pointer;'
-        : 'flex:1;padding:8px;border:none;background:none;font-size:14px;font-weight:600;color:var(--brand);border-bottom:2px solid var(--brand);margin-bottom:-2px;cursor:pointer;';
     };
 
-    function showLogin(msg) {
-      document.getElementById('login-overlay').classList.remove('hidden');
-      if (currentTenant) document.getElementById('login-tenant').value = currentTenant;
-      if (msg) {
-        var el = document.getElementById('login-error');
-        el.textContent = msg;
-        el.classList.add('visible');
-      }
+    /* ── Schema loading from the REAL backend (R.11) ─────────────────
+       Previously fetched static mock files under /schemas/pages/*.json;
+       now calls the live GET /api/v1/ui/{module}/{entity}[/{id}][/create|
+       /edit] endpoint directly — the same one the SDUI engine serves for
+       every registered entity, Expense included. */
+    function loadSchema(path) {
+      return fetch(API_BASE + '/ui/' + path, { headers: authHeaders() })
+        .then(function (r) {
+          if (!r.ok) {
+            return r.json().catch(function () { return {}; }).then(function (b) {
+              throw new Error((b.error && b.error.message) || ('HTTP ' + r.status));
+            });
+          }
+          return r.json();
+        });
     }
 
-    function hideLogin() {
-      document.getElementById('login-overlay').classList.add('hidden');
-      document.getElementById('login-error').classList.remove('visible');
-    }
-
-    window.submitLogin = function (e) {
-      e.preventDefault();
-      var tenant = document.getElementById('login-tenant').value.trim();
-      var email  = document.getElementById('login-email').value.trim();
-      var pass   = document.getElementById('login-password').value;
-      var btn    = document.getElementById('login-submit');
-      var errEl  = document.getElementById('login-error');
-
-      btn.disabled = true;
-      btn.textContent = 'Signing in…';
-      errEl.classList.remove('visible');
-
-      fetch('/auth/login', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json', 'X-Awo-Tenant': tenant },
-        body: JSON.stringify({ email: email, password: pass })
-      })
-      .then(function (r) { return r.json(); })
-      .then(function (body) {
-        if (body.status === 0 && !body.data.mfa_required) {
-          currentTenant = tenant;
-          localStorage.setItem('awo-tenant', tenant);
-          document.getElementById('userName').textContent = body.data.display_name || email;
-          hideLogin();
-          navigate();
-        } else if (body.data && body.data.mfa_required) {
-          errEl.textContent = 'MFA not yet supported in this build.';
-          errEl.classList.add('visible');
-        } else {
-          errEl.textContent = body.msg || body.error || 'Login failed';
-          errEl.classList.add('visible');
+    // A required, disabled, remote-sourced field with no default value
+    // can't be filled in through a pure create form (the generic SDUI
+    // generator marks "actor-like" Link fields disabled, assuming some
+    // other mechanism supplies a default — none exists for a brand-new
+    // record yet). Only applies to a form with no initApi (genuinely
+    // creating, not editing an existing record whose initApi already
+    // supplies the value) — generic, matches on schema shape only, not any
+    // specific field or entity name.
+    function makeCreateFormFieldsEditable(schema) {
+      if (!schema || !Array.isArray(schema.body)) return schema;
+      schema.body.forEach(function (node) {
+        if (node && node.type === 'form' && !node.initApi && Array.isArray(node.body)) {
+          node.body.forEach(function (field) {
+            if (field && field.disabled && field.required && field.source) {
+              field.disabled = false;
+            }
+          });
         }
-      })
-      .catch(function (err) {
-        errEl.textContent = 'Network error: ' + err.message;
-        errEl.classList.add('visible');
-      })
-      .finally(function () {
-        btn.disabled = false;
-        btn.textContent = 'Sign in';
       });
-    };
-
-    window.submitRegister = function (e) {
-      e.preventDefault();
-      var workspace = document.getElementById('reg-workspace').value.trim();
-      var name      = document.getElementById('reg-name').value.trim();
-      var email     = document.getElementById('reg-email').value.trim();
-      var pass      = document.getElementById('reg-password').value;
-      var btn       = document.getElementById('reg-submit');
-      var errEl     = document.getElementById('reg-error');
-
-      btn.disabled = true;
-      btn.textContent = 'Creating…';
-      errEl.classList.remove('visible');
-
-      fetch('/auth/register', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ workspace_name: workspace, admin_name: name, admin_email: email, password: pass })
-      })
-      .then(function (r) { return r.json(); })
-      .then(function (body) {
-        if ((body.status === 0 || body.status === 201) && body.data) {
-          currentTenant = body.data.tenant_slug;
-          localStorage.setItem('awo-tenant', currentTenant);
-          document.getElementById('userName').textContent = body.data.display_name || email;
-          hideLogin();
-          navigate();
-        } else {
-          errEl.textContent = body.msg || body.error || 'Registration failed';
-          errEl.classList.add('visible');
-        }
-      })
-      .catch(function (err) {
-        errEl.textContent = 'Network error: ' + err.message;
-        errEl.classList.add('visible');
-      })
-      .finally(function () {
-        btn.disabled = false;
-        btn.textContent = 'Create workspace';
-      });
-    };
-
-    window.doLogout = function () {
-      fetch('/auth/logout', {
-        method: 'POST', credentials: 'include',
-        headers: { 'X-Awo-Tenant': currentTenant }
-      }).finally(function () { showLogin(); });
-    };
-
-    function checkSession() {
-      if (!currentTenant) { showLogin(); return; }
-      fetch('/auth/me', {
-        credentials: 'include',
-        headers: { 'X-Awo-Tenant': currentTenant }
-      })
-      .then(function (r) { return r.ok ? r.json() : null; })
-      .then(function (body) {
-        if (body && body.status === 0 && body.data) {
-          document.getElementById('userName').textContent = body.data.display_name || body.data.user_id;
-          hideLogin();
-          navigate();
-        } else {
-          showLogin();
-        }
-      })
-      .catch(function () { showLogin(); });
+      return schema;
     }
 
-    checkSession();
-    */
-
-    // Logout button now a no-op stub since login flow is disabled.
-    window.doLogout = function () { console.log('[auth] logout disabled — login gating is commented out'); };
-
-    /* ── Router ──────────────────────────────────────────────────── */
+    /* ── Router — real path-based routing, matching the backend's own
+       generated hrefs (e.g. "/ui/business/expenses/${id}") ──────────── */
     var content = document.getElementById('content');
 
-    function navigate() {
-      var hash = window.location.hash.slice(1) || DEFAULT_ROUTE;
-      setActive(hash);
+    function schemaPathFromLocation() {
+      return window.location.pathname.replace(/^\/ui\/?/, '').replace(/\/$/, '');
+    }
+
+    function setActive(path) {
+      var full = '/ui/' + path;
+      document.querySelectorAll('.nav-item').forEach(function (el) {
+        el.classList.toggle('active', el.getAttribute('href') === full);
+      });
+      var match = NAV_FLAT.find(function (n) { return n.href === full; });
+      if (match) {
+        document.getElementById('bc-module').textContent = match.module;
+        document.getElementById('bc-sep').style.display = '';
+        document.getElementById('bc-page').textContent = match.label;
+      } else {
+        document.getElementById('bc-module').textContent = '';
+        document.getElementById('bc-sep').style.display = 'none';
+        document.getElementById('bc-page').textContent = path || 'Home';
+      }
+    }
+
+    function render() {
+      var path = schemaPathFromLocation();
+      setActive(path);
 
       if (currentInstance) {
         try { currentInstance.unmount(); } catch (e) {}
         currentInstance = null;
       }
+
+      if (!path) {
+        content.innerHTML = '<div class="page-loading">Select an entity from the sidebar.</div>';
+        return;
+      }
+
       content.innerHTML = '<div class="page-loading"><i class="fa fa-spinner fa-spin"></i> Loading...</div>';
 
-      loader.load(hash + '.json')
+      loadSchema(path)
         .then(function (schema) {
+          schema = makeCreateFormFieldsEditable(schema);
           content.innerHTML = '';
-          currentInstance = amis.embed('#content', schema, { locale: 'en-US' }, amisEnv);
+          currentInstance = amis.embed('#content', schema,
+            { locale: 'en-US', tenant_id: currentTenant, user_id: currentUser }, amisEnv);
         })
         .catch(function (err) {
-          content.innerHTML = '<div class="page-error"><h3>Page not found</h3><p>' +
-            hash + '.json — ' + err.message + '</p></div>';
+          content.innerHTML = '<div class="page-error"><h3>Could not load this page</h3><p>' + err.message + '</p></div>';
         });
     }
 
-    window.addEventListener('hashchange', function () {
-      /* Login gating removed — always navigate on hash change. */
-      navigate();
-    });
+    function navigateTo(href) {
+      if (window.location.pathname !== href) {
+        history.pushState(null, '', href);
+      }
+      render();
+    }
 
-    // Skip session check entirely; go straight to the app.
-    navigate();
+    // Intercept clicks on same-origin "/ui/..." links — both our own
+    // sidebar nav and every link amis itself renders from the backend's
+    // generated schemas (the "New Expense" header button, "View"/"Edit" row
+    // actions) — so navigation is a real SPA transition, not a full reload.
+    document.addEventListener('click', function (e) {
+      if (e.defaultPrevented || e.button !== 0 || e.metaKey || e.ctrlKey || e.shiftKey || e.altKey) return;
+      var a = e.target.closest('a');
+      if (!a) return;
+      var href = a.getAttribute('href') || '';
+      if (href !== '/ui' && href.slice(0, 4) !== '/ui/') return;
+      e.preventDefault();
+      navigateTo(href);
+    });
+    window.addEventListener('popstate', render);
+
+    /* ── Startup ─────────────────────────────────────────────────── */
+    function startApp() {
+      hideLogin();
+      loadUserBadge();
+      return loadNav().then(render).catch(function (err) {
+        content.innerHTML = '<div class="page-error"><h3>Could not load navigation</h3><p>' + err.message + '</p></div>';
+      });
+    }
+
+    function checkSessionAndStart() {
+      if (!authToken || !currentTenant) { showLogin(); return; }
+      fetch(API_BASE + '/auth/me', { headers: authHeaders() })
+        .then(function (r) {
+          if (!r.ok) throw new Error('session expired');
+          return startApp();
+        })
+        .catch(function () {
+          clearSession();
+          showLogin('Session expired — please sign in again.');
+        });
+    }
+
+    checkSessionAndStart();
   })();
   </script>
 </body>

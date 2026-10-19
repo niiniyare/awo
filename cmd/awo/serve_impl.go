@@ -300,18 +300,12 @@ func startServer(cfg ServeConfig) error {
 		EventPublisher:     outbox.NewWriter(pool),
 	})
 
-	// Vite build output. Serves /assets/*, /sdk/*, /locales/*, etc.
-	// Files not found here fall through to the SPA catch-all below.
-	app.Static("/", "./awo/web/dist", fiber.Static{Compress: true, MaxAge: 86400})
-	// Web UI SPA — all /ui/* paths serve the built index.html.
-	// In development, Vite dev server (port 3000) handles this instead.
-	app.Get("/ui/*", func(c *fiber.Ctx) error {
-		return c.SendFile("./awo/web/dist/index.html")
-	})
-	// Showcase developer portal.
-	app.Get("/showcase*", func(c *fiber.Ctx) error {
-		return c.SendFile("./awo/web/showcase/index.html")
-	})
+	// Showcase frontend assets — embedded at compile time, not read from a
+	// runtime, cwd-relative path. See web_assets.go and
+	// docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md §B.10/R.10.
+	if err := mountWebAssets(app); err != nil {
+		return fmt.Errorf("mount web assets: %w", err)
+	}
 
 	// Showcase diagnostic API (unauthenticated dev endpoints).
 	showcaseHandler := showcasepkg.New(result.Schema, sduiEng)
