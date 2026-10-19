@@ -265,6 +265,18 @@ go test ./examples/... -v
 
 ## 5. UI — now integrated with the real backend (R.11, fixed 2026-10-19); visual rendering still unverified (R.9)
 
+**Opening it in a browser:** `http://localhost:8080/ui` (or `--port`'s value).
+The login overlay's real fields, confirmed from the served HTML, are labeled
+exactly **"Tenant ID"** (a UUID — there is no self-service tenant lookup;
+ask your administrator or see your own seeded demo tenant), **"Email"**, and
+**"Password"**, with a **"Sign in"** button. After signing in, the sidebar
+is built live from the real `/api/v1/ui/nav` response. The Expense entity's
+direct URL (confirmed from that response's own `listUrl`, not guessed) is
+`http://localhost:8080/ui/business/expenses` — deep-linking to it while
+logged out shows the login screen first and lands on the list immediately
+after a successful sign-in; the create form is at
+`.../ui/business/expenses/create`.
+
 ### 5a. The backend's own SDUI generation is correct (re-verified live, this pass)
 
 ```sh
@@ -331,6 +343,29 @@ then re-run through the same `PATCH .../{id}` contract the generated Edit
 form's "Save" button uses — identical results to §4 above, with a second
 tenant correctly blocked. The created record was confirmed directly in
 PostgreSQL via `psql`, and again after a full server restart.
+
+**Known-fixed UX issue (R.14, see findings register §B.15):** a real user
+testing this exact flow on Android Chrome found that the create form did
+**not** navigate away or clear after a successful Save — inviting repeated
+submissions and multiple real duplicate "Test expense" records. A first fix
+(adding a generic post-submit `redirect`) was shipped but **the user's own
+retest showed it still didn't work** — correctly treated as authoritative
+over the unit tests that had claimed success. The real causes turned out to
+be two separate bugs in the frontend's fetcher/data-binding, found this
+second pass by actually downloading and executing the real amis SDK: (1) the
+fetcher's response shape collided with how amis's own success/failure
+detection works, specifically because Expense's own `status` field
+(draft/submitted/approved) was mistaken for amis's application-level status
+code, making every submission look like a failure to amis regardless of the
+real HTTP result; (2) edit forms never received the record's own id into
+amis's data scope, so `${id}` template references never resolved and the
+edit form rendered blank. Both are now fixed and verified by actually
+executing the real amis SDK against the real shipped code (not just unit
+tests) — see R.14/§B.15 for the full evidence. Every duplicate record this
+bug produced, across both rounds, was deliberately left in the database —
+removing them is a separate decision, not a side effect of this fix. This
+fix has **not** been confirmed in an actual browser yet — the server is left
+running live for that retest.
 
 **What was NOT done — visual rendering (R.9):** this is HTTP-contract-level
 verification, replaying the exact requests the real JavaScript makes — it is

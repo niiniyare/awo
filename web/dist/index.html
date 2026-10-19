@@ -528,22 +528,37 @@
     var amis = amisRequire('amis/embed');
     var currentInstance = null;
 
-    function adaptResponse(res, body) {
-      if (!res.ok) {
-        var msg = (body && body.error && body.error.message) || res.statusText || ('HTTP ' + res.status);
-        return { status: 1, msg: msg };
-      }
+    // R.14 follow-up — the actual bug behind "Save appears to succeed but
+    // the form never navigates away": this function's previous shape,
+    // `{status, msg, data}`, is NOT amis's real fetcher contract (that was
+    // a carried-over assumption from the pre-R.11 static shell's own stale
+    // comment, never checked against amis's actual source). Confirmed by
+    // reading amis v6.7.0's real, shipped response normalizer (the
+    // minified function amis-core calls `k` in api.js, reached via
+    // wrapFetcher -> wrapAdaptor): it reads `a = <what this function
+    // returns>.data`, then derives success as
+    // `ok = (false === !a.hasOwnProperty('status')) || (0 == a.status)`.
+    // Returning `{status:0, data: record}` makes `a` the raw business
+    // record — and because our own entities commonly have their own
+    // "status" field (e.g. Expense's draft/submitted/approved), amis's
+    // normalizer mistook a real business field for amis's OWN
+    // success/failure code, with a non-zero/non-numeric value, and treated
+    // EVERY submission as a failure — confirmed by executing the real,
+    // unmodified amis SDK (see web/form-navigation.test.cjs).
+    //
+    // The actually-correct contract: the object this function returns must
+    // have NO top-level "status" property of its own; amis's normalizer
+    // then falls back to inspecting error.code/error.message directly on
+    // the backend's OWN response body — which happens to already match
+    // Awo's real {error:{code,message}} shape natively. So: pass the raw
+    // backend body straight through for anything that isn't a list (lists
+    // need reshaping into {items,total} to match the generated schema's
+    // own itemsKey:"items" configuration).
+    function adaptResponse(body) {
       if (body && Array.isArray(body.data)) {
-        // List envelope: {"data":[...],"meta":{"total":N,...}} → amis crud's
-        // configured itemsKey:"items".
-        return {
-          status: 0, msg: '',
-          data: { items: body.data, total: (body.meta && body.meta.total) || body.data.length }
-        };
+        return { data: { items: body.data, total: (body.meta && body.meta.total) || body.data.length } };
       }
-      // Single-record envelope: {"data":{...}} (create/get/update), or a
-      // bare object for endpoints with no wrapper.
-      return { status: 0, msg: '', data: (body && body.data !== undefined) ? body.data : body };
+      return { data: body };
     }
 
     var amisEnv = {
@@ -571,13 +586,16 @@
 
         return fetch(url, opts)
           .then(function (res) {
-            if (res.status === 204) return { status: 0, msg: '' };
+            if (res.status === 204) return { data: {} };
             return res.json().catch(function () { return {}; }).then(function (body) {
-              return adaptResponse(res, body);
+              return adaptResponse(body);
             });
           })
           .catch(function (err) {
-            return { status: 1, msg: 'Network error: ' + err.message };
+            // No top-level "status" here either, for the same reason —
+            // amis's own error.code/error.message heuristic (confirmed
+            // from source) is what recognizes this as a failure.
+            return { data: { error: { code: 'network_error', message: 'Network error: ' + err.message } } };
           });
       },
       isCancel: function () { return false; },
@@ -639,12 +657,83 @@
       return schema;
     }
 
+    // Create/edit form lifecycle fix: the generic SDUI generator emits a
+    // create/edit form's "api" (what to submit to) but no "redirect" (where
+    // to go afterward) — a page-routing decision the backend's generic
+    // schema generator can't know and shouldn't encode. Without it, amis
+    // leaves a successfully-submitted form exactly as-is: still on screen,
+    // still holding the just-submitted values, with no visible confirmation
+    // that anything happened — inviting a second, duplicate "Save" click.
+    // amis's own Form component (confirmed directly in its shipped SDK
+    // source, not just documentation) calls env.jumpTo(filter(redirect,
+    // data), ...) ONLY after a submit's remote call actually resolves
+    // successfully — never on a validation/network/server failure, where
+    // the form's entered values are left untouched for the user to fix and
+    // resubmit. Setting "redirect" here is therefore sufficient, on its
+    // own, to satisfy both "successful create/edit navigates away and
+    // leaves nothing stale behind" and "failed create/edit preserves
+    // entered input" — no extra success/failure branching is needed in our
+    // own code. Our own amisEnv.jumpTo then performs an SPA-style
+    // navigation (not a full page reload), and because render() always
+    // unmounts the current amis instance and fetches a fresh schema for the
+    // new path, re-opening the create form afterward starts from a brand
+    // new, clean, backend-returned schema — no stale field values can
+    // persist across that boundary.
+    //
+    // Fully generic — computed from the current path's own "/create"/
+    // "/edit" suffix, not any specific entity or module name, so it applies
+    // identically to every entity this frontend ever loads a form for:
+    //   .../{module}/{entity}/create      -> back to .../{module}/{entity}            (the list)
+    //   .../{module}/{entity}/{id}/edit    -> back to .../{module}/{entity}/{id}        (the detail view)
+    // Never overwrites a redirect the backend's schema already specifies,
+    // so this stays forward-compatible if the generator starts emitting
+    // its own.
+    function applyFormPostSubmitNavigation(schema, path) {
+      if (!schema || !Array.isArray(schema.body)) return schema;
+      var target = null;
+      if (/\/create$/.test(path)) {
+        target = '/ui/' + path.replace(/\/create$/, '');
+      } else if (/\/edit$/.test(path)) {
+        target = '/ui/' + path.replace(/\/edit$/, '');
+      }
+      if (!target) return schema;
+      schema.body.forEach(function (node) {
+        if (node && node.type === 'form' && node.api && !node.redirect) {
+          node.redirect = target;
+        }
+      });
+      return schema;
+    }
+
     /* ── Router — real path-based routing, matching the backend's own
        generated hrefs (e.g. "/ui/business/expenses/${id}") ──────────── */
     var content = document.getElementById('content');
 
     function schemaPathFromLocation() {
       return window.location.pathname.replace(/^\/ui\/?/, '').replace(/\/$/, '');
+    }
+
+    // R.14 follow-up — a second, independently-confirmed bug (via the same
+    // real-amis-SDK execution test): detail and edit schemas' own
+    // "${id}" template references (e.g. initApi:"GET:.../business/expenses/
+    // ${id}") never resolved, because nothing supplied an "id" into the
+    // embedded instance's own top-level data scope — confirmed from amis's
+    // real embed() source that this is set via the loaded schema's own
+    // top-level "data" property (object merge against the current scope),
+    // not the props argument passed to amis.embed(). Without it, the edit
+    // form's initApi silently requested ".../business/expenses/" (no id),
+    // so the form rendered with every field blank, and clicking Save then
+    // failed client-side validation before ever reaching the server -
+    // exactly matching "Edit: navigation behaves unexpectedly."
+    //
+    // Generic — derived purely from the path's own shape
+    // (.../{module}/{entity}/{id} or .../{module}/{entity}/{id}/edit),
+    // never an entity/module name.
+    function recordIdFromPath(path) {
+      var parts = path.split('/').filter(Boolean);
+      if (parts.length === 4 && parts[3] === 'edit') return parts[2];
+      if (parts.length === 3 && parts[2] !== 'create') return parts[2];
+      return undefined;
     }
 
     function setActive(path) {
@@ -683,9 +772,14 @@
       loadSchema(path)
         .then(function (schema) {
           schema = makeCreateFormFieldsEditable(schema);
+          schema = applyFormPostSubmitNavigation(schema, path);
+          var recordId = recordIdFromPath(path);
+          if (recordId !== undefined) {
+            schema.data = Object.assign({}, schema.data, { id: recordId });
+          }
           content.innerHTML = '';
           currentInstance = amis.embed('#content', schema,
-            { locale: 'en-US', tenant_id: currentTenant, user_id: currentUser }, amisEnv);
+            { locale: 'en-US', tenant_id: currentTenant, user_id: currentUser, id: recordId }, amisEnv);
         })
         .catch(function (err) {
           content.innerHTML = '<div class="page-error"><h3>Could not load this page</h3><p>' + err.message + '</p></div>';
