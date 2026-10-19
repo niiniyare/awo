@@ -94,3 +94,68 @@ status: ##  Show project configuration
 	@echo "  Test timeout  : $(TEST_TIMEOUT)"
 	@echo "  Parallel jobs : $(TEST_PARALLEL_JOBS)"
 
+# =============================================================================
+# 🚀 Server (cmd/awo serve)
+# =============================================================================
+
+SERVER_PORT ?= 8080
+BIN_DIR     := bin
+AWO_BIN     := $(BIN_DIR)/awo
+
+.PHONY: build
+build: ##  Build the awo binary into bin/awo
+	@echo "$(BLUE)Building $(AWO_BIN)...$(NC)"
+	@mkdir -p $(BIN_DIR)
+	@go build -o $(AWO_BIN) ./cmd/awo
+	@echo "$(GREEN)✅  Built $(AWO_BIN)$(NC)"
+
+.PHONY: start
+start: build ##  Start the server in the background (logs: server.log, pid: server.pid)
+	@if [ -f $(PID_FILE) ] && kill -0 "$$(cat $(PID_FILE))" 2>/dev/null; then \
+		echo "$(YELLOW)⚠️  Server already running (pid $$(cat $(PID_FILE)))$(NC)"; \
+		exit 0; \
+	fi
+	@echo "$(BLUE)Starting server on port $(SERVER_PORT)...$(NC)"
+	@DATABASE_URL="$(DB_URL)" nohup $(AWO_BIN) serve --db "$(DB_URL)" --port $(SERVER_PORT) \
+		> $(LOG_FILE) 2>&1 & echo $$! > $(PID_FILE)
+	@sleep 1
+	@if kill -0 "$$(cat $(PID_FILE))" 2>/dev/null; then \
+		echo "$(GREEN)✅  Server started (pid $$(cat $(PID_FILE))), log: $(LOG_FILE)$(NC)"; \
+	else \
+		echo "$(RED)❌  Server failed to start — see $(LOG_FILE)$(NC)"; \
+		rm -f $(PID_FILE); exit 1; \
+	fi
+
+.PHONY: stop
+stop: ##  Stop the background server (by pid file, falling back to port scan)
+	@if [ -f $(PID_FILE) ] && kill -0 "$$(cat $(PID_FILE))" 2>/dev/null; then \
+		pid="$$(cat $(PID_FILE))"; \
+		echo "$(BLUE)Stopping server (pid $$pid)...$(NC)"; \
+		kill "$$pid" 2>/dev/null; \
+		sleep 1; \
+		kill -0 "$$pid" 2>/dev/null && kill -9 "$$pid" 2>/dev/null || true; \
+		rm -f $(PID_FILE); \
+		echo "$(GREEN)✅  Server stopped$(NC)"; \
+	else \
+		echo "$(YELLOW)⚠️  No pid file / process not running — scanning by cmdline...$(NC)"; \
+		pid=$$(for p in /proc/[0-9]*; do \
+			c=$$(tr '\0' ' ' < "$$p/cmdline" 2>/dev/null); \
+			case "$$c" in *awo*serve*--port*$(SERVER_PORT)*) echo "$${p#/proc/}"; break;; esac; \
+		done); \
+		if [ -n "$$pid" ]; then \
+			echo "$(BLUE)Found server at pid $$pid, stopping...$(NC)"; \
+			kill "$$pid" 2>/dev/null; sleep 1; kill -0 "$$pid" 2>/dev/null && kill -9 "$$pid" 2>/dev/null || true; \
+			echo "$(GREEN)✅  Server stopped$(NC)"; \
+		else \
+			echo "$(YELLOW)⚠️  No running server found$(NC)"; \
+		fi; \
+		rm -f $(PID_FILE); \
+	fi
+
+.PHONY: restart
+restart: stop start ##  Stop and start the server again
+
+.PHONY: logs
+logs: ##  Tail the server log
+	@tail -f $(LOG_FILE)
+
