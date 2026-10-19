@@ -271,4 +271,31 @@ test('amisEnv does not override notify or alert — real amis defaults must hand
   assert.ok(/\bisCancel\s*:/.test(envSource), 'isCancel must still be provided — amis calls it unconditionally in some paths');
 });
 
+/* ── Whole-file syntax validity (the "build" check for a hand-authored,
+   single-file source) ──────────────────────────────────────────────────
+   web/dist/index.html IS the authoritative frontend source — not a build
+   artifact of web/index.html's abandoned Vite scaffold (see tasks.md R.17,
+   findings register §B.17, and the "Frontend Source of Truth" section of
+   web/README.md). Because there is no compiler standing between this file
+   and the browser, a syntax error anywhere in its inline <script> — not
+   just in the three functions extracted and eval'd above — would ship
+   straight to users with no build step to catch it first. This test is
+   that missing catch: it extracts the full inline <script>...</script>
+   body and parses it with the `Function` constructor, which throws a
+   SyntaxError for malformed code WITHOUT ever calling (executing) the
+   resulting function — browser-only globals (window, document, fetch,
+   amis, ...) are safe to leave unresolved because the body is parsed, not
+   run. This is the smallest possible "does the authoritative source still
+   build" check: no new dependency, no bundler, consistent with this file's
+   existing no-test-framework, no-new-tooling approach. ──────────────── */
+
+test('web/dist/index.html\'s whole inline <script> block is syntactically valid', function () {
+  var scriptMatch = indexHtml.match(/<script>\n([\s\S]*?)\n  <\/script>/);
+  assert.ok(scriptMatch, 'inline <script> block not found — extraction regex is stale');
+  assert.doesNotThrow(function () {
+    // eslint-disable-next-line no-new-func
+    new Function(scriptMatch[1]);
+  }, 'the inline <script> body has a syntax error — this would ship straight to users with no build step to catch it');
+});
+
 console.log(passed + '/' + passed + ' passed');

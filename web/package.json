@@ -5,8 +5,9 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "node -e \"process.stderr.write('\\nBLOCKED: vite build writes to outDir \\\"dist\\\" (see vite.config.js), which would silently overwrite the real, currently-served web/dist/index.html with a stale page generated from this unbuilt Vite source (index.html, pages/, showcase/). That source predates adaptResponse, jumpTo, recordIdFromPath, makeCreateFormFieldsEditable, and the notify/alert fix -- see tasks.md R.10-R.15 and docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md. web/dist/index.html is hand-maintained; edit it directly instead.\\n\\nIf you really intend to regenerate dist/ from this Vite source after reconciling it with those fixes, run vite directly: ./node_modules/.bin/vite build\\n\\n'); process.exit(1)\"",
-    "preview": "vite preview"
+    "build": "node -e \"process.stderr.write('\\nBLOCKED: vite build writes to outDir \\\"dist\\\" (see vite.config.js), which would silently overwrite the real, currently-served web/dist/index.html with a stale page generated from this unbuilt Vite source (index.html, pages/, showcase/). That source predates adaptResponse, jumpTo, recordIdFromPath, makeCreateFormFieldsEditable, and the notify/alert fix -- see tasks.md R.10-R.18, README.md section 0, and docs/00-overview/TECHNICAL_FINDINGS_AND_FUTURE_IMPROVEMENTS.md. web/dist/index.html is hand-maintained; edit it directly instead, then run: npm run validate\\n\\nIf you really intend to regenerate dist/ from this Vite source after reconciling it with those fixes, run vite directly: ./node_modules/.bin/vite build\\n\\n'); process.exit(1)\"",
+    "preview": "vite preview",
+    "validate": "node form-navigation.test.cjs"
   },
   "devDependencies": {
     "vite": "^7.3.1"

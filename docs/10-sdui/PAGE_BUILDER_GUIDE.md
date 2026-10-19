@@ -43,6 +43,30 @@ Unset fields use the auto-generated builder. Override only the views that need c
 
 ## 3. PageBuilder Function Signature
 
+> **Corrected 2026-10-19 (consistency gate, `tasks.md` R.21):** the signature previously shown here did not match the real `def.PageBuilder` type and has never matched it in this repository's history. The real contract, verified against `def/page.go:29-40` this pass:
+>
+> ```go
+> // PageBuilder is a function that produces an amis JSON schema for a specific
+> // view. It receives the rendering context (actor, feature flags, tenant
+> // settings) and returns the raw schema as a map.
+> //
+> // The schema must conform to the AMIS SDK version ratified by ADR-026
+> // (amis@6.7.0) — def/page.go's own doc comment currently still says "the
+> // pinned amis SDK version in web/sdk/", which is the same stale claim
+> // ADR-026 already corrected in AMIS_RENDERER_SPEC.md; that Go source
+> // comment itself is not corrected by this documentation-only pass.
+> //
+> // Returning nil instructs the framework to fall back to the auto-generated
+> // schema for this page kind.
+> type PageBuilder func(ctx context.Context, pctx PageContext) (map[string]any, error)
+> ```
+>
+> **This means `PageBuilder` returns raw amis JSON directly, not a `widget.Node`** — the handler serves whatever a non-nil result contains straight back as the HTTP response, bypassing the generator, validation, layout, and renderer stages entirely (`api/sdui/handler.go:378-396`). **§4 below's worked examples, which construct and return a `*widget.Node` tree, do not match this real signature** and will not compile against the current `def.PageBuilder` type. They remain useful as illustrations of the *intent* (build a structured page from field/section definitions) but are not a drop-in template. Whether `def.PageBuilder` should instead be changed to return `*widget.Node` (restoring renderer-neutrality for custom builders) is an open architectural question, not resolved by this documentation pass — see `tasks.md` **R.22**.
+>
+> `PageContext` (not `auth.ViewerContext` + `*compiler.EntitySchema` as separate parameters) carries `Actor`, `EntityName`, `Kind`, `TenantSettings`, `EnabledFeatureFlags`, `RecordID`, and `RecordState` — see `def/page.go:44-71`.
+
+The rest of this section's original content is retained below as a historical/illustrative example of WidgetTree construction patterns — **not a currently buildable example against `def.PageBuilder`'s real signature** (see the correction above):
+
 ```go
 // PageBuilder constructs a WidgetTree for one view of one entity.
 // viewer is the current authenticated principal — use it for permission gating.

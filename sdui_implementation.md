@@ -4,6 +4,8 @@
 **Prerequisite:** Parts 1–11 of the SDUI Architecture Blueprint are approved and frozen. This document does not revisit those decisions.
 **Status:** Design review. All decisions here are binding for implementation.
 
+> **Pointer note (2026-10-19, `tasks.md` R.19):** the canonical, current SDUI architecture reference is now [`docs/10-sdui/ARCHITECTURE.md`](docs/10-sdui/ARCHITECTURE.md). This document's package inventory (`sdui/widget`, `sdui/generator`, `sdui/cache`, `sdui/plugins`, `sdui/registry`, `sdui/engine`, etc.) matches the real implementation closely and remains the most detailed available description of several mechanisms — in particular, its documented nine-extension-point plugin pipeline (Part 17-ish) is more detailed than anything in `docs/10-sdui/`, though verified this pass to be only partially implemented (4 of 9 points are ever invoked by the real pipeline; see `ARCHITECTURE.md` §8 and §12 for the precise, evidence-based breakdown). Retained as historical/supplementary detail; not moved, merged, or edited beyond this notice.
+
 ---
 
 ## Part 12 — Package Architecture

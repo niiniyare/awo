@@ -1,6 +1,8 @@
 # AWO SDUI Architecture — Phase 1 Implementation Blueprint
 ### SDUI Principal Engineering Document
 
+> **Pointer note (2026-10-19, `tasks.md` R.19):** the canonical, current SDUI architecture reference is now [`docs/10-sdui/ARCHITECTURE.md`](docs/10-sdui/ARCHITECTURE.md). This document is retained as historical/supplementary detail, not superseded wholesale — a prior session's verification found most of this document's specific prescriptions (introducing `NodeTabPane` distinct from `NodeSection`; eliminating a `setAllReadOnly` post-processing hack; the `sdui/dashboard`/`sdui/cache`/`sdui/plugins`/`sdui/expression` package inventory) are already implemented in the real code essentially as recommended here. It was not moved, merged, or edited beyond this notice.
+
 ---
 
 ## PART 1 — SDUI Architecture Review

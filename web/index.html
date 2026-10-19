@@ -1,4 +1,22 @@
 <!DOCTYPE html>
+<!--
+  RETIRED — NOT the authoritative frontend source, and NOT wired to
+  anything the server actually embeds or serves.
+
+  This is the entry point of an abandoned Vite scaffold (web/pages/,
+  web/sdk/, this file) from the project's initial import. It has had no
+  commits since, predates every later fix (adaptResponse, jumpTo,
+  recordIdFromPath, makeCreateFormFieldsEditable, the notify/alert fix),
+  and still has the broken console-log-only notify/alert this file's
+  descendant had removed. Its "build" script (web/package.json) is
+  deliberately guarded to refuse to run, because `vite build`'s outDir is
+  "dist" — the same directory the real app is embedded and served from —
+  and would silently overwrite it with this stale page.
+
+  The authoritative source is web/dist/index.html. See its own header
+  comment and web/README.md's "Frontend Source of Truth" section before
+  doing anything with this file. tasks.md R.17/R.18.
+-->
 <html lang="en" data-theme="system">
 
 <head>

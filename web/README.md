@@ -5,6 +5,7 @@ This guide explains how to build professional, data-driven user interfaces for A
 <!-- toc -->
 
 - [AWO ERP Frontend Development Guide](#awo-erp-frontend-development-guide)
+- [0. Frontend Source of Truth (Read This First)](#0-frontend-source-of-truth-read-this-first)
 - [1. Core Concepts](#1-core-concepts)
   - [What You're Building](#what-youre-building)
   - [How It Works](#how-it-works)
@@ -58,6 +59,24 @@ This guide explains how to build professional, data-driven user interfaces for A
 - [10. Component Quick Reference](#10-component-quick-reference)
 
 <!-- tocstop -->
+
+## 0. Frontend Source of Truth (Read This First)
+
+**Everything below this section describes the project's original scaffold and is not how the application is actually built, deployed, or served today.** This section reflects what's real right now; read it before acting on anything in sections 1-3 below (those are left unmodified pending a separate documentation pass — see tasks.md **R.18**).
+
+- **Source of truth:** `web/dist/index.html` is hand-authored and hand-maintained directly. It is *not* generated from this guide's `web/pages/index.html` instructions, nor from the separate Vite project also living under `web/` (`web/index.html`, `web/package.json`, `web/vite.config.js`). That Vite project has had zero commits since the project's initial import and is now retired — see its own header comment and tasks.md **R.17**/**R.18**. Edit `web/dist/index.html` directly for any frontend change.
+- **How it's actually served:** the running Go server embeds `web/dist/` and `web/showcase/` at compile time (`web/web.go`'s `//go:embed`) and serves them itself. There is no separate static-file server, no separate port, and no manual AMIS SDK download. The "Prerequisites" / "Get AMIS SDK" / "Project Structure" instructions in section 2 below describe the original scaffold's intended deployment model, which this project does not actually use — `web/sdk/`'s vendored bundle sits unused today (the served page loads AMIS from a CDN; see the version note below).
+- **Supported build/validate command:** there is no compiler between this file and the browser, so "building" means validating it. Either of these is the supported command, run from `web/`:
+  ```bash
+  npm run validate                    # from web/ — runs the same file, via package.json
+  node form-navigation.test.cjs       # equivalent, direct
+  ```
+  (From the repo root: `node web/form-navigation.test.cjs`.) This runs the regression tests plus a whole-file syntax check. `npm run build` / `pnpm run build` inside `web/` is deliberately blocked (see `web/package.json`). That script belongs to the retired Vite scaffold; running it would silently overwrite this file with a stale, pre-fix version if it weren't guarded.
+- **Asset generation:** none. There is nothing to generate — the served file is the source file.
+- **AMIS version:** `amis@6.7.0`, loaded from `unpkg.com`, is the **ratified, supported runtime version** — recorded as **ADR-026** (`docs/00-overview/DECISION_REGISTER.md`). It has been present since this project's very first commit and is the de facto, long-standing, working version. Two other version references exist, both retired and non-authoritative: `web/pages/index.html` (`3.6.6`) and the vendored `web/sdk/` bundle (unused, actually `6.13.0`). `docs/10-sdui/AMIS_RENDERER_SPEC.md` §9 previously stated the renderer is "pinned to the SDK version in `web/sdk/`" — that has been corrected to describe the real, served `6.7.0`. See tasks.md **R.18** and ADR-026 for the full evidence trail.
+- **Testing workflow:** `web/form-navigation.test.cjs` is the only frontend test file. Run it via `npm run validate` (from `web/`) or directly with plain Node (`node web/form-navigation.test.cjs`, from the repo root) — no test framework or new dependency required. It unit-tests the key functions extracted live from `web/dist/index.html` and syntax-checks the whole inline `<script>` block.
+
+---
 
 ## 1. Core Concepts
 
@@ -330,25 +349,38 @@ You should see the dashboard. Clicking menu items will now load pages instantly 
 
 ## 4. The API Contract (Critical)
 
-Your Go backend **MUST** return JSON in the following structure for AMIS to understand it.
+> **Corrected 2026-10-19** — the version of this section previously here described a `{status, msg, data, errors}` envelope and `gin`-based handlers. Neither matches this project: Awo uses Fiber, not gin, and its real, canonical envelope is `api/response`'s `{data, meta}` / `{error}` shape (`api/response/response.go`) — every framework handler already uses it. The old shape is not hypothetical-wrong; it is the exact shape proven (tasks.md R.14, findings register §B.15) to cause a real production bug: amis's own response normalizer reads a top-level `status` field, which collided with Awo entities that have their own business field literally named `status` (e.g. Expense's draft/submitted/approved). Do not reintroduce a top-level `status`/`msg` envelope.
+
+Your Go backend **MUST** return JSON in the following structure for AMIS to understand it — this is enforced by the frontend's `adaptResponse` (`web/dist/index.html`), which bridges this exact shape into what amis's SDK expects.
 
 ### Standard API Response
 
-To promote type-safety and consistency, define these structs in your Go application.
+`api/response` already defines these types — import and use them directly; do not redeclare an equivalent struct.
 
 ```go
-// A standard response structure for all AMIS API calls.
-type AmisAPIResponse struct {
-	Status int         `json:"status"` // 0 for success, non-zero for error
-	Msg    string      `json:"msg"`
-	Data   any `json:"data,omitempty"`
-	Errors any `json:"errors,omitempty"` // For validation errors
+// api/response.Success — the envelope for every successful response.
+type Success struct {
+	Data any   `json:"data"`
+	Meta *Meta `json:"meta,omitempty"` // present on list responses
 }
 
-// A standard structure for paginated list data.
-type AmisListResponseData struct {
-	Items any `json:"items"`
-	Total int64       `json:"total"`
+type Meta struct {
+	Total    int64  `json:"total,omitempty"`
+	Page     int    `json:"page,omitempty"`
+	PageSize int    `json:"page_size,omitempty"`
+	HasMore  bool   `json:"has_more,omitempty"`
+	Cursor   string `json:"cursor,omitempty"`
+}
+
+// api/response.Envelope — the envelope for every error response.
+type Envelope struct {
+	Error Error `json:"error"`
+}
+
+type Error struct {
+	Code    string            `json:"code"`
+	Message string            `json:"message"`
+	Fields  map[string]string `json:"fields,omitempty"`
 }
 ```
 
@@ -358,8 +390,6 @@ Used for `GET /items/:id`, `POST /items`, `PUT /items/:id`.
 
 ```json
 {
-  "status": 0,
-  "msg": "Operation successful",
   "data": {
     "id": 1,
     "name": "John Doe",
@@ -370,89 +400,82 @@ Used for `GET /items/:id`, `POST /items`, `PUT /items/:id`.
 
 ### Success Response (List with Pagination)
 
-Used for `GET /items`. The `data` field must contain `items` (an array) and `total` (the total count of records for pagination).
+Used for `GET /items`. The `data` field must contain `items` (an array) and `total` (the total count); pagination metadata is carried separately in the top-level `meta` object, not nested inside `data`.
 
 ```json
 {
-  "status": 0,
-  "msg": "",
   "data": {
     "items": [
       {"id": 1, "name": "John Doe"},
       {"id": 2, "name": "Jane Smith"}
     ],
     "total": 150
+  },
+  "meta": {
+    "total": 150,
+    "page": 1,
+    "page_size": 20
   }
 }
 ```
 
+The frontend's `adaptResponse` also accepts a plain `{"data": [...], "meta": {"total": N}}` shape (a bare array, no nested `items`) and reshapes it into the `{items, total}` form amis's list widgets need — so a handler returning `response.Success{Data: records, Meta: &response.Meta{Total: total}}` works correctly without extra backend-side reshaping.
+
 ### Error Response
 
-Used for validation failures (HTTP 422) or other errors.
+Used for validation failures or any other error.
 
 ```json
 {
-  "status": 422,
-  "msg": "Validation failed",
-  "errors": {
-    "email": "A valid email is required.",
-    "name": "Name must be at least 3 characters long."
+  "error": {
+    "code": "validation_failed",
+    "message": "Validation failed",
+    "fields": {
+      "email": "A valid email is required.",
+      "name": "Name must be at least 3 characters long."
+    }
   }
 }
 ```
 
 ### Go Backend Example (with Typed Responses)
 
-Here is a `ListEmployees` handler using the typed response structs.
+Awo uses [Fiber](https://github.com/gofiber/fiber), not gin. Here is a real-shaped `List` handler (abbreviated from `api/handler/crud.go`):
 
 ```go
 import (
-    "net/http"
-    "github.com/gin-gonic/gin"
+	"github.com/gofiber/fiber/v2"
+	"awo.so/awo/api/response"
 )
 
-// GET /api/hrm/employees
-func ListEmployees(c *gin.Context) {
-    // 1. Extract query parameters for pagination, sorting, and filtering
-    page := c.DefaultQuery("page", "1")
-    perPage := c.DefaultQuery("perPage", "20")
-    orderBy := c.DefaultQuery("orderBy", "id")
-    orderDir := c.DefaultQuery("orderDir", "asc")
-    keywords := c.Query("keywords")
+// GET /api/v1/business/employees
+func (h *EntityHandler) List(c *fiber.Ctx) error {
+	page := c.QueryInt("page", 1)
+	pageSize := c.QueryInt("page_size", 20) // NOT "perPage" — see the table below
 
-    // 2. Fetch data from your database
-    employees, total, err := db.ListEmployees(page, perPage, orderBy, orderDir, keywords)
-    if err != nil {
-        c.JSON(http.StatusInternalServerError, AmisAPIResponse{
-            Status: 500,
-            Msg:    "Database error: " + err.Error(),
-        })
-        return
-    }
+	records, info, err := h.svc.Query(c.UserContext() /* ... */)
+	if err != nil {
+		return c.Status(response.HTTPStatus(err)).JSON(response.Wrap(err))
+	}
 
-    // 3. Return the data in the correct structure
-    c.JSON(http.StatusOK, AmisAPIResponse{
-        Status: 0,
-        Msg:    "",
-        Data: AmisListResponseData{
-            Items: employees,
-            Total: total,
-        },
-    })
+	return c.JSON(response.Success{
+		Data: records,
+		Meta: &response.Meta{Total: info.Total, Page: page, PageSize: pageSize},
+	})
 }
 ```
 
 ### Query Parameters AMIS Sends
 
-For list/CRUD pages, AMIS automatically sends these query parameters:
+For list/CRUD pages, AMIS's crud component sends these query parameters by default. The frontend's `fetcher` (`web/dist/index.html`) already translates `perPage`/`$perPage` into `page_size` before the request leaves the browser — your handler never sees `perPage`.
 
-| Parameter        | Description               | Example         |
-| ---------------- | ------------------------- | --------------- |
-| `page`           | Current page number       | `1`             |
-| `perPage`        | Items per page            | `20`            |
-| `orderBy`        | Sort field name           | `name`          |
-| `orderDir`       | Sort direction            | `asc` or `desc` |
-| _(filter fields)_ | Any fields from the filter form | `keywords=john` |
+| Parameter         | Description                      | Example         | Backend param name (`api/handler/crud.go`) |
+| ------------------ | --------------------------------- | --------------- | --- |
+| `page`            | Current page number              | `1`              | `page` (matches) |
+| `perPage`         | Items per page                   | `20`             | translated to **`page_size`** by the frontend before the request is sent |
+| `orderBy`         | Sort field name                  | `name`           | `orderBy` (matches) |
+| `orderDir`        | Sort direction                   | `asc` or `desc`  | `orderDir` (matches) |
+| _(filter fields)_ | Any field name becomes a filter  | `status=approved`| passed through as-is |
 
 ### CORS Configuration (Required)
 

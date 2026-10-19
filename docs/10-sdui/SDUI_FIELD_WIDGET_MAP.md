@@ -14,6 +14,8 @@ This document is the exhaustive mapping from `FieldType` constants to `NodeKind`
 
 ## Field Type → NodeKind → amis Mapping
 
+> **Corrected 2026-10-19 (consistency gate, `tasks.md` R.21):** three rows below were wrong against the real `fieldTypeToNodeKind` switch in `sdui/generator/generator.go` (verified this pass, not assumed) — `currency`, `multi_select`, and `link` are marked below. This table is also **not exhaustive** against that function: `rich_text`→`NodeRichText`, `tree_link`→`NodeTreeSelect`, `duration`→`NodeDuration`, `color`→`NodeColor`, `signature`→`NodeSignature`, and `file`/`image`/`attach`→`NodeFileUpload` are real, current mappings not listed here — adding them is a content-completion task, not performed in this pass. Separately, **list-view columns use a different, simpler mapping function** (`fieldTypeToColumnNodeKind`), which collapses `multi_select`, `link`, and `tree_link` all to `NodeSelect` for column display specifically — the table below describes the *form-field* mapping only; do not assume it applies uniformly to list columns too.
+
 | FieldType | NodeKind | amis type | Notes |
 |-----------|----------|-----------|-------|
 | `FieldTypeData` | `NodeText` | `input-text` | MaxLen applies to amis `maxLength` |
@@ -21,16 +23,16 @@ This document is the exhaustive mapping from `FieldType` constants to `NodeKind`
 | `FieldTypeLongText` | `NodeTextArea` | `textarea` | rows=4 |
 | `FieldTypeInt` | `NodeNumber` | `input-number` | `precision: 0` |
 | `FieldTypeFloat` | `NodeNumber` | `input-number` | `precision: 6` |
-| `FieldTypeCurrency` | `NodeNumber` | `input-number` | `precision: 4`, prefix: currency symbol |
+| `FieldTypeCurrency` | **`NodeMoney`** (corrected — was `NodeNumber`) | `input-number` | `precision: 4`, prefix: currency symbol |
 | `FieldTypeBool` | `NodeSwitch` | `switch` | |
 | `FieldTypeDate` | `NodeDate` | `input-date` | `format: YYYY-MM-DD` |
 | `FieldTypeDateTime` | `NodeDateTime` | `input-datetime` | `format: YYYY-MM-DDTHH:mm:ssZ` |
 | `FieldTypeTime` | `NodeDateTime` | `input-time` | `format: HH:mm` |
 | `FieldTypeSelect` | `NodeSelect` | `select` | Static options from `FieldDef.Options` |
-| `FieldTypeMultiSelect` | `NodeSelect` | `select` | `multiple: true` |
+| `FieldTypeMultiSelect` | **`NodeMultiSelect`** (corrected — was `NodeSelect` + `multiple: true`) | `select` | `multiple: true` |
 | `FieldTypeNamingSeries` | `NodeText` | `input-text` | `disabled: true` on edit; empty on create |
 | `FieldTypeJSON` | `NodeEditor` | `json-editor` | |
-| `FieldTypeLink` | `NodeSelect` | `select` | `searchable: true`, server-side search via `CompiledLookup.SearchURL` |
+| `FieldTypeLink` | **`NodeLookup` when a `DataSource` is configured, `NodeSelect` otherwise** (corrected — was unconditionally `NodeSelect`) | `select` | `searchable: true`, server-side search via `CompiledLookup.SearchURL` |
 | `FieldTypeLinkList` | `NodeSelect` | `select` | `multiple: true`, server-side search |
 | `FieldTypeDynamicLink` | `NodeField` | Two fields: `input-text` (type) + `input-text` (name) | |
 

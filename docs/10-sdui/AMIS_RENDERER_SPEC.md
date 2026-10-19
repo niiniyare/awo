@@ -23,18 +23,24 @@ The WidgetTree IR (defined in `awo/sdui/widget`) decouples page generation from 
 
 ## 2. Renderer Contract
 
-```go
-// Package: awo.so/awo/sdui/amis
+> **Corrected 2026-10-19 (consistency gate, `tasks.md` R.21):** the interface shown below previously omitted the `ctx RendererContext` parameter and returned `map[string]any` instead of the real typed `RenderedOutput`. It is also defined in `awo.so/awo/sdui/renderer`, not `awo.so/awo/sdui/amis` — `sdui/amis` *implements* this interface, it does not declare it. Verified directly against `sdui/renderer/renderer.go` this pass.
 
-// Renderer converts a WidgetTree root node into an amis JSON schema.
-// The returned map is safe for JSON serialisation via encoding/json.
+```go
+// Package: awo.so/awo/sdui/renderer
+
+// Renderer converts a WidgetTree root node into target-specific output.
+// sdui/amis is the one concrete implementation today; RenderedOutput is a
+// typed union (not map[string]any) so a future non-JSON renderer (e.g. PDF)
+// can implement this same interface without reshaping the contract.
 type Renderer interface {
-    // Render translates root and all its descendants into an amis page schema.
-    Render(root *widget.Node) (map[string]any, error)
+    ID() string
+    Version() string
+    // Render translates root and all its descendants into target-specific output.
+    Render(root *widget.Node, ctx RendererContext) (RenderedOutput, error)
 }
 ```
 
-The default implementation is `amis.DefaultRenderer`. It handles all `NodeKind` constants defined in `awo/sdui/widget`. Unknown `NodeKind` values MUST cause `Render` to return an error — they MUST NOT be silently dropped or rendered as empty divs.
+The default AMIS implementation is `amis.DefaultRenderer` (package `awo.so/awo/sdui/amis`). It handles all `NodeKind` constants defined in `awo/sdui/widget`. Unknown `NodeKind` values MUST cause `Render` to return an error — they MUST NOT be silently dropped or rendered as empty divs.
 
 ---
 
@@ -167,7 +173,7 @@ The viewer roles hash is an SHA-256 of the sorted role list, truncated to 16 hex
 
 ## 9. amis SDK Version Constraint
 
-The amis renderer produces JSON for the pinned SDK version in `web/sdk/`. The SDK version MUST NOT be changed without a full compatibility audit of all generated schemas.
+**Corrected 2026-10-19 (ADR-026, `docs/00-overview/DECISION_REGISTER.md`):** the amis renderer produces JSON for `amis@6.7.0`, the version the served frontend actually loads at runtime from `unpkg.com` (`web/dist/index.html`) — confirmed present in this exact version since the project's first commit and continuously working since. This is **not** the vendored bundle in `web/sdk/` (which is actually `amis@6.13.0`, not 6.7.0, and has no live route or build step referencing it) and **not** `web/pages/index.html`'s `amis@3.6.6` (also unreferenced by any served route or build step). Both `web/sdk/` and `web/pages/index.html` are retired, abandoned-scaffold artifacts, not the pinned version — see ADR-026 and `tasks.md` **R.18** for the full evidence trail. The SDK version MUST NOT be changed without a full compatibility audit of all generated schemas.
 
 Amis breaking changes that require renderer updates:
 - Component type renames
