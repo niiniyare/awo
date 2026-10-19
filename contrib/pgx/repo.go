@@ -9,6 +9,7 @@ import (
 
 	"github.com/google/uuid"
 	pgxlib "github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgtype"
 	"github.com/jackc/pgx/v5/pgxpool"
 
 	"awo.so/awo/compiler"
@@ -938,10 +939,30 @@ func (r *Repository) systemColumnsAndScanner() (string, func(rowScanner) (*def.E
 			dest = append(dest, &rec.UpdatedAt)
 		}
 
+		// R.8/§B.9: a generic `var v any` destination makes pgx/v5 decode a
+		// uuid column as [16]byte, which encoding/json then marshals as 16
+		// plain integers (fixed-size arrays get no special treatment, unlike
+		// a []byte slice's automatic base64 encoding) — not a UUID string.
+		// FieldTypeLink is the one case with live, confirmed evidence (the
+		// Expense demo's submitted_by) and a real def.EntityRecord contract
+		// to honor (def/record.go: "FieldTypeLink → uuid.UUID"), so it gets a
+		// typed pgtype.UUID destination instead. FieldTypeLinkList has no
+		// real entity using it anywhere in this repository (confirmed via
+		// repository-wide search) and is deliberately NOT touched here —
+		// fixing it without a real column to verify against would not meet
+		// this fix's own "root cause and regression tests are clear" bar.
+		isLink := make([]bool, len(fieldNames))
+		for i, name := range fieldNames {
+			isLink[i] = r.schema.FieldsByName[name].Type == def.FieldTypeLink
+		}
 		fieldPtrs := make([]any, len(fieldNames))
 		for i := range fieldNames {
-			var v any
-			fieldPtrs[i] = &v
+			if isLink[i] {
+				fieldPtrs[i] = &pgtype.UUID{}
+			} else {
+				var v any
+				fieldPtrs[i] = &v
+			}
 			dest = append(dest, fieldPtrs[i])
 		}
 		var cfRaw []byte
@@ -958,6 +979,15 @@ func (r *Repository) systemColumnsAndScanner() (string, func(rowScanner) (*def.E
 			rec.UpdatedAt = rec.CreatedAt
 		}
 		for i, name := range fieldNames {
+			if isLink[i] {
+				pu := fieldPtrs[i].(*pgtype.UUID)
+				if pu.Valid {
+					rec.Data[name] = uuid.UUID(pu.Bytes)
+				} else {
+					rec.Data[name] = nil
+				}
+				continue
+			}
 			rec.Data[name] = *(fieldPtrs[i].(*any))
 		}
 		if hasCustomFields && len(cfRaw) > 0 {
