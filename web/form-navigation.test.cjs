@@ -290,8 +290,13 @@ test('amisEnv does not override notify or alert — real amis defaults must hand
    existing no-test-framework, no-new-tooling approach. ──────────────── */
 
 test('web/dist/index.html\'s whole inline <script> block is syntactically valid', function () {
-  var scriptMatch = indexHtml.match(/<script>\n([\s\S]*?)\n  <\/script>/);
-  assert.ok(scriptMatch, 'inline <script> block not found — extraction regex is stale');
+  // Anchored on the amis SDK <script src> tags immediately preceding the
+  // main body script, so this matches that ~900-line block specifically —
+  // not the small, early anti-FOUC theme script in <head>, which also
+  // happens to open/close with the same plain "<script>"/"  </script>"
+  // text a non-anchored regex would match first.
+  var scriptMatch = indexHtml.match(/sdk\/rest\.js"><\/script>\n  <script>\n([\s\S]*?)\n  <\/script>/);
+  assert.ok(scriptMatch, 'main inline <script> block not found — extraction regex is stale');
   assert.doesNotThrow(function () {
     // eslint-disable-next-line no-new-func
     new Function(scriptMatch[1]);
@@ -328,6 +333,35 @@ test('theme: amis-specific dark overrides key off the resolved theme, not the ra
   ['--Panel-bg-color', '--Table-bg', '--Form-input-bg', '--Form-input-color'].forEach(function (v) {
     assert.ok(indexHtml.indexOf(v) !== -1, 'expected amis dark-theme override for ' + v);
   });
+});
+
+/* ── Theme FOUC prevention ──────────────────────────────────────────────
+   The theme was previously only resolved by a <script> near the end of
+   <body>, after three external amis SDK <script src> tags (which must
+   download and execute first, synchronously) and after the stylesheets
+   had already been applied — a real flash-of-wrong-theme on every load,
+   not a cosmetic nit. A tiny, dependency-free script now runs as the
+   first thing in <head>, before any <link rel="stylesheet">, setting
+   data-theme-resolved before the browser paints anything. ──────────── */
+
+test('theme: an early, blocking <head> script resolves the theme before any stylesheet loads', function () {
+  var headMatch = indexHtml.match(/<head>([\s\S]*?)<\/head>/);
+  assert.ok(headMatch, '<head> not found');
+  var head = headMatch[1];
+  var scriptPos = head.search(/<script>[\s\S]*?setAttribute\(\s*['"]data-theme-resolved['"]/);
+  assert.ok(scriptPos !== -1, 'expected an early <head> script setting data-theme-resolved');
+  var firstStylesheetPos = head.search(/<link[^>]*rel=["']stylesheet["']/);
+  assert.ok(firstStylesheetPos === -1 || scriptPos < firstStylesheetPos,
+    'the theme-resolving script must run before any stylesheet link, or a flash of the wrong theme can still occur');
+});
+
+test('theme: the early <head> script is syntactically valid on its own', function () {
+  var m = indexHtml.match(/<meta charset="UTF-8">\n  <script>\n([\s\S]*?)\n  <\/script>/);
+  assert.ok(m, 'early head theme script not found — extraction regex is stale');
+  assert.doesNotThrow(function () {
+    // eslint-disable-next-line no-new-func
+    new Function(m[1]);
+  }, 'the early <head> theme script has a syntax error — this would break every page load, not just show a flash');
 });
 
 console.log(passed + '/' + passed + ' passed');

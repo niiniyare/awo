@@ -19,6 +19,24 @@
 
 <head>
   <meta charset="UTF-8">
+  <script>
+    // Resolve and paint the theme BEFORE any CSS loads or the page paints —
+    // the only way to avoid a flash of the wrong theme. The full applyTheme()
+    // later in the body re-runs this same computation (idempotent, needed
+    // there too so the theme toggle UI stays in sync) — this early copy
+    // exists solely so data-theme-resolved is already correct by the time
+    // the stylesheets below are applied, not because the logic belongs here
+    // long-term. Deliberately tiny and dependency-free: no DOM elements
+    // other than <html> exist yet.
+    (function () {
+      var t = localStorage.getItem('awo-theme') || 'system';
+      var resolved = t === 'system'
+        ? ((window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches) ? 'dark' : 'light')
+        : t;
+      document.documentElement.setAttribute('data-theme', t);
+      document.documentElement.setAttribute('data-theme-resolved', resolved);
+    })();
+  </script>
   <meta name="viewport"
     content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
   <title>AWO ERP</title>
