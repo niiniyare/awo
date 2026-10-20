@@ -302,6 +302,52 @@ func (r *DefaultRenderer) renderActions(actions []*widget.ActionNode) ([]any, er
 	return out, nil
 }
 
+// renderBulkActions converts bulk-scoped ActionNode values to AMIS button
+// maps for the crud "bulkActions" slot — identical to renderActions except
+// for how the "api" field is built: a bulk action's request must carry the
+// selected rows' ids, which a plain "METHOD:url" string (the shorthand
+// renderActions/renderRowActions pass straight through) cannot express.
+//
+// "${ids}" is amis's own long-established bulk-action id-substitution
+// token (a comma-joined string of selected ids); the generator's ActionNode
+// never needs to know this — it only supplies the plain method+url.
+func (r *DefaultRenderer) renderBulkActions(actions []*widget.ActionNode) ([]any, error) {
+	out := make([]any, 0, len(actions))
+	for _, a := range actions {
+		if a == nil {
+			continue
+		}
+		btn := map[string]any{
+			"type":       "button",
+			"label":      sanitizeText(a.Label),
+			"actionType": a.ActionType,
+			"level":      a.Level,
+		}
+		if a.ID != "" {
+			btn["id"] = a.ID
+		}
+		if a.API != "" {
+			method, url, ok := strings.Cut(a.API, ":")
+			if !ok {
+				method, url = "post", a.API
+			}
+			btn["api"] = map[string]any{
+				"method": strings.ToLower(method),
+				"url":    url,
+				"data":   map[string]any{"ids": "${ids}"},
+			}
+		}
+		if a.ConfirmText != "" {
+			btn["confirmText"] = sanitizeText(a.ConfirmText)
+		}
+		if a.Icon != "" {
+			btn["icon"] = "fa fa-" + a.Icon
+		}
+		out = append(out, btn)
+	}
+	return out, nil
+}
+
 // applyCommon sets name, label, required, disabled, description, placeholder,
 // and validation rules on a field schema from the typed Node fields.
 func applyCommon(n *widget.Node, out map[string]any) {
@@ -532,7 +578,7 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 	// differently from "bulkActions": [] and AMIS may show a placeholder for null.
 	renderedBulk := []any{}
 	if len(bulkActions) > 0 {
-		renderedBulk, err = r.renderActions(bulkActions)
+		renderedBulk, err = r.renderBulkActions(bulkActions)
 		if err != nil {
 			return nil, err
 		}
@@ -598,9 +644,18 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 }
 
 // renderRowActions converts row-scoped ActionNode values to AMIS button maps
-// sized for the per-row operation column.
+// for the per-row operation column.
+//
+// Two or more actions collapse into a single compact overflow button (amis's
+// "dropdown-button" — confirmed real against the actual amis@6.7.0 sdk.css:
+// .cxd-DropDown/.cxd-DropDown-button/.cxd-DropDown-menu) instead of a
+// permanent row of N separate buttons, which previously forced a wide
+// operation column (rowOperationWidth scaled linearly with action count) and
+// crowded narrow/mobile tables. A single action (the common case once
+// permission-gating has already dropped some actions for this viewer) is
+// still rendered directly — a one-item dropdown has no value.
 func (r *DefaultRenderer) renderRowActions(actions []*widget.ActionNode) ([]any, error) {
-	out := make([]any, 0, len(actions))
+	buttons := make([]any, 0, len(actions))
 	for _, a := range actions {
 		if a == nil {
 			continue
@@ -631,14 +686,31 @@ func (r *DefaultRenderer) renderRowActions(actions []*widget.ActionNode) ([]any,
 		if a.Level == "danger" || a.ID == "delete" {
 			btn["className"] = "text-danger"
 		}
-		out = append(out, btn)
+		buttons = append(buttons, btn)
 	}
-	return out, nil
+	if len(buttons) <= 1 {
+		return buttons, nil
+	}
+	return []any{map[string]any{
+		"type":      "dropdown-button",
+		"label":     "",
+		"icon":      "fa fa-ellipsis-v",
+		"level":     "link",
+		"size":      "sm",
+		"align":     "right",
+		"hideCaret": true,
+		"buttons":   buttons,
+	}}, nil
 }
 
 // rowOperationWidth returns a column width that fits the given row actions.
-// Approximate widths: 60px per action, minimum 100px.
+// A collapsed dropdown-button (2+ actions, see renderRowActions) is a single
+// compact icon button regardless of how many actions it contains; only the
+// single-action case still scales with content.
 func rowOperationWidth(actions []*widget.ActionNode) int {
+	if len(actions) >= 2 {
+		return 56
+	}
 	w := len(actions) * 65
 	if w < 100 {
 		w = 100

@@ -1127,15 +1127,30 @@ func (g *EntityGenerator) buildListActions(schema EntitySchema, ctx sduictx.Gene
 
 	// ── Bulk actions (Scope: "bulk") ───────────────────────────────────────────
 	//
-	// No bulk action is emitted here. A prior version emitted a "Delete
-	// selected" bulk-delete action calling "DELETE " + schema.ListURL (no
-	// /:id) — api/router.Register only ever registers DELETE on the
-	// per-record path ("DELETE /:id"), never on the collection path, so that
-	// action called a route that does not exist on any entity. Confirmed via
-	// api/router/router.go: the only Delete registration is
-	// `entity.Delete("/:id", ...)`. Removed rather than exposing a button
-	// that always fails — see tasks.md for the follow-up to implement a real,
-	// audited, permission-checked bulk-delete endpoint if one is wanted.
+	// A prior version emitted a "Delete selected" action calling "DELETE "
+	// + schema.ListURL (no /:id) when no such route existed on the backend
+	// at all — removed at the time rather than shipping a button that
+	// always failed. api/router now registers a real
+	// "DELETE {module}/{resource}" route (api/handler.EntityHandler.
+	// DeleteBatch) composed from the exact same per-record
+	// EntityService.Delete path as the row-scoped delete action above, run
+	// once per selected id inside one transaction — same authorization,
+	// tenant/org scope, lifecycle enforcement, and audit trail as a single
+	// delete, no new mechanism. The renderer (sdui/amis) is responsible for
+	// mapping the selected ids into this action's request body — the
+	// generator only states that a bulk-delete endpoint exists at this URL.
+	if perm := schema.Permissions["delete"]; perm == "" || ctx.Viewer.HasPermission(perm) {
+		out = append(out, &widget.ActionNode{
+			ID:          "bulk-delete",
+			Label:       "Delete selected",
+			ActionType:  "ajax",
+			Level:       "danger",
+			API:         "DELETE:" + schema.ListURL,
+			ConfirmText: "Delete all selected records? This cannot be undone.",
+			Icon:        "trash",
+			Scope:       "bulk",
+		})
+	}
 
 	return out
 }

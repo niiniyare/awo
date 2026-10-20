@@ -478,9 +478,56 @@ func TestRenderer_ListRowActions_FromScope(t *testing.T) {
 	if opCol == nil {
 		t.Fatal("expected an operation column for row-scoped actions")
 	}
+	// 2+ row actions collapse into a single compact dropdown-button
+	// (renderRowActions) rather than a permanent row of N buttons.
 	btns := opCol["buttons"].([]any)
-	if len(btns) != 3 {
-		t.Errorf("expected 3 row buttons (view/edit/delete), got %d", len(btns))
+	if len(btns) != 1 {
+		t.Fatalf("expected row actions to collapse into exactly 1 dropdown-button, got %d top-level buttons", len(btns))
+	}
+	dropdown := btns[0].(map[string]any)
+	if dropdown["type"] != "dropdown-button" {
+		t.Errorf("expected type=dropdown-button, got %v", dropdown["type"])
+	}
+	nested, ok := dropdown["buttons"].([]any)
+	if !ok || len(nested) != 3 {
+		t.Errorf("expected the dropdown to contain 3 nested buttons (view/edit/delete), got %v", dropdown["buttons"])
+	}
+}
+
+// TestRenderer_ListRowActions_SingleAction_NotWrappedInDropdown guards that
+// exactly one row-scoped action (e.g. a viewer with only read+view
+// permission, no edit/delete) renders directly, not wrapped in a
+// single-item dropdown — a dropdown with one choice adds a click for no
+// benefit.
+func TestRenderer_ListRowActions_SingleAction_NotWrappedInDropdown(t *testing.T) {
+	t.Parallel()
+	n := &widget.Node{
+		Kind:       widget.NodeList,
+		DataSource: &widget.DataSource{URL: "/api/v1/items"},
+		Actions: []*widget.ActionNode{
+			{ID: "view", Label: "View", ActionType: "link", Href: "/ui/demo/items/${id}", Scope: "row"},
+		},
+	}
+	out := render(t, n)
+	cols := out["columns"].([]any)
+	var opCol map[string]any
+	for _, c := range cols {
+		cm := c.(map[string]any)
+		if cm["type"] == "operation" {
+			opCol = cm
+			break
+		}
+	}
+	if opCol == nil {
+		t.Fatal("expected an operation column for the single row-scoped action")
+	}
+	btns := opCol["buttons"].([]any)
+	if len(btns) != 1 {
+		t.Fatalf("expected exactly 1 button, got %d", len(btns))
+	}
+	btn := btns[0].(map[string]any)
+	if btn["type"] != "button" {
+		t.Errorf("a single row action must render directly (type=button), not as a dropdown-button, got %v", btn["type"])
 	}
 }
 

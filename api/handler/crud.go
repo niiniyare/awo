@@ -4,8 +4,11 @@
 package handler
 
 import (
+	"context"
 	"encoding/json"
 	"log/slog"
+	"strconv"
+	"strings"
 
 	"github.com/gofiber/fiber/v2"
 	"github.com/google/uuid"
@@ -142,6 +145,135 @@ func (h *EntityHandler) Delete(c *fiber.Ctx) error {
 	}
 	return c.SendStatus(fiber.StatusNoContent)
 }
+
+// maxBatchDeleteIDs bounds a single bulk-delete request. Not a backend
+// capacity limit — a sanity bound against an accidental or malicious
+// request listing an unbounded number of IDs in one call.
+const maxBatchDeleteIDs = 200
+
+// DeleteBatch handles DELETE /api/v1/entities/:entity — the ids are always
+// in the JSON body, never a query string or path segment, so there is no
+// ambiguity with the single-record DELETE /:id route.
+//
+// The body's "ids" field accepts either a real JSON array of UUID strings
+// (`{"ids": ["<uuid>", ...]}`) or a single comma-joined string
+// (`{"ids": "<uuid>,<uuid>"}`) — see batchIDs' UnmarshalJSON. This was a
+// deliberate choice, not an oversight: AMIS 6.7.0's bulk-action data
+// mapping can produce either shape depending on the exact binding syntax
+// used ("${ids}" template-interpolates to a comma string; a bare "$ids"
+// variable reference preserves the real array) — verifying which one a
+// real browser actually sends was not possible in this environment (no
+// browser tool available), so the contract accepts both rather than
+// guessing a single one and silently breaking on the other.
+//
+// Deliberately composed from the exact same per-record path as the
+// single-record Delete above — EntityService.Delete, unchanged — run once
+// per ID inside one outer transaction. This is not a new authorization,
+// tenant/org-scope, lifecycle, or audit mechanism: every one of those is
+// already enforced inside EntityService.Delete (Get is RLS-filtered by
+// tenant/org; RunBeforeDelete enforces any lifecycle-restriction hook;
+// RunAuditRecord writes the same audit trail a single delete would). The
+// route itself is registered behind the same authz.RequirePermission
+// middleware as every other mutation on this entity (api/router/router.go).
+//
+// All-or-nothing: repo.WithTx's existing InTx() short-circuit
+// (contrib/pgx/repo.go) means every per-ID EntityService.Delete call below
+// reuses this one outer transaction instead of opening its own — so the
+// first ID that fails (not found, cross-tenant, cross-org, unauthorized,
+// or lifecycle-restricted — EntityService.Delete returns the same real
+// error for all of these as the single-record path already does) rolls
+// back every row in the batch, including ones already "deleted" earlier
+// in the loop. No partial deletion is possible.
+func (h *EntityHandler) DeleteBatch(c *fiber.Ctx) error {
+	var body struct {
+		IDs batchIDs `json:"ids"`
+	}
+	if err := c.BodyParser(&body); err != nil {
+		return c.Status(fiber.StatusBadRequest).JSON(response.Wrap(&runtime.ValidationError{
+			Fields: map[string]string{"ids": "request body must be {\"ids\": [\"<uuid>\", ...]} or {\"ids\": \"<uuid>,<uuid>\"}"},
+		}))
+	}
+	if len(body.IDs) == 0 {
+		return c.Status(fiber.StatusBadRequest).JSON(response.Wrap(&runtime.ValidationError{
+			Fields: map[string]string{"ids": "at least one id is required"},
+		}))
+	}
+	if len(body.IDs) > maxBatchDeleteIDs {
+		return c.Status(fiber.StatusBadRequest).JSON(response.Wrap(&runtime.ValidationError{
+			Fields: map[string]string{"ids": "too many ids in one request (max " + strconv.Itoa(maxBatchDeleteIDs) + ")"},
+		}))
+	}
+	ids := make([]uuid.UUID, len(body.IDs))
+	for i, s := range body.IDs {
+		id, err := uuid.Parse(s)
+		if err != nil {
+			return c.Status(fiber.StatusBadRequest).JSON(response.Wrap(&runtime.ValidationError{
+				Fields: map[string]string{"ids": "not a valid UUID: " + s},
+			}))
+		}
+		ids[i] = id
+	}
+
+	actor := actorFromContext(c)
+	deleted := 0
+	err := h.svc.WithTx(c.UserContext(), func(txCtx context.Context) error {
+		for _, id := range ids {
+			if err := h.svc.Delete(txCtx, id, actor); err != nil {
+				return &batchDeleteError{id: id, err: err}
+			}
+			deleted++
+		}
+		return nil
+	})
+	if err != nil {
+		return h.handleError(c, err)
+	}
+	return c.JSON(response.Success{Data: map[string]any{"deleted": deleted}})
+}
+
+// batchIDs unmarshals DeleteBatch's "ids" field from either a real JSON
+// array of strings or a single comma-joined string — see DeleteBatch's own
+// doc comment for why both are accepted. Empty elements from stray
+// whitespace/commas (e.g. a trailing comma) are dropped rather than turned
+// into a confusing "not a valid UUID: " error for an empty string.
+type batchIDs []string
+
+func (b *batchIDs) UnmarshalJSON(data []byte) error {
+	var asArray []string
+	if err := json.Unmarshal(data, &asArray); err == nil {
+		*b = asArray
+		return nil
+	}
+	var asString string
+	if err := json.Unmarshal(data, &asString); err != nil {
+		return err
+	}
+	var out batchIDs
+	for _, part := range strings.Split(asString, ",") {
+		part = strings.TrimSpace(part)
+		if part != "" {
+			out = append(out, part)
+		}
+	}
+	*b = out
+	return nil
+}
+
+// batchDeleteError names which id in a batch failed, without changing the
+// underlying error's type — response.HTTPStatus/response.Wrap still see
+// through to the real cause (not found, permission, lifecycle, etc.) via
+// Unwrap, so the HTTP status and error code for the batch match exactly
+// what that same id would have produced through the single-record route.
+type batchDeleteError struct {
+	id  uuid.UUID
+	err error
+}
+
+func (e *batchDeleteError) Error() string {
+	return "id " + e.id.String() + ": " + e.err.Error()
+}
+
+func (e *batchDeleteError) Unwrap() error { return e.err }
 
 // Action handles POST /api/v1/entities/:entity/:id/:action
 func (h *EntityHandler) Action(c *fiber.Ctx) error {

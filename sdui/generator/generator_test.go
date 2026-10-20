@@ -303,13 +303,13 @@ func TestGenerator_ListActions_RowScopedActions(t *testing.T) {
 	if scopeCounts["row"] < 3 {
 		t.Errorf("expected at least 3 row-scoped actions (view/edit/delete), got %d", scopeCounts["row"])
 	}
-	// No bulk-scoped action is expected: api/router only ever registers
-	// DELETE on the per-record path ("/:id"), never on the collection path,
-	// so a generated bulk-delete action would call a route that does not
-	// exist on any entity. See sdui/generator/generator.go's buildListActions
-	// bulk-actions comment.
-	if scopeCounts["bulk"] != 0 {
-		t.Errorf("expected 0 bulk-scoped actions (no backend bulk-delete route exists), got %d", scopeCounts["bulk"])
+	// A real bulk-delete action is now expected: api/router registers a
+	// genuine "DELETE {module}/{resource}" route (EntityHandler.DeleteBatch)
+	// composed from the same per-record EntityService.Delete path, see
+	// api/service/entity_batch_delete_pg_test.go for the real-Postgres
+	// atomicity/authorization/tenant-isolation/lifecycle proof.
+	if scopeCounts["bulk"] < 1 {
+		t.Errorf("expected at least 1 bulk-scoped action (bulk delete), got %d", scopeCounts["bulk"])
 	}
 	if scopeCounts["toolbar"] < 1 {
 		t.Errorf("expected at least 1 toolbar-scoped action (create), got %d", scopeCounts["toolbar"])

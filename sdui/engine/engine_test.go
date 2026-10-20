@@ -275,6 +275,16 @@ func actionsInList(t *testing.T, schema map[string]any) int {
 		}
 		if m["type"] == "operation" {
 			buttons, _ := m["buttons"].([]any)
+			// 2+ row actions collapse into a single dropdown-button
+			// (sdui/amis.renderRowActions) — count its nested buttons,
+			// not the 1 top-level wrapper, so this still reflects the
+			// real number of actions the viewer's permissions produced.
+			if len(buttons) == 1 {
+				if top, ok := buttons[0].(map[string]any); ok && top["type"] == "dropdown-button" {
+					nested, _ := top["buttons"].([]any)
+					return len(nested)
+				}
+			}
 			return len(buttons)
 		}
 	}

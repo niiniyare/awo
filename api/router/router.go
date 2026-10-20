@@ -7,6 +7,7 @@
 //   - POST   /api/v1/{module}/{resource}          → Create
 //   - PATCH  /api/v1/{module}/{resource}/:id      → Update
 //   - DELETE /api/v1/{module}/{resource}/:id      → Delete
+//   - DELETE /api/v1/{module}/{resource}          → DeleteBatch (body: {"ids": [...]})
 //   - POST   /api/v1/{module}/{resource}/:id/:action → Action handler
 //
 // Permission checks use EntitySchema.PermissionNamespace as the Casbin object.
@@ -159,12 +160,14 @@ func Register(app *fiber.App, schema *compiler.CompiledSchema, opts RegisterOpti
 			entity.Get("/:id", authz.RequirePermission(opts.Authz, perm, "read"), h.Get)
 			entity.Patch("/:id", authz.RequirePermission(opts.Authz, perm, "write"), h.Update)
 			entity.Delete("/:id", authz.RequirePermission(opts.Authz, perm, "delete"), h.Delete)
+			entity.Delete("/", authz.RequirePermission(opts.Authz, perm, "delete"), h.DeleteBatch)
 		} else {
 			entity.Get("/", h.List)
 			entity.Post("/", h.Create)
 			entity.Get("/:id", h.Get)
 			entity.Patch("/:id", h.Update)
 			entity.Delete("/:id", h.Delete)
+			entity.Delete("/", h.DeleteBatch)
 		}
 
 		// Register action routes from the compiled Actions slice.
