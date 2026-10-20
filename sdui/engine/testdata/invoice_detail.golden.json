@@ -22,7 +22,34 @@
           "type": "button"
         }
       ],
-      "body": null,
+      "body": [
+        {
+          "label": "Invoice #",
+          "name": "number",
+          "type": "input-text"
+        },
+        {
+          "label": "Status",
+          "name": "status",
+          "type": "select"
+        },
+        {
+          "label": "Amount",
+          "name": "amount",
+          "type": "input-number"
+        },
+        {
+          "format": "YYYY-MM-DD",
+          "label": "Due Date",
+          "name": "due_date",
+          "type": "input-date"
+        },
+        {
+          "label": "Customer",
+          "name": "customer",
+          "type": "input-text"
+        }
+      ],
       "title": "Invoice",
       "type": "panel"
     },
@@ -62,6 +89,7 @@
         }
       ],
       "initApi": "GET:/api/v1/finance/invoices/${id}",
+      "static": true,
       "type": "form"
     }
   ],

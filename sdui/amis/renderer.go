@@ -456,6 +456,19 @@ func (r *DefaultRenderer) renderForm(n *widget.Node, ctx renderer.RendererContex
 	if out["api"] != nil {
 		out["promptPageLeave"] = true
 	}
+	// A detail-view form (sdui/generator's buildDetail) has a ReadURL to
+	// load the record but no URL/api — it never submits, unlike create
+	// (URL, no ReadURL) and edit (both). Previously every one of its
+	// fields was still rendered with disabled:true individually, visually
+	// indistinguishable from a greyed-out editable form. amis's own Form
+	// "static" mode (confirmed real against the amis@6.7.0 sdk.css —
+	// .cxd-Form-static and variants) renders a clean label:value display
+	// for every field instead, without the generator needing any
+	// AMIS-specific concept — it only ever expressed "read-only" via the
+	// renderer-neutral widget.Node.ReadOnly field already.
+	if out["api"] == nil && n.DataSource != nil && n.DataSource.ReadURL != "" {
+		out["static"] = true
+	}
 	return out, nil
 }
 
@@ -537,8 +550,23 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 		"headerToolbar":    headerToolbar,
 		"footerToolbar":    []any{"statistics", "pagination"},
 		// bulkActions must always be present. Empty slice suppresses the AMIS
-		// bulk-action placeholder text. Non-empty enables row checkboxes.
+		// bulk-action placeholder text.
 		"bulkActions": renderedBulk,
+		// selectable/multiple are independent of bulkActions — they control
+		// the checkbox column itself. A prior pass correctly removed a
+		// broken "Delete selected" bulk action (it called a collection
+		// DELETE route the backend never implemented), but that left
+		// bulkActions empty, which also silently disabled row selection
+		// entirely (amis had been auto-enabling checkboxes as a side effect
+		// of a non-empty bulkActions, not from an explicit flag) — a real,
+		// confirmed regression, not a separate request. Setting these
+		// explicitly restores real checkbox selection without reintroducing
+		// any action that isn't genuinely backed by a working endpoint; no
+		// bulk action is attached here until one actually exists (see
+		// tasks.md for the follow-up to design a safe, audited, per-record-
+		// authorized bulk-delete endpoint before wiring a button to it).
+		"selectable": true,
+		"multiple":   true,
 		// itemsKey must match what adaptResponse() produces in the frontend fetcher.
 		// AMIS crud defaults to "rows"; our backend wraps list data as { items: [...] }.
 		// Setting this explicitly prevents breakage on AMIS version drift.

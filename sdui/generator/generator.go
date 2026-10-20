@@ -644,11 +644,33 @@ func (g *EntityGenerator) buildDetail(schema EntitySchema, ctx sduictx.Generator
 
 	var pageChildren []*widget.Node
 
-	// Summary card (entity header).
+	// Summary card (entity header). Reuses the same InList+permission-gated
+	// field set and buildColumnNode already used for the list view (not a
+	// new metadata concept) so the summary shows the same fields a user
+	// already recognizes as "the important ones" for this entity — e.g. a
+	// status field with OptionColors renders as the same colored NodeBadge
+	// here as it does in the list, not a plain disabled input. Previously
+	// this card had no Children at all and rendered as an empty header.
+	var summaryFields []*widget.Node
+	for _, f := range schema.Fields {
+		if !f.InList || f.Hidden {
+			continue
+		}
+		if !g.canViewField(f, ctx) {
+			continue // absent, not hidden
+		}
+		col := g.buildColumnNode(f, ctx)
+		col, err := g.runFieldOverrides(f.Name, col, ctx)
+		if err != nil {
+			return nil, err
+		}
+		summaryFields = append(summaryFields, col)
+	}
 	summaryCard := &widget.Node{
-		Kind:    widget.NodeSummaryCard,
-		Label:   schema.Title,
-		Actions: g.buildDetailActions(schema, ctx),
+		Kind:     widget.NodeSummaryCard,
+		Label:    schema.Title,
+		Children: summaryFields,
+		Actions:  g.buildDetailActions(schema, ctx),
 	}
 	pageChildren = append(pageChildren, summaryCard)
 

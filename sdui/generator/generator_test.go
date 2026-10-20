@@ -178,6 +178,40 @@ func TestGenerator_DetailView(t *testing.T) {
 	}
 }
 
+// TestGenerator_DetailView_SummaryCardHasContent guards against the
+// summary card being built with no Children — it previously rendered as an
+// empty header above the full read-only form (a confirmed, real "incomplete
+// detail panel" defect). The summary card must reuse the same InList field
+// set as the list view (buildColumnNode), not a new metadata concept.
+func TestGenerator_DetailView_SummaryCardHasContent(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeDetail, allPermsViewer())
+	root, err := g.Generate(makeSchema(), ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryCard := root.Children[0]
+	if len(summaryCard.Children) == 0 {
+		t.Fatal("summary card must have Children — an empty summary card is the bug this test guards against")
+	}
+	schema := makeSchema()
+	wantNames := map[string]bool{}
+	for _, f := range schema.Fields {
+		if f.InList && !f.Hidden {
+			wantNames[f.Name] = true
+		}
+	}
+	gotNames := map[string]bool{}
+	for _, c := range summaryCard.Children {
+		gotNames[c.Name] = true
+	}
+	for name := range wantNames {
+		if !gotNames[name] {
+			t.Errorf("summary card missing InList field %q", name)
+		}
+	}
+}
+
 func TestGenerator_DetailView_ReadOnly(t *testing.T) {
 	g := generator.New()
 	ctx := makeCtx(sduictx.ViewModeDetail, allPermsViewer())

@@ -413,6 +413,37 @@ func TestRenderer_DetailForm_InitApi(t *testing.T) {
 	if _, ok := out["api"]; ok {
 		t.Error("form with ReadURL only must NOT emit api (would fire on submit, not mount)")
 	}
+	// A ReadURL-only (detail) form must render amis's "static" display mode
+	// instead of leaving every field individually disabled:true, which
+	// rendered as a visually indistinguishable greyed-out editable form —
+	// a confirmed, real defect. "static" is real amis@6.7.0 CSS (verified
+	// against the actual sdk.css: .cxd-Form-static and variants).
+	if static, _ := out["static"].(bool); !static {
+		t.Error("a ReadURL-only (detail) form must render with static:true")
+	}
+}
+
+// TestRenderer_EditForm_NotStatic guards that a real edit form (both
+// ReadURL for the initial load AND URL for submit) is never accidentally
+// marked static:true — that would make the whole form read-only even
+// though it genuinely submits.
+func TestRenderer_EditForm_NotStatic(t *testing.T) {
+	t.Parallel()
+	n := &widget.Node{
+		Kind: widget.NodeForm,
+		Children: []*widget.Node{
+			{Kind: widget.NodeText, Name: "name", Label: "Name"},
+		},
+		DataSource: &widget.DataSource{
+			ReadURL: "/api/v1/items/${id}",
+			URL:     "/api/v1/items/${id}",
+			Method:  "PATCH",
+		},
+	}
+	out := render(t, n)
+	if static, ok := out["static"]; ok && static == true {
+		t.Error("an edit form (ReadURL + URL) must not be static:true — it genuinely submits")
+	}
 }
 
 // ── Session 6 regression tests ────────────────────────────────────────────────
@@ -505,8 +536,32 @@ func TestRenderer_ListBulkActions_EmptySlice(t *testing.T) {
 	}
 }
 
+// TestRenderer_List_SelectableIndependentOfBulkActions guards a real
+// regression: selectable/multiple (the checkbox column itself) must be set
+// unconditionally, independent of whether bulkActions is empty. A prior
+// pass correctly removed a broken bulk-delete action (it called a
+// collection DELETE route the backend never implemented) by emptying
+// bulkActions, which silently disabled row selection entirely as a side
+// effect — selection and bulk actions are two different amis crud
+// features and must not be coupled.
+func TestRenderer_List_SelectableIndependentOfBulkActions(t *testing.T) {
+	t.Parallel()
+	n := &widget.Node{
+		Kind:       widget.NodeList,
+		DataSource: &widget.DataSource{URL: "/api/v1/items"},
+		// No bulk-scoped actions — selection must still be enabled.
+	}
+	out := render(t, n)
+	if selectable, _ := out["selectable"].(bool); !selectable {
+		t.Error("expected selectable:true even with no bulk actions configured")
+	}
+	if multiple, _ := out["multiple"].(bool); !multiple {
+		t.Error("expected multiple:true even with no bulk actions configured")
+	}
+}
+
 // TestRenderer_ListBulkActions_Rendered guards that bulk-scoped actions become
-// entries in the bulkActions array (enabling row checkboxes).
+// entries in the bulkActions array.
 func TestRenderer_ListBulkActions_Rendered(t *testing.T) {
 	t.Parallel()
 	n := &widget.Node{

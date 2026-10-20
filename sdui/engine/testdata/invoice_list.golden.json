@@ -97,6 +97,7 @@
       ],
       "itemsKey": "items",
       "keepItemSelectionOnPageChange": true,
+      "multiple": true,
       "perPage": 20,
       "perPageAvailable": [
         10,
@@ -105,6 +106,7 @@
         100
       ],
       "placeholder": "No records found.",
+      "selectable": true,
       "syncLocation": false,
       "title": "Invoices",
       "type": "crud"
