@@ -31,18 +31,21 @@
           "type": "text"
         },
         {
+          "breakpoint": "xs",
           "label": "Status",
           "name": "status",
           "sortable": true,
           "type": "text"
         },
         {
+          "breakpoint": "xs",
           "label": "Amount",
           "name": "amount",
           "sortable": true,
           "type": "number"
         },
         {
+          "breakpoint": "xs",
           "format": "YYYY-MM-DD",
           "label": "Due Date",
           "name": "due_date",
@@ -50,6 +53,7 @@
           "type": "date"
         },
         {
+          "breakpoint": "xs",
           "label": "Customer",
           "name": "customer",
           "sortable": true,
@@ -105,6 +109,7 @@
       ],
       "columnsTogglable": "auto",
       "filterTogglable": true,
+      "footable": true,
       "footerToolbar": [
         "statistics",
         "pagination"

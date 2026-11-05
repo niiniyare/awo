@@ -475,6 +475,29 @@ func (g *EntityGenerator) buildList(schema EntitySchema, ctx sduictx.GeneratorCo
 		columns = append(columns, col)
 	}
 
+	// Mobile column priority: the first InList column is the row's primary
+	// identifier (by declaration order — the same implicit priority signal
+	// EntityDefinition authors already establish by what they put first; no
+	// new metadata needed). Every other data column is marked with AMIS's
+	// own column "breakpoint": "xs" (confirmed against the real amis@6.7.0
+	// TypeScript schema and decompiled SDK — the Table renderer treats "xs"
+	// as "< 768px", matching this codebase's one existing mobile breakpoint
+	// in web/dist/index.html). Below that width those columns move into an
+	// expandable per-row "footable" section instead of forcing horizontal
+	// scroll or vanishing outright — renderList sets the matching top-level
+	// "footable": true once it sees at least one column marked this way.
+	// Generic across every entity: an entity with 0-1 list columns is simply
+	// never affected (nothing to demote).
+	for i, col := range columns {
+		if i == 0 || col == nil {
+			continue
+		}
+		if col.Props == nil {
+			col.Props = make(map[string]any)
+		}
+		col.Props["breakpoint"] = "xs"
+	}
+
 	// Build list actions (Create button, row actions, etc.).
 	actions := g.buildListActions(schema, ctx)
 
@@ -939,9 +962,26 @@ func (g *EntityGenerator) buildFlatFields(schema EntitySchema, ctx sduictx.Gener
 // The node Kind is chosen based on FieldType.
 func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContext, readOnly bool) *widget.Node {
 	kind := fieldTypeToNodeKind(f.FieldType, f)
+	name := f.Name
+	dataSource := f.DataSource
+
+	// Detail view only (readOnly is the view-level flag, true solely for
+	// buildDetail's call — not for an individually Immutable field inside an
+	// otherwise-editable create/edit form): a link field has nothing to gain
+	// from its remote-search select widget once the user can no longer type
+	// into it. Bind straight to the resolved "<field>_label" (same
+	// substitution buildColumnNode uses for the list/summary-card view) and
+	// drop the DataSource — this is the one field in the detail body that
+	// would otherwise show the raw linked id instead of its display label.
+	if readOnly && f.FieldType == "link" && f.DataSource != nil {
+		kind = widget.NodeText
+		name = f.Name + "_label"
+		dataSource = nil
+	}
+
 	node := &widget.Node{
 		Kind:          kind,
-		Name:          f.Name,
+		Name:          name,
 		Label:         f.Label,
 		Description:   f.Description,
 		Placeholder:   f.Placeholder,
@@ -950,7 +990,7 @@ func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContex
 		MaxLength:     f.MaxLength,
 		MinValue:      f.Min,
 		MaxValue:      f.Max,
-		DataSource:    f.DataSource,
+		DataSource:    dataSource,
 		CurrencyField: f.CurrencyField,
 		Icon:          f.Icon,
 		ClearOn:       f.ClearOn,
@@ -1018,9 +1058,29 @@ func (g *EntityGenerator) buildFieldNode(f FieldDef, ctx sduictx.GeneratorContex
 // Column nodes are lightweight — name and label only, plus type for column rendering.
 func (g *EntityGenerator) buildColumnNode(f FieldDef, ctx sduictx.GeneratorContext) *widget.Node {
 	kind := fieldTypeToColumnNodeKind(f.FieldType, f)
+	name := f.Name
+	if f.FieldType == "link" && f.DataSource != nil {
+		// A FieldTypeLink value is a bare id with no inherent display value —
+		// EntityService.resolveLinkLabels always populates a sibling
+		// "<field>_label" (raw id as a fallback, upgraded to the linked
+		// record's real label when a resolver is wired). Point the list
+		// column there instead of at the raw id, so the list never shows an
+		// unresolved UUID by default. The create/edit form still binds to
+		// the raw field (f.Name) via its own remote-select widget — only the
+		// read-only list column needs this substitution.
+		//
+		// Kind also drops from NodeSelect to NodeText: fieldTypeToColumnNodeKind
+		// maps "link" to NodeSelect for lack of a better default, but a select
+		// needs an Options list to mean anything, and link fields never have
+		// static Options (their choices come from a remote source). Once the
+		// column is bound to the resolved label string, plain text is what it
+		// actually is.
+		name = f.Name + "_label"
+		kind = widget.NodeText
+	}
 	node := &widget.Node{
 		Kind:  kind,
-		Name:  f.Name,
+		Name:  name,
 		Label: f.Label,
 	}
 	if kind == widget.NodeBadge {

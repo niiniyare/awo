@@ -298,6 +298,7 @@ func startServer(cfg ServeConfig) error {
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
 		EventPublisher:     outbox.NewWriter(pool),
+		LinkResolver:       contrib.NewLinkResolver(pool),
 	})
 
 	// Showcase frontend assets — embedded at compile time, not read from a

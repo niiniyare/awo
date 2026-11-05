@@ -129,6 +129,55 @@ func TestRenderer_ListColumns(t *testing.T) {
 	}
 }
 
+// TestRenderer_List_Footable_FollowsColumnBreakpoints proves the mobile
+// column strategy end-to-end at the renderer boundary: generator.buildList
+// marks lower-priority columns with Props["breakpoint"]="xs" (confirmed
+// against the real amis@6.7.0 Table schema and SDK — "xs" means "<768px",
+// matching this codebase's one existing mobile breakpoint), and renderList
+// must turn that into a top-level "footable": true so amis actually moves
+// those columns into the expandable per-row section instead of a plain,
+// inert "breakpoint" key amis never reads without it.
+func TestRenderer_List_Footable_FollowsColumnBreakpoints(t *testing.T) {
+	t.Parallel()
+	n := &widget.Node{
+		Kind:       widget.NodeList,
+		DataSource: &widget.DataSource{URL: "/api/v1/invoices"},
+		Children: []*widget.Node{
+			{Kind: widget.NodeText, Name: "number", Label: "Number"},
+			{Kind: widget.NodeDate, Name: "date", Label: "Date", Props: map[string]any{"breakpoint": "xs"}},
+		},
+	}
+	out := render(t, n)
+	if out["footable"] != true {
+		t.Errorf("footable=%v want true when a column carries a breakpoint", out["footable"])
+	}
+	cols := out["columns"].([]any)
+	if cols[0].(map[string]any)["breakpoint"] != nil {
+		t.Error("the first (primary) column must not carry a breakpoint")
+	}
+	if cols[1].(map[string]any)["breakpoint"] != "xs" {
+		t.Errorf("second column breakpoint=%v want xs", cols[1].(map[string]any)["breakpoint"])
+	}
+}
+
+// TestRenderer_List_Footable_AbsentWithoutBreakpoints guards the inverse: a
+// list with no column marked for mobile demotion must not claim footable at
+// all (AMIS's own default), so a short, already-mobile-friendly table never
+// grows a pointless expand affordance.
+func TestRenderer_List_Footable_AbsentWithoutBreakpoints(t *testing.T) {
+	t.Parallel()
+	out := render(t, &widget.Node{
+		Kind:       widget.NodeList,
+		DataSource: &widget.DataSource{URL: "/api/v1/invoices"},
+		Children: []*widget.Node{
+			{Kind: widget.NodeText, Name: "number", Label: "Number"},
+		},
+	})
+	if _, present := out["footable"]; present {
+		t.Errorf(`footable should be entirely absent (not even "false") when no column has a breakpoint, got %v`, out["footable"])
+	}
+}
+
 func TestRenderer_TextFieldProperties(t *testing.T) {
 	t.Parallel()
 	out := render(t, &widget.Node{

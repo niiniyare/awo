@@ -86,6 +86,14 @@ type RegisterOptions struct {
 	// matches this option's existing degraded-mode convention for
 	// AuditWriter). In production, pass events/outbox.NewWriter(pool).
 	EventPublisher events.Publisher
+
+	// LinkResolver resolves human-readable labels for FieldTypeLink fields
+	// (see [driver.LinkLabelResolver]) so list/detail responses carry a
+	// "<field>_label" value instead of forcing UI layers to display a bare
+	// UUID. When nil, every linked field still gets "<field>_label" as a
+	// raw-id fallback (EntityService.resolveLinkLabels), just never upgraded
+	// to a real display name. In production, pass contrib.NewLinkResolver(pool).
+	LinkResolver driver.LinkLabelResolver
 }
 
 // Register mounts the full auto-generated API onto app under /api/v1/entities/.
@@ -143,7 +151,7 @@ func Register(app *fiber.App, schema *compiler.CompiledSchema, opts RegisterOpti
 
 	for _, es := range schema.Entities {
 		repo := contrib.NewRepository(opts.Pool, es)
-		svc := service.NewEntityService(es, repo, pipeline).WithPublisher(pub)
+		svc := service.NewEntityService(es, repo, pipeline).WithPublisher(pub).WithLinkResolver(opts.LinkResolver)
 		actionRuntimes.Register(svc)
 		h := handler.NewEntityHandler(es, svc, actionRuntimes)
 

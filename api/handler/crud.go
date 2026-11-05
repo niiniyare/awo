@@ -157,14 +157,16 @@ const maxBatchDeleteIDs = 200
 //
 // The body's "ids" field accepts either a real JSON array of UUID strings
 // (`{"ids": ["<uuid>", ...]}`) or a single comma-joined string
-// (`{"ids": "<uuid>,<uuid>"}`) — see batchIDs' UnmarshalJSON. This was a
-// deliberate choice, not an oversight: AMIS 6.7.0's bulk-action data
-// mapping can produce either shape depending on the exact binding syntax
-// used ("${ids}" template-interpolates to a comma string; a bare "$ids"
-// variable reference preserves the real array) — verifying which one a
-// real browser actually sends was not possible in this environment (no
-// browser tool available), so the contract accepts both rather than
-// guessing a single one and silently breaking on the other.
+// (`{"ids": "<uuid>,<uuid>"}`) — see batchIDs' UnmarshalJSON.
+//
+// Confirmed against the real amis@6.7.0 SDK source (Table.renderBulkActions:
+// `ids: p.map(e => e[primaryField]).filter(Boolean).join(",")`): the
+// "${ids}" binding this file's own renderBulkActions (sdui/amis/renderer.go)
+// uses always produces a comma-joined string, never a raw array — so the
+// comma-string branch is the one every real amis bulk-delete request
+// actually takes. The array branch is kept as defensive handling for any
+// other caller of this generic endpoint (a non-amis API client sending a
+// literal JSON array is a perfectly reasonable request), not dead code.
 //
 // Deliberately composed from the exact same per-record path as the
 // single-record Delete above — EntityService.Delete, unchanged — run once
@@ -203,15 +205,26 @@ func (h *EntityHandler) DeleteBatch(c *fiber.Ctx) error {
 			Fields: map[string]string{"ids": "too many ids in one request (max " + strconv.Itoa(maxBatchDeleteIDs) + ")"},
 		}))
 	}
-	ids := make([]uuid.UUID, len(body.IDs))
-	for i, s := range body.IDs {
+	seen := make(map[uuid.UUID]bool, len(body.IDs))
+	ids := make([]uuid.UUID, 0, len(body.IDs))
+	for _, s := range body.IDs {
 		id, err := uuid.Parse(s)
 		if err != nil {
 			return c.Status(fiber.StatusBadRequest).JSON(response.Wrap(&runtime.ValidationError{
 				Fields: map[string]string{"ids": "not a valid UUID: " + s},
 			}))
 		}
-		ids[i] = id
+		// Dedupe: a repeated id (e.g. a stale duplicated frontend selection)
+		// would otherwise delete the row once and then fail on its second
+		// occurrence with NotFound inside the same transaction — rolling
+		// back every row in the batch, including the one that legitimately
+		// succeeded first. See this function's own doc comment on the
+		// all-or-nothing transaction.
+		if seen[id] {
+			continue
+		}
+		seen[id] = true
+		ids = append(ids, id)
 	}
 
 	actor := actorFromContext(c)

@@ -482,6 +482,19 @@ func (r *Repository) updateCustom(ctx context.Context, db execer, id uuid.UUID, 
 	if len(input.Data) == 0 {
 		return r.getWithDB(ctx, db, id)
 	}
+	// Same allowlist as updateSystem's checkWritableField calls below — a
+	// custom entity's jsonb "data" column is just as much a declared-fields
+	// write target as a system entity's real columns are, and skipping this
+	// check here (unlike updateSystem) would let any unknown key merge into
+	// "data" and persist forever, including synthetic "<field>_label" keys
+	// that EntityService.resolveLinkLabels adds to every GET/Query response
+	// — a client that PATCHes a GET response back verbatim must get the same
+	// clear error a system entity would, not silent data pollution.
+	for field := range input.Data {
+		if err := r.checkWritableField(field); err != nil {
+			return nil, fmt.Errorf("%s.Update: %w", r.schema.TableName, err)
+		}
+	}
 	patchJSON, err := json.Marshal(input.Data)
 	if err != nil {
 		return nil, fmt.Errorf("%s.Update: marshal patch: %w", r.schema.TableName, err)
@@ -825,7 +838,18 @@ func (r *Repository) WithTx(ctx context.Context, fn func(ctx context.Context) er
 // the same transaction — it does not add, remove, or duplicate any
 // tenant_id predicate of its own.
 func (r *Repository) withReadTx(ctx context.Context, fn func(ctx context.Context) error) error {
-	existing := connFromContext(ctx, r.pool)
+	return withTenantReadTx(ctx, r.pool, fn)
+}
+
+// withTenantReadTx is withReadTx's actual implementation, extracted as a
+// package-level function (it never touches a Repository's schema, only its
+// pool) so LinkResolver.ResolveLinkLabels — which has no EntitySchema and no
+// *Repository of its own to call withReadTx through — can share the exact
+// same tenant-context-setting read path instead of reimplementing it, or
+// worse, querying straight off the pool with no tenant context at all and
+// relying on whichever role happens to be running to make that safe.
+func withTenantReadTx(ctx context.Context, pool *pgxpool.Pool, fn func(ctx context.Context) error) error {
+	existing := connFromContext(ctx, pool)
 	if existing.InTx() {
 		return fn(ctx)
 	}
@@ -835,7 +859,7 @@ func (r *Repository) withReadTx(ctx context.Context, fn func(ctx context.Context
 		return fn(ctx)
 	}
 
-	pgxTx, err := r.pool.BeginTx(ctx, pgxlib.TxOptions{})
+	pgxTx, err := pool.BeginTx(ctx, pgxlib.TxOptions{})
 	if err != nil {
 		return fmt.Errorf("begin read transaction: %w", err)
 	}
@@ -851,7 +875,7 @@ func (r *Repository) withReadTx(ctx context.Context, fn func(ctx context.Context
 		}
 	}()
 
-	conn := &pgConn{pool: r.pool, txn: pgxTx}
+	conn := &pgConn{pool: pool, txn: pgxTx}
 	txCtx := tx.WithConn(ctx, conn)
 
 	if err := setTenantContext(txCtx, conn.db(), tc.TenantID.String()); err != nil {

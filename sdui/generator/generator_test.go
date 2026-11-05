@@ -101,6 +101,36 @@ func TestGenerator_ListView(t *testing.T) {
 	}
 }
 
+// TestGenerator_ListView_MobileColumnPriority guards the mobile column
+// strategy (Part 4 of the "shared SDUI record-management" mission): the
+// first InList column (the row's primary identifier, by the same
+// declaration-order convention EntityDefinition authors already establish —
+// no new metadata) must stay always visible, and every other column must
+// carry Props["breakpoint"]="xs" so sdui/amis's renderList can set the
+// matching top-level "footable": true. Generic — makeSchema() is a generic
+// finance_invoice fixture, not Expense.
+func TestGenerator_ListView_MobileColumnPriority(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeList, allPermsViewer())
+	root, err := g.Generate(makeSchema(), ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listNode := root.Children[0]
+	if len(listNode.Children) < 2 {
+		t.Fatal("fixture must have at least 2 list columns for this test to mean anything")
+	}
+	first := listNode.Children[0]
+	if first.Props != nil && first.Props["breakpoint"] != nil {
+		t.Errorf("primary column %q must not carry a breakpoint, got %v", first.Name, first.Props["breakpoint"])
+	}
+	for _, col := range listNode.Children[1:] {
+		if col.Props == nil || col.Props["breakpoint"] != "xs" {
+			t.Errorf("column %q must carry Props[breakpoint]=xs, got %v", col.Name, col.Props)
+		}
+	}
+}
+
 func TestGenerator_ListView_PermissionGating(t *testing.T) {
 	g := generator.New()
 	// Viewer has no permissions — secret field should be absent.
@@ -228,6 +258,129 @@ func TestGenerator_DetailView_ReadOnly(t *testing.T) {
 			}
 		}
 	})
+}
+
+// makeLinkSchema returns a schema with one FieldTypeLink field ("assignee"),
+// mirroring how sdui/adapt wires a real FieldTypeLink field's DataSource from
+// a compiled FieldLookup (CompiledLookup.LabelField etc.) — see
+// api/service.EntityService.resolveLinkLabels, which this generator behavior
+// depends on: it always populates "<field>_label" for such a field,
+// defaulting to the raw id string and upgrading it when a resolver is wired.
+func makeLinkSchema() generator.EntitySchema {
+	s := makeSchema()
+	s.Fields = append(s.Fields, generator.FieldDef{
+		Name:      "assignee",
+		Label:     "Assignee",
+		FieldType: "link",
+		InList:    true,
+		InForm:    true,
+		InDetail:  true,
+		DataSource: &widget.DataSource{
+			URL:        "/api/v1/iam/users?q=${keywords}&tenant_id=${tenant_id}",
+			Method:     "GET",
+			LabelField: "full_name",
+			ValueField: "id",
+		},
+	})
+	return s
+}
+
+// TestGenerator_ListView_LinkField_BindsToResolvedLabel guards against the
+// Expense "Submitted By" defect: a bare FieldTypeLink id has no display
+// value of its own, so the list column must bind to the backend-resolved
+// "<field>_label" sibling value (plain text), never to the raw id.
+func TestGenerator_ListView_LinkField_BindsToResolvedLabel(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeList, allPermsViewer())
+	root, err := g.Generate(makeLinkSchema(), ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listNode := root.Children[0]
+	var col *widget.Node
+	for _, c := range listNode.Children {
+		if c.Name == "assignee_label" {
+			col = c
+		}
+		if c.Name == "assignee" {
+			t.Errorf("list column must not bind to the raw link field %q directly", c.Name)
+		}
+	}
+	if col == nil {
+		t.Fatal(`expected a list column bound to "assignee_label", found none`)
+	}
+	if col.Kind != widget.NodeText {
+		t.Errorf("link field list column should render as plain NodeText (no Options, so NodeSelect means nothing here), got %q", col.Kind)
+	}
+}
+
+// TestGenerator_DetailView_LinkField_BindsToResolvedLabel guards the same
+// defect in the detail view: both the summary card and the read-only form
+// body must bind to "<field>_label", not show a disabled remote-select
+// widget whose preset value never resolves to a label client-side.
+func TestGenerator_DetailView_LinkField_BindsToResolvedLabel(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeDetail, allPermsViewer())
+	root, err := g.Generate(makeLinkSchema(), ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	summaryCard := root.Children[0]
+	formNode := root.Children[1]
+
+	foundInSummary := false
+	for _, c := range summaryCard.Children {
+		if c.Name == "assignee_label" {
+			foundInSummary = true
+		}
+	}
+	if !foundInSummary {
+		t.Error(`expected the detail summary card to bind to "assignee_label"`)
+	}
+
+	var formField *widget.Node
+	widget.WalkAll(formNode, func(n *widget.Node) {
+		if n.Name == "assignee" || n.Name == "assignee_label" {
+			formField = n
+		}
+	})
+	if formField == nil {
+		t.Fatal("expected to find the assignee field somewhere in the detail form body")
+	}
+	if formField.Name != "assignee_label" {
+		t.Errorf("detail form field must bind to %q, got %q (still showing the raw id, or a dead remote-select)", "assignee_label", formField.Name)
+	}
+	if formField.DataSource != nil {
+		t.Error("detail form field must not carry a remote DataSource — it's read-only plain text now, nothing to search against")
+	}
+}
+
+// TestGenerator_CreateView_LinkField_KeepsRemoteSelect proves the label
+// substitution is detail-only: create/edit forms must keep binding to the
+// raw field with its interactive remote-select widget, since that is what
+// actually submits on save.
+func TestGenerator_CreateView_LinkField_KeepsRemoteSelect(t *testing.T) {
+	g := generator.New()
+	ctx := makeCtx(sduictx.ViewModeCreate, allPermsViewer())
+	root, err := g.Generate(makeLinkSchema(), ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var formField *widget.Node
+	widget.WalkAll(root, func(n *widget.Node) {
+		if n.Name == "assignee" {
+			formField = n
+		}
+	})
+	if formField == nil {
+		t.Fatal(`expected the create form to bind to the raw "assignee" field`)
+	}
+	if formField.Kind != widget.NodeLookup {
+		t.Errorf("create form link field should be NodeLookup (remote-search select), got %q", formField.Kind)
+	}
+	if formField.DataSource == nil {
+		t.Error("create form link field must keep its remote DataSource")
+	}
 }
 
 func TestGenerator_UnknownViewMode(t *testing.T) {

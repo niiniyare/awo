@@ -364,4 +364,27 @@ test('theme: the early <head> script is syntactically valid on its own', functio
   }, 'the early <head> theme script has a syntax error — this would break every page load, not just show a flash');
 });
 
+/* ── Light-mode border visibility (Odoo-style ERP polish pass) ──────────
+   amis's own default light-mode border token (--colors-neutral-line-8)
+   is #e8e9eb — confirmed against the real, downloaded amis@6.7.0 sdk.css
+   to be too faint for clear card/table/form-field separation, and the
+   one token Table-borderColor/Card-borderColor/Form-input-borderColor
+   all alias. Dark mode already had its own visible value for this same
+   token from an earlier pass; light mode did not, until now. ───────── */
+
+test('design tokens: light mode overrides amis\'s own too-faint default border color', function () {
+  // Anchored tightly on the brand-color block itself (--colors-brand-4
+  // through the line right after it), not a generic ":root {...}" scan —
+  // a loose ":root\s*\{[\s\S]*?\}" match would span from the FIRST :root
+  // block near the top of the file all the way down past this one,
+  // swallowing unrelated CSS and making the assertion below trivially
+  // true regardless of this token's real value.
+  var blockMatch = indexHtml.match(/--colors-brand-4:[\s\S]{0,300}/);
+  assert.ok(blockMatch, 'expected the amis brand-color override block (--colors-brand-4 onward)');
+  var valueMatch = blockMatch[0].match(/--colors-neutral-line-8:\s*(#[0-9a-fA-F]{6})/);
+  assert.ok(valueMatch, '--colors-neutral-line-8 must be set in this same block');
+  assert.notStrictEqual(valueMatch[1].toLowerCase(), '#e8e9eb',
+    '--colors-neutral-line-8 must be overridden away from amis\'s own too-faint #e8e9eb default');
+});
+
 console.log(passed + '/' + passed + ' passed');

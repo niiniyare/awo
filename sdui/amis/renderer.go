@@ -35,7 +35,18 @@ const (
 
 	// RendererVersion is the version token included in cache keys.
 	// Increment when the renderer output format changes.
-	RendererVersion = "1.1.0"
+	//
+	// Bumped 1.1.0 -> 1.2.0 for the "shared SDUI record-management" mission's
+	// output-format changes: Submitted-By-style link columns now bind to a
+	// resolved "<field>_label" instead of the raw id (both list columns and
+	// the detail form body), and list columns past the first now carry a
+	// "breakpoint" + top-level "footable" for the mobile column strategy.
+	// Without this bump, a deployment of this change would keep serving
+	// pre-change cached JSON (same SchemaFP, same old RendererVersion) out of
+	// Redis until each key's TTL happened to expire — see
+	// cache_test.go's TestKey_RendererVersionChange_ProducesDifferentKey for
+	// the regression guard.
+	RendererVersion = "1.2.0"
 )
 
 // DefaultRenderer is the production AMIS renderer.
@@ -623,6 +634,16 @@ func (r *DefaultRenderer) renderList(n *widget.Node, ctx renderer.RendererContex
 		"columnsTogglable":              "auto",
 		"filterTogglable":               true,
 		"keepItemSelectionOnPageChange": true,
+	}
+	// footable: generator.buildList marks every column but the first with
+	// column["breakpoint"]="xs" (mobile priority — see that function's own
+	// comment). Table only moves those columns into the expandable per-row
+	// "foot" section below that width when footable itself is enabled, so
+	// set it here, derived from the columns themselves rather than a second,
+	// separately-tracked flag the generator and renderer could drift out of
+	// sync on.
+	if columnsHaveBreakpoint(columns) {
+		out["footable"] = true
 	}
 	if n.DataSource != nil && n.DataSource.URL != "" {
 		out["api"] = buildAPI(n.DataSource)
@@ -1282,6 +1303,24 @@ func (r *DefaultRenderer) renderListColumns(nodes []*widget.Node, ctx renderer.R
 		cols = append(cols, col)
 	}
 	return cols, nil
+}
+
+// columnsHaveBreakpoint reports whether any rendered column carries a
+// "breakpoint" key (set via widget.Node.Props by generator.buildList). Real
+// amis@6.7.0 table columns only honor their own "breakpoint" when the table's
+// "footable" is also enabled — this derives that flag from the columns
+// instead of asking the generator to track it a second time.
+func columnsHaveBreakpoint(columns []any) bool {
+	for _, c := range columns {
+		col, ok := c.(map[string]any)
+		if !ok {
+			continue
+		}
+		if _, ok := col["breakpoint"]; ok {
+			return true
+		}
+	}
+	return false
 }
 
 // isSortableKind reports whether a NodeKind supports server-side column sorting

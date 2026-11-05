@@ -325,6 +325,7 @@ func main() {
 		AuditSigningSecret: auditSigningSecret,
 		SDUIEngine:         sduiEng,
 		EventPublisher:     outbox.NewWriter(result.Pool),
+		LinkResolver:       contrib.NewLinkResolver(result.Pool),
 	})
 
 	// Static file serving — amis SDK assets.

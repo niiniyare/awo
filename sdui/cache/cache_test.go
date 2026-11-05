@@ -268,6 +268,24 @@ func TestKey_SchemaFPIsolation(t *testing.T) {
 	}
 }
 
+// TestKey_RendererVersionIsolation guards the actual cache-invalidation
+// mechanism sdui/amis.RendererVersion's own doc comment documents ("Increment
+// when the renderer output format changes"): a generator/renderer code
+// change that doesn't touch the compiled schema at all (SchemaFP unchanged)
+// must still be able to bust the cache by bumping this one constant — if
+// Key() ever stopped keying on RendererVersion, every such deployment would
+// keep serving stale pre-change JSON out of Redis until each entry's TTL
+// happened to expire, with no way to force a refresh short of a manual flush.
+func TestKey_RendererVersionIsolation(t *testing.T) {
+	before := baseParams("l3")
+	after := baseParams("l3")
+	after.RendererVersion = "9.9.9"
+
+	if cache.Key(before) == cache.Key(after) {
+		t.Error("different RendererVersion must produce different cache keys")
+	}
+}
+
 func TestKey_NoCrossLevelCollision(t *testing.T) {
 	// L2 and L3 keys for the same schema must be distinct to prevent
 	// a widget tree from being read back as a rendered output.

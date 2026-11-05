@@ -419,12 +419,26 @@
 
     /* Awo's own brand blue for amis primary buttons/links, in both themes —
        a shared token instead of amis's own default blue diverging from the
-       shell's --brand used for the sidebar/login button. */
+       shell's --brand used for the sidebar/login button. Also: amis's real
+       default light-mode border color (--colors-neutral-line-8: #e8e9eb,
+       confirmed against the actual amis@6.7.0 sdk.css) is too faint for
+       clear card/table/form-field separation — Table-borderColor,
+       Card-borderColor, and Form-input-borderColor all alias this one
+       token, so correcting it here is the single, minimal, already-
+       cascading fix rather than overriding each surface separately.
+       Dark mode already has its own, already-visible value for this same
+       token ([data-theme-resolved="dark"], higher specificity, wins there)
+       — this :root value is the light-mode default only. A touch more
+       border radius and form-control height round out the "looks like an
+       unstyled demo" complaint without any per-component override. */
     :root {
       --colors-brand-4: #152a5c;
       --colors-brand-5: #1e40af;
       --colors-brand-6: #1e3a8a;
       --colors-brand-7: #3b5bc7;
+      --colors-neutral-line-8: #cbd5e1;
+      --borderRadius: 6px;
+      --Form-input-height: 2.25rem;
     }
   </style>
 </head>

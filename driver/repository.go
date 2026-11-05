@@ -298,3 +298,19 @@ func (r AggregateResult) IntValue(alias string) int64 {
 	v, _ := r.Values[alias].(int64)
 	return v
 }
+
+// LinkLabelResolver resolves human-readable display labels for FieldTypeLink
+// id values by looking up rows directly in the linked entity's own table.
+//
+// EntityService uses this to populate a "<field>_label" value alongside the
+// raw linked id on every record returned from Query/Get, so that generic UI
+// layers (list columns, detail views) never have to guess a display value
+// from a bare UUID. targetTable and labelField always come from compile-time
+// schema metadata ([compiler.CompiledLookup]), never from request input.
+type LinkLabelResolver interface {
+	// ResolveLinkLabels looks up labelField for each row in targetTable whose
+	// id is in ids, returning a map from id to the resolved label. ids not
+	// found in targetTable (e.g. a dangling reference) are simply absent from
+	// the returned map — callers must fall back to the raw id themselves.
+	ResolveLinkLabels(ctx context.Context, targetTable, labelField string, ids []uuid.UUID) (map[uuid.UUID]string, error)
+}

@@ -42,11 +42,12 @@ import (
 
 // EntityService orchestrates the full record lifecycle for one entity type.
 type EntityService struct {
-	schema    *compiler.EntitySchema
-	repo      driver.EntityRepository[*def.EntityRecord]
-	pipeline  *runtime.Pipeline
-	publisher events.Publisher // durable outbox write for lifecycle events and workflow intents
-	sanitizer *audit.Sanitizer // redacts Sensitive fields from outbox payloads
+	schema       *compiler.EntitySchema
+	repo         driver.EntityRepository[*def.EntityRecord]
+	pipeline     *runtime.Pipeline
+	publisher    events.Publisher         // durable outbox write for lifecycle events and workflow intents
+	sanitizer    *audit.Sanitizer         // redacts Sensitive fields from outbox payloads
+	linkResolver driver.LinkLabelResolver // resolves "<field>_label" for FieldTypeLink values; nil = raw id only
 }
 
 // Compile-time assertion that *EntityService satisfies ioport's own,
@@ -101,6 +102,20 @@ func (s *EntityService) WithPublisher(pub events.Publisher) *EntityService {
 func (s *EntityService) WithSanitizer(sz *audit.Sanitizer) *EntityService {
 	if sz != nil {
 		s.sanitizer = sz
+	}
+	return s
+}
+
+// WithLinkResolver configures the resolver used to upgrade "<field>_label"
+// from its raw-id fallback to a real display value for every FieldTypeLink
+// field on records returned from Get/Query — see [driver.LinkLabelResolver].
+// Get/Query always set "<field>_label" to the stringified id as a baseline
+// (so generic UI layers can bind to it unconditionally); a resolver, when
+// wired, upgrades that to the linked record's actual label. A nil argument
+// is ignored (existing resolver, or none, is kept).
+func (s *EntityService) WithLinkResolver(r driver.LinkLabelResolver) *EntityService {
+	if r != nil {
+		s.linkResolver = r
 	}
 	return s
 }
@@ -253,14 +268,113 @@ func (s *EntityService) Delete(ctx context.Context, id uuid.UUID, actor *def.Act
 	})
 }
 
-// Get delegates to the repository.
+// Get delegates to the repository, then resolves "<field>_label" for every
+// FieldTypeLink field (see resolveLinkLabels).
 func (s *EntityService) Get(ctx context.Context, id uuid.UUID, opts ...driver.QueryOption) (*def.EntityRecord, error) {
-	return s.repo.Get(ctx, id, opts...)
+	rec, err := s.repo.Get(ctx, id, opts...)
+	if err != nil {
+		return nil, err
+	}
+	s.resolveLinkLabels(ctx, []*def.EntityRecord{rec})
+	return rec, nil
 }
 
-// Query delegates to the repository.
+// Query delegates to the repository, then resolves "<field>_label" for every
+// FieldTypeLink field across the returned page (see resolveLinkLabels).
 func (s *EntityService) Query(ctx context.Context, f *filter.Filter, opts ...driver.QueryOption) ([]*def.EntityRecord, driver.PageInfo, error) {
-	return s.repo.Query(ctx, f, opts...)
+	records, info, err := s.repo.Query(ctx, f, opts...)
+	if err != nil {
+		return nil, info, err
+	}
+	s.resolveLinkLabels(ctx, records)
+	return records, info, nil
+}
+
+// resolveLinkLabels populates "<field>_label" on each record for every
+// FieldTypeLink field the entity declares (s.schema.FieldLookups).
+//
+// Every such field always gets a "_label" value, defaulting to the raw id
+// string — this lets generic UI layers (the SDUI list/detail generator) bind
+// to "<field>_label" unconditionally instead of guessing whether a display
+// name is available. When s.linkResolver is set, the default is upgraded to
+// the linked record's real label (e.g. "full_name") for ids it can resolve;
+// a resolver error, or an id it cannot find (a dangling reference), simply
+// leaves the raw-id fallback in place rather than failing the request —
+// a missing display name is a degraded UI, not a correctness problem.
+func (s *EntityService) resolveLinkLabels(ctx context.Context, records []*def.EntityRecord) {
+	if len(s.schema.FieldLookups) == 0 {
+		return
+	}
+	for fieldName, lookup := range s.schema.FieldLookups {
+		target := s.schema.LinkTargets[fieldName]
+		if target == nil || lookup == nil {
+			continue
+		}
+		labelKey := fieldName + "_label"
+		if _, collides := s.schema.FieldsByName[labelKey]; collides {
+			// A real, author-declared field already owns this exact name
+			// (e.g. an entity with both "manager" (link) and its own
+			// "manager_label" field). Never shadow it with the generated
+			// display value — leave it alone entirely.
+			continue
+		}
+
+		idSet := make(map[uuid.UUID]bool)
+		for _, rec := range records {
+			id, ok := linkFieldUUID(rec.Data[fieldName])
+			if !ok || id == uuid.Nil {
+				continue
+			}
+			rec.Data[fieldName+"_label"] = id.String()
+			idSet[id] = true
+		}
+		if len(idSet) == 0 || s.linkResolver == nil || lookup.LabelField == "id" {
+			// lookup.LabelField == "id": no better display value than the
+			// raw id is known for this target (compiler.buildLookup found no
+			// usable field), so the fallback set just above is already the
+			// final answer — querying the resolver for it would be a no-op.
+			continue
+		}
+
+		ids := make([]uuid.UUID, 0, len(idSet))
+		for id := range idSet {
+			ids = append(ids, id)
+		}
+		labels, err := s.linkResolver.ResolveLinkLabels(ctx, target.TableName, lookup.LabelField, ids)
+		if err != nil {
+			slog.WarnContext(ctx, "entity: link label resolution failed; showing raw id",
+				"entity", s.schema.QualifiedName, "field", fieldName, "err", err)
+			continue
+		}
+		for _, rec := range records {
+			id, ok := linkFieldUUID(rec.Data[fieldName])
+			if !ok {
+				continue
+			}
+			if label, found := labels[id]; found && label != "" {
+				rec.Data[fieldName+"_label"] = label
+			}
+		}
+	}
+}
+
+// linkFieldUUID extracts a uuid.UUID from a FieldTypeLink value as stored in
+// EntityRecord.Data. Repository implementations may produce either a
+// uuid.UUID directly (contrib/pgx, since the FieldTypeLink scanning fix) or
+// a string.
+func linkFieldUUID(v any) (uuid.UUID, bool) {
+	switch t := v.(type) {
+	case uuid.UUID:
+		return t, true
+	case string:
+		id, err := uuid.Parse(t)
+		if err != nil {
+			return uuid.Nil, false
+		}
+		return id, true
+	default:
+		return uuid.Nil, false
+	}
 }
 
 // Count delegates to the repository. Added alongside Exists/WithTx (Phase 2
