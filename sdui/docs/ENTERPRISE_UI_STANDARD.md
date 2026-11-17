@@ -117,8 +117,8 @@ AWO fully covers 11 of 20 Tier 1 items and partly covers 5 more; the largest gap
 | 1 | Status badges | Done | Opt-in per field with a colour map | sdui and entity definitions |
 | 1 | Breadcrumbs | Done | Home, list, current view | sdui |
 | 1 | Empty, loading, error states | Partial | Empty state localizable; no loading or error customization | sdui |
-| 1 | Audit trail per record | Done | Timeline on detail pages for audited entities | sdui |
-| 1 | Attachments and notes | Missing | An attachments node exists in the renderer but the generator never emits it | sdui, plus attachment API |
+| 1 | Audit trail per record | Done | Timeline on detail pages for audited entities, read from the audit_log data API | sdui |
+| 1 | Attachments and notes | Partial | Read-only attachments list on detail pages; no upload endpoint and no notes entity yet | backend upload API and notes entity, then sdui |
 | 1 | Related records | Done | Related lists from entity edges | sdui |
 | 1 | Saved views / variants | Missing | No per-user or shared views | sdui, plus persistence API |
 | 1 | Foreign-key labels in lists | Missing | Link columns show the raw id | backend list API, then sdui |
@@ -136,7 +136,7 @@ AWO fully covers 11 of 20 Tier 1 items and partly covers 5 more; the largest gap
 
 Close the Tier 1 gaps first, cheapest inside `./sdui` before anything that needs backend work, then add Tier 2 features that reuse the same machinery.
 
-1. **Attachments and notes panel on detail pages** (sdui, reuses the existing attachments node; needs the attachment API to be reachable).
+1. **Attachments and notes panel on detail pages**: read-only list done; upload needs a backend file-upload endpoint, notes need a notes entity.
 2. **Loading and error states** and consistent success or failure messages after save and delete (sdui only).
 3. **Server-side full export and bulk actions beyond delete** (sdui action definitions plus one backend endpoint each).
 4. **Foreign-key labels in list columns** (backend list API returns a label beside each id; sdui reads it).

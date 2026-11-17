@@ -47,6 +47,13 @@ import (
 	"awo.so/awo/sdui/widget"
 )
 
+// Data API list endpoints of the platform audit_log and attachment entities,
+// built with the same naming the compiler uses for RoutePrefix.
+var (
+	auditListURL      = "/api/v1/iam/" + def.PluralizeLocal("audit_log")
+	attachmentListURL = "/api/v1/platform/" + def.PluralizeLocal("attachment")
+)
+
 // FromCompiled converts a *compiler.EntitySchema into a generator.EntitySchema.
 //
 // The conversion is allocation-heavy by design — generator.EntitySchema is
@@ -69,6 +76,12 @@ func FromCompiled(es *compiler.EntitySchema) generator.EntitySchema {
 		Permissions: permissionsMap(es.Permissions),
 		HasWorkflow: len(es.WorkflowTriggers) > 0,
 		HasAudit:    es.AllowAudit,
+		AuditURL:    auditListURL,
+	}
+	// Every record can carry attachments except the attachment and audit
+	// entities themselves.
+	if es.QualifiedName != "platform_attachment" && es.QualifiedName != "iam_audit_log" {
+		gs.AttachmentsURL = attachmentListURL
 	}
 
 	// Fields.
